@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" />
+  <Project Path="FamilyClubLibrary/FamilyClubLibrary.csproj" />
 </Solution>
