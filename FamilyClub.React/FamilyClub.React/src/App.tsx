@@ -25,7 +25,7 @@ function App() {
         </div>
 
       {/* Original code, to be deleted later */}
-      {/* <section id="center"> 
+      <section id="center"> 
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />
           <img src={reactLogo} className="framework" alt="React logo" />
@@ -129,7 +129,7 @@ function App() {
       </section>
 
       <div className="ticks"></div>
-      <section id="spacer"></section> */}
+      <section id="spacer"></section>
     </>
   )
 }
