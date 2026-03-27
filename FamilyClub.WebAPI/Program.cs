@@ -1,4 +1,4 @@
-using FamilyClub.WebAPI.Data;
+using FamilyClub.DAL.EF;
 using FamilyClubLibrary;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

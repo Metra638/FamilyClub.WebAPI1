@@ -27,10 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FamilyClub.DAL\FamilyClub.DAL.csproj" />
     <ProjectReference Include="..\FamilyClubLibrary\FamilyClubLibrary.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Data\" />
     <Folder Include="Migrations\" />
     <Folder Include="Models\DTOs\" />
     <Folder Include="wwwroot\" />

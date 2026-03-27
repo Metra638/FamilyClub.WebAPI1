@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="FamilyClub.DAL/FamilyClub.DAL.csproj" Id="49268160-2492-4378-934d-6f9f53cc9fc8" />
   <Project Path="FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" />
   <Project Path="FamilyClubLibrary/FamilyClubLibrary.csproj" />
 </Solution>
