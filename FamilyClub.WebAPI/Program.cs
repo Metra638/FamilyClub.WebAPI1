@@ -28,12 +28,19 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddEndpointsApiExplorer();
 
-// Тимчасово зберігаємо всі дані у пам'яті доки не маємо бази даних
-// Temporary saving data in memory until we get a proper database
+
+// Connection string
+//string connStr = builder.Configuration.GetConnectionString("FamilyClubContext")
+//    ?? throw new InvalidOperationException("Connection string 'FamilyClubContext' not found!");
+
+string connStr = builder.Configuration.GetConnectionString("FamilyClub_DB")
+    ?? throw new InvalidOperationException("Connection string 'FamilyClub_DB' not found!");
+
 // DB CONTEXT
 builder.Services.AddDbContext<FamilyClubContext>(options => {
-    options.UseInMemoryDatabase("FamilyClubDb");
-});
+    //options.UseSqlServer(connStr);
+    options.UseNpgsql(connStr, npgsql =>
+        npgsql.MigrationsAssembly("FamilyClub.DAL"));
 
 // Identity
 builder.Services.AddIdentity<ClubMember, IdentityRole>()
