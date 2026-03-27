@@ -28,6 +28,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddEndpointsApiExplorer();
 
+
 // Connection string
 //string connStr = builder.Configuration.GetConnectionString("FamilyClubContext")
 //    ?? throw new InvalidOperationException("Connection string 'FamilyClubContext' not found!");
@@ -40,7 +41,6 @@ builder.Services.AddDbContext<FamilyClubContext>(options => {
     //options.UseSqlServer(connStr);
     options.UseNpgsql(connStr, npgsql =>
         npgsql.MigrationsAssembly("FamilyClub.DAL"));
-});
 
 // Identity
 builder.Services.AddIdentity<ClubMember, IdentityRole>()

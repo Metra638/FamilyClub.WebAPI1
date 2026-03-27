@@ -10,7 +10,7 @@ namespace FamilyClubLibrary
 
         public string CategoryName { get; set; } = default!;
 
-        public string? Slug { get; set; }
+        //public string? Slug { get; set; }
 
         public List<Product> Products { get; set; } = new();
     }

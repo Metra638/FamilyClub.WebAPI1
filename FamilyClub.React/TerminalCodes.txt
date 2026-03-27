@@ -1,0 +1,5 @@
+npx create-next-app@latest famiy.club.react
+
+Use recommended defaults (choosed `Yes`):
+TypeScript, ESLint, Tailwind CSS, App Router, AGENTS.md
+
