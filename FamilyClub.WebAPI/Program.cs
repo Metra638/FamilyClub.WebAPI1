@@ -38,9 +38,12 @@ string connStr = builder.Configuration.GetConnectionString("FamilyClub_DB")
 
 // DB CONTEXT
 builder.Services.AddDbContext<FamilyClubContext>(options => {
-    //options.UseSqlServer(connStr);
     options.UseNpgsql(connStr, npgsql =>
-        npgsql.MigrationsAssembly("FamilyClub.DAL"));
+    {
+        npgsql.MigrationsAssembly("FamilyClub.DAL");
+        npgsql.UseAdminDatabase("defaultdb");
+
+    });
 });
 
 // Identity
