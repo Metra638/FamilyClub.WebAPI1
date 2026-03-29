@@ -1,4 +1,5 @@
 using FamilyClub.DAL.EF;
+using FamilyClub.DAL.EF.DB;
 using FamilyClubLibrary;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +35,8 @@ string connStr = builder.Configuration.GetConnectionString("FamilyClubContext")
 
 // DB CONTEXT
 builder.Services.AddDbContext<FamilyClubContext>(options => {
-    options.UseSqlServer(connStr);
+    //options.UseSqlServer(connStr);
+    options.UseNpgsql(connStr);
 });
 
 // Identity
@@ -62,6 +64,13 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+//---add---//
+using (IServiceScope scope = app.Services.CreateScope())
+{
+	var services = scope.ServiceProvider;
+	await DbInitializer.Initialize(services, app.Configuration);
+}
+//---//
 app.UseCors("AllowReact"); // Allowing to use React
 
 // Configure the HTTP request pipeline.
