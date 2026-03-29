@@ -44,6 +44,7 @@ builder.Services.AddDbContext<FamilyClubContext>(options => {
         npgsql.UseAdminDatabase("defaultdb");
 
     });
+    options.UseSnakeCaseNamingConvention(); // Line to use automatic snake_case naming convention for PostgreSQL
 });
 
 // Identity
