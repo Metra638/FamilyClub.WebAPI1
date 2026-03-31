@@ -1,5 +1,9 @@
 using FamilyClub.DAL.EF;
+using FamilyClub.DAL.Interfaces;
+using FamilyClub.DAL.Repositories;
 using FamilyClubLibrary;
+using FamilyClub.BLL.Interfaces;
+using FamilyClub.BLL.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,6 +55,10 @@ builder.Services.AddDbContext<FamilyClubContext>(options => {
 builder.Services.AddIdentity<ClubMember, IdentityRole>()
     .AddEntityFrameworkStores<FamilyClubContext>()
     .AddDefaultTokenProviders();
+
+builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IPublisherService, PublisherService>();
 
 // Customize Identity cookie
 //builder.Services.ConfigureApplicationCookie(

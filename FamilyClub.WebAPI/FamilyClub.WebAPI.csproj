@@ -30,6 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FamilyClub.BLL\FamilyClub.BLL.csproj" />
     <ProjectReference Include="..\FamilyClub.DAL\FamilyClub.DAL.csproj" />
     <ProjectReference Include="..\FamilyClubLibrary\FamilyClubLibrary.csproj" />
   </ItemGroup>
