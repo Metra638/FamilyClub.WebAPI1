@@ -1,6 +1,7 @@
 using FamilyClub.DAL.EF;
 using FamilyClub.DAL.Interfaces;
 using FamilyClub.DAL.Repositories;
+using FamilyClub.DAL.EF.DB;
 using FamilyClubLibrary;
 using FamilyClub.BLL.Interfaces;
 using FamilyClub.BLL.Services;
@@ -79,6 +80,13 @@ builder.Services.AddSwaggerGen();
 
 
 var app = builder.Build();
+
+
+using (IServiceScope scope = app.Services.CreateScope())
+{
+	var services = scope.ServiceProvider;
+	await DbInitializer.Initialize(services, app.Configuration);
+}
 
 app.UseCors("AllowReact"); // Allowing to use React
 
