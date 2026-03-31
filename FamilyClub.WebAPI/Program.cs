@@ -1,4 +1,5 @@
 using FamilyClub.DAL.EF;
+using FamilyClub.DAL.EF.DB;
 using FamilyClubLibrary;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -71,6 +72,13 @@ builder.Services.AddSwaggerGen();
 
 
 var app = builder.Build();
+
+
+using (IServiceScope scope = app.Services.CreateScope())
+{
+	var services = scope.ServiceProvider;
+	await DbInitializer.Initialize(services, app.Configuration);
+}
 
 app.UseCors("AllowReact"); // Allowing to use React
 
