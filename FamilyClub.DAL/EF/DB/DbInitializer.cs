@@ -9,7 +9,7 @@ using System.Text;
 
 namespace FamilyClub.DAL.EF.DB
 {
-	// Class to initialize database with starting data
+	// Class to initialize database
 	public class DbInitializer
 	{
 		public static async Task Initialize(

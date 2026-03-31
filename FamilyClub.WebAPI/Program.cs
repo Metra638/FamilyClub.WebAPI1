@@ -64,13 +64,13 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-//---add---//
+
 using (IServiceScope scope = app.Services.CreateScope())
 {
 	var services = scope.ServiceProvider;
 	await DbInitializer.Initialize(services, app.Configuration);
 }
-//---//
+
 app.UseCors("AllowReact"); // Allowing to use React
 
 // Configure the HTTP request pipeline.
