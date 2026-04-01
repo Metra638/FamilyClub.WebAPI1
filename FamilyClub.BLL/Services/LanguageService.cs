@@ -7,7 +7,7 @@ using FamilyClubLibrary;
 
 namespace FamilyClub.BLL.Services
 {
-    internal class LanguageService : ILanguageService
+    public class LanguageService : ILanguageService
     {
         private readonly ILanguageRepository _languageRepository;
         private readonly IUnitOfWork _unitOfWork;

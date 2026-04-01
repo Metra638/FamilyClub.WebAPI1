@@ -60,6 +60,12 @@ builder.Services.AddIdentity<ClubMember, IdentityRole>()
 builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IPublisherService, PublisherService>();
+// Language
+builder.Services.AddScoped<ILanguageRepository, LanguageRepository>();
+builder.Services.AddScoped<ILanguageService, LanguageService>();
+
+
+
 
 // Customize Identity cookie
 //builder.Services.ConfigureApplicationCookie(
