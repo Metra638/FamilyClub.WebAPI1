@@ -67,6 +67,9 @@ builder.Services.AddScoped<ILanguageService, LanguageService>();
 // Translator
 builder.Services.AddScoped<ITranslatorRepository, TranslatorRepository>();
 builder.Services.AddScoped<ITranslatorService, TranslatorService>();
+// Category
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ICategoryService,  CategoryService>();
 
 
 
