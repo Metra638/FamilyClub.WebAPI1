@@ -70,6 +70,9 @@ builder.Services.AddScoped<ITranslatorService, TranslatorService>();
 // Category
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICategoryService,  CategoryService>();
+// Series
+builder.Services.AddScoped<ISeriesRepository, SeriesRepository>();
+builder.Services.AddScoped<ISeriesService, SeriesService>();
 
 
 
