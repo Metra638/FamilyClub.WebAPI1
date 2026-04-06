@@ -58,8 +58,10 @@ builder.Services.AddIdentity<ClubMember, IdentityRole>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
+builder.Services.AddScoped<IAuthorRepository, AuthorRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IPublisherService, PublisherService>();
+builder.Services.AddScoped<IAuthorService, AuthorService>();
 
 // Customize Identity cookie
 //builder.Services.ConfigureApplicationCookie(
