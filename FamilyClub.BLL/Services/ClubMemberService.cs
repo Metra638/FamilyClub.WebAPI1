@@ -98,6 +98,16 @@ public class ClubMemberService : IClubMemberService
         return clubMember is null ? null : MapToReadDto(clubMember);
     }
 
+    // Method is searching for clubMembers with the specified phone number and returns a list of matching members.
+    public async Task<List<ClubMemberReadDto>> GetByPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken = default)
+    {
+        var members = await _userManager.Users
+            .Where(m => m.PhoneNumber == phoneNumber)
+            .ToListAsync(cancellationToken);
+
+        return MapToReadDtos(members)!;
+    }
+
     // We always return ReadMapToReadDto to ensure consistent output format
     private static ClubMemberReadDto MapToReadDto(ClubMember clubMember)
     {
@@ -111,6 +121,11 @@ public class ClubMemberService : IClubMemberService
             DateOfBirth = clubMember.DateOfBirth
         };
     }
-    
+
+    private static List<ClubMemberReadDto> MapToReadDtos(List<ClubMember> clubMembers)
+    {
+        return clubMembers.Select(MapToReadDto).ToList();
+    }
+
 }
 

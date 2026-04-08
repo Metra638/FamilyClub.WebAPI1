@@ -11,4 +11,5 @@ public interface IClubMemberService
     Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
     // Added methods compare to Repository from DAL
     Task<ClubMemberReadDto?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
+    Task<List<ClubMemberReadDto>> GetByPhoneNumberAsync(string phoneNumber, CancellationToken cancellationToken = default);
 }
