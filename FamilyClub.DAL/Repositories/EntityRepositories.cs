@@ -15,4 +15,4 @@ public class PublisherRepository(FamilyClubContext context) : Repository<Publish
 public class ReviewRepository(FamilyClubContext context) : Repository<Review>(context), IReviewRepository;
 public class SeriesRepository(FamilyClubContext context) : Repository<Series>(context), ISeriesRepository;
 public class TranslatorRepository(FamilyClubContext context) : Repository<Translator>(context), ITranslatorRepository;
-public class ClubMemberRepository(FamilyClubContext context) : Repository<ClubMember>(context), IClubMemberRepository;
+//public class ClubMemberRepository(FamilyClubContext context) : Repository<ClubMember>(context), IClubMemberRepository;

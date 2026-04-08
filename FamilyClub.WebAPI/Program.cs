@@ -77,7 +77,7 @@ builder.Services.AddScoped<ISeriesService, SeriesService>();
 builder.Services.AddScoped<IPromotionRepository,  PromotionRepository>();
 builder.Services.AddScoped<IPromotionService, PromotionService>();
 // ClubMember
-builder.Services.AddScoped<IClubMemberRepository, ClubMemberRepository>();
+//builder.Services.AddScoped<IClubMemberRepository, ClubMemberRepository>();
 builder.Services.AddScoped<IClubMemberService, ClubMemberService>();
 
 
