@@ -79,8 +79,12 @@ builder.Services.AddScoped<ISeriesService, SeriesService>();
 // Promotion
 builder.Services.AddScoped<IPromotionRepository,  PromotionRepository>();
 builder.Services.AddScoped<IPromotionService, PromotionService>();
-
-
+//Order
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+//OrderItem
+builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
+builder.Services.AddScoped<IOrderItemService, OrderItemService>();
 
 // Customize Identity cookie
 //builder.Services.ConfigureApplicationCookie(
