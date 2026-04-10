@@ -90,6 +90,9 @@ builder.Services.AddScoped<IOrderItemService, OrderItemService>();
 builder.Services.AddScoped<IClubMemberService, ClubMemberService>();
 
 
+//Review
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
 
 // Customize Identity cookie
 //builder.Services.ConfigureApplicationCookie(
