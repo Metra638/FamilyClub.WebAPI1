@@ -85,6 +85,11 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 //OrderItem
 builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
 builder.Services.AddScoped<IOrderItemService, OrderItemService>();
+// ClubMember
+//builder.Services.AddScoped<IClubMemberRepository, ClubMemberRepository>();
+builder.Services.AddScoped<IClubMemberService, ClubMemberService>();
+
+
 
 // Customize Identity cookie
 //builder.Services.ConfigureApplicationCookie(
