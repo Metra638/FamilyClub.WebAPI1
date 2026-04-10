@@ -85,6 +85,9 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 //OrderItem
 builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
 builder.Services.AddScoped<IOrderItemService, OrderItemService>();
+//Review
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
 
 // Customize Identity cookie
 //builder.Services.ConfigureApplicationCookie(
