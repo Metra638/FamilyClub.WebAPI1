@@ -22,7 +22,7 @@ public class ClubMemberController : ControllerBase
         return Ok(clubMembers);
     }
 
-    [HttpGet("{id:int}")]
+    [HttpGet("{id}")]
     public async Task<ActionResult<ClubMemberReadDto>> GetById(string id, CancellationToken cancellationToken)
     {
         var clubMember = await _clubMemberService.GetByIdAsync(id, cancellationToken);
@@ -34,7 +34,7 @@ public class ClubMemberController : ControllerBase
         return Ok(clubMember);
     }
 
-    [HttpGet("{**email}")]
+    [HttpGet("by-email/{email}")]
     public async Task<ActionResult<ClubMemberReadDto>> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var clubMember = await _clubMemberService.GetByEmailAsync(email, cancellationToken);
@@ -52,7 +52,7 @@ public class ClubMemberController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = createdClubMember.Id }, createdClubMember);
     }
 
-    [HttpPut("{id:int}")]
+    [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] UpdateClubMemberDto dto, CancellationToken cancellationToken)
     {
         var updated = await _clubMemberService.UpdateAsync(id, dto, cancellationToken);
@@ -64,7 +64,7 @@ public class ClubMemberController : ControllerBase
         return NoContent();
     }
 
-    [HttpDelete("{id:int}")]
+    [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
         var deleted = await _clubMemberService.DeleteAsync(id, cancellationToken);
