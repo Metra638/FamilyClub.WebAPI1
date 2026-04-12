@@ -25,8 +25,7 @@ namespace FamilyClubLibrary
         public int? PublisherId { get; set; }
         public Publisher? Publisher { get; set; }
 
-        public string? CoverImageUrl { get; set; }
-
+        public List<ProductImage>? ProductImages { get; set; } = new();
 
         public List<Review> Reviews { get; set; } = new(); // Navigation property for Review
         [NotMapped]

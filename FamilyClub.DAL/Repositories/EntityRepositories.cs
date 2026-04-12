@@ -9,7 +9,29 @@ public class AuthorRepository(FamilyClubContext context) : Repository<Author>(co
 public class CategoryRepository(FamilyClubContext context) : Repository<Category>(context), ICategoryRepository;
 public class LanguageRepository(FamilyClubContext context) : Repository<Language>(context), ILanguageRepository;
 public class OrderItemRepository(FamilyClubContext context) : Repository<OrderItem>(context), IOrderItemRepository;
-public class ProductRepository(FamilyClubContext context) : Repository<Product>(context), IProductRepository;
+public class ProductRepository : Repository<Product>, IProductRepository
+{
+    private readonly FamilyClubContext _context;
+
+    public ProductRepository(FamilyClubContext context) : base(context)
+    {
+        _context = context;
+    }
+
+    public async Task<IEnumerable<Product>> GetAllWithImagesAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Products
+            .Include(p => p.ProductImages)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Product?> GetByIdWithImagesAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Products
+            .Include(p => p.ProductImages)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+    }
+}
 public class PromotionRepository(FamilyClubContext context) : Repository<Promotion>(context), IPromotionRepository;
 public class PublisherRepository(FamilyClubContext context) : Repository<Publisher>(context), IPublisherRepository;
 public class ReviewRepository(FamilyClubContext context) : Repository<Review>(context), IReviewRepository;

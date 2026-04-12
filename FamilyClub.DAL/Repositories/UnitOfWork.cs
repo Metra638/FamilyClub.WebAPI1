@@ -1,5 +1,6 @@
 using FamilyClub.DAL.EF;
 using FamilyClub.DAL.Interfaces;
+using FamilyClubLibrary;
 
 namespace FamilyClub.DAL.Repositories;
 

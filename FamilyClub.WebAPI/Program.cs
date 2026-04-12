@@ -98,6 +98,9 @@ builder.Services.AddScoped<IAuthClubMemberService, AuthClubMemberService>();
 //Review
 builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+//Product
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 // Customize Identity cookie
 //builder.Services.ConfigureApplicationCookie(
