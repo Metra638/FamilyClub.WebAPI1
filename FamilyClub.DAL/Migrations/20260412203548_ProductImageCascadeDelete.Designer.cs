@@ -3,6 +3,7 @@ using System;
 using FamilyClub.DAL.EF;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FamilyClub.DAL.Migrations
 {
     [DbContext(typeof(FamilyClubContext))]
-    partial class FamilyClubContextModelSnapshot : ModelSnapshot
+    [Migration("20260412203548_ProductImageCascadeDelete")]
+    partial class ProductImageCascadeDelete
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

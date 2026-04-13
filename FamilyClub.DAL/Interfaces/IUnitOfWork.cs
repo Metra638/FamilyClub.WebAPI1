@@ -1,3 +1,5 @@
+using FamilyClubLibrary;
+
 namespace FamilyClub.DAL.Interfaces;
 
 public interface IUnitOfWork
