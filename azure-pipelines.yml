@@ -5,33 +5,30 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  dockerId: 'metra638'          # Docker Hub ID
-  imageName: 'test1'            # имя образа
+  dockerId: 'metra638'
+  imageName: 'test1'
 
 steps:
-  # Шаг 0: Явный checkout (опционально, но полезно)
-  - checkout: self
-
-  # Шаг 1: Сборка Docker-образа
+  # Сборка образа
   - task: Docker@2
     inputs:
       command: 'build'
-      dockerfile: 'Dockerfile'   # укажите точный путь, если Dockerfile в корне
+      dockerfile: 'Dockerfile'
       repository: '$(dockerId)/$(imageName)'
       tags: |
         $(Build.BuildId)
         latest
     displayName: 'Build Docker image'
 
-  # Шаг 2: Логин в Docker Hub (исправлено!)
+  # Логин в Docker Hub (исправлены имена секретов)
   - script: |
-      echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+      echo "$(DOCKERHUB_PASSWORD)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
     displayName: 'Login to Docker Hub'
     env:
-      DOCKER_ID: $(dockerId)
-      DOCKER_PASSWORD: $(DOCKER_HUB_PASSWORD)   # секретная переменная
+      DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
+      DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
 
-  # Шаг 3: Push образа
+  # Push образа
   - task: Docker@2
     inputs:
       command: 'push'
