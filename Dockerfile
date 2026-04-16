@@ -1,5 +1,5 @@
 # ------------------- СТАДИЯ 1: СБОРКА REACT -------------------
-FROM node:20-alpine AS react-build
+FROM node:22-bookworm-slim AS react-build
 
 WORKDIR /app/react
 
@@ -8,8 +8,10 @@ RUN npm ci && npm cache clean --force
 
 COPY FamilyClub.React/FamilyClub.React/ .
 
-# Включаем экспериментальную поддержку CustomEvent для Node.js
-ENV NODE_OPTIONS="--experimental-global-custom-event"
+# Принудительно добавляем полифилл для CustomEvent (на случай, если его нет)
+RUN npm install custom-event-polyfill --save-dev && \
+    echo "import 'custom-event-polyfill';" >> src/main.tsx
+
 RUN npm run build
 
 # ------------------- СТАДИЯ 2: СБОРКА .NET (поддержка net10.0) -------------------
