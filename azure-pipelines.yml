@@ -15,7 +15,7 @@ steps:
       command: 'build'
       dockerfile: 'Dockerfile'
       repository: '$(dockerId)/$(imageName)'
-      arguments: '--platform linux/amd64'   # добавлено
+      arguments: '--platform linux/amd64 --no-cache'   
       tags: |
         $(Build.BuildId)
         latest
