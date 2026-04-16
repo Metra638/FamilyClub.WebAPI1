@@ -9,18 +9,19 @@ variables:
   imageName: 'test1'
 
 steps:
-  # Сборка образа
+  # Сборка образа для amd64 (и без кэша, если нужно)
   - task: Docker@2
     inputs:
       command: 'build'
       dockerfile: 'Dockerfile'
       repository: '$(dockerId)/$(imageName)'
+      arguments: '--platform linux/amd64'   # добавлено
       tags: |
         $(Build.BuildId)
         latest
     displayName: 'Build Docker image'
 
-  # Логин в Docker Hub (исправлены имена секретов)
+  # Логин в Docker Hub
   - script: |
       echo "$(DOCKERHUB_PASSWORD)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
     displayName: 'Login to Docker Hub'
