@@ -1,6 +1,5 @@
 # ------------------- СТАДИЯ 1: СБОРКА REACT -------------------
-# Явно указываем целевую платформу linux/arm64
-FROM --platform=linux/arm64 node:22-bookworm-slim AS react-build
+FROM node:22-bookworm-slim AS react-build
 
 WORKDIR /app/react
 
@@ -9,14 +8,13 @@ RUN npm ci && npm cache clean --force
 
 COPY FamilyClub.React/FamilyClub.React/ .
 
-# Полифилл для CustomEvent (на случай отсутствия)
 RUN npm install custom-event-polyfill --save-dev && \
     echo "import 'custom-event-polyfill';" >> src/main.tsx
 
 RUN npm run build
 
-# ------------------- СТАДИЯ 2: СБОРКА .NET (поддержка net10.0) -------------------
-FROM --platform=linux/arm64 mcr.microsoft.com/dotnet/nightly/sdk:10.0-preview AS dotnet-build
+# ------------------- СТАДИЯ 2: СБОРКА .NET -------------------
+FROM mcr.microsoft.com/dotnet/nightly/sdk:10.0-preview AS dotnet-build
 
 WORKDIR /src
 
@@ -31,7 +29,7 @@ COPY FamilyClubLibrary/ ./FamilyClubLibrary/
 RUN dotnet publish "./FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" -c Release -o /app/publish --no-restore
 
 # ------------------- СТАДИЯ 3: ФИНАЛЬНЫЙ ОБРАЗ -------------------
-FROM --platform=linux/arm64 mcr.microsoft.com/dotnet/nightly/aspnet:10.0-preview AS final
+FROM mcr.microsoft.com/dotnet/nightly/aspnet:10.0-preview AS final
 
 WORKDIR /app
 
