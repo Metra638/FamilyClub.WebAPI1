@@ -31,7 +31,7 @@ COPY FamilyClubLibrary/ ./FamilyClubLibrary/
 RUN dotnet publish "./FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" -c Release -o /app/publish --no-restore
 
 # ------------------- СТАДИЯ 3: ФИНАЛЬНЫЙ ОБРАЗ -------------------
-FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/nightly/aspnet:10.0-preview AS final
+FROM --platform=linux/arm64 mcr.microsoft.com/dotnet/nightly/aspnet:10.0-preview AS final
 
 WORKDIR /app
 
