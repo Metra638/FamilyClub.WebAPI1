@@ -35,5 +35,5 @@ steps:
       repository: '$(dockerId)/$(imageName)'
       tags: |
         $(Build.BuildId)
-        latest
+        latest1
     displayName: 'Push Docker image to Docker Hub'
