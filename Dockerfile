@@ -1,4 +1,4 @@
-# ------------------- СТАДИЯ 1: СБОРКА REACT -------------------
+# ------------------- СТАДИЯ 1: СБОРКА REACT --------------------
 FROM --platform=linux/arm64 node:22-bookworm-slim AS react-build
 
 WORKDIR /app/react
