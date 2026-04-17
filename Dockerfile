@@ -1,6 +1,6 @@
 # ------------------- СТАДИЯ 1: СБОРКА REACT -------------------
-# Явно указываем целевую платформу linux/amd64
-FROM --platform=linux/amd64 node:22-bookworm-slim AS react-build
+# Явно указываем целевую платформу linux/arm64
+FROM --platform=linux/arm64 node:22-bookworm-slim AS react-build
 
 WORKDIR /app/react
 
@@ -16,7 +16,7 @@ RUN npm install custom-event-polyfill --save-dev && \
 RUN npm run build
 
 # ------------------- СТАДИЯ 2: СБОРКА .NET (поддержка net10.0) -------------------
-FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/nightly/sdk:10.0-preview AS dotnet-build
+FROM --platform=linux/arm64 mcr.microsoft.com/dotnet/nightly/sdk:10.0-preview AS dotnet-build
 
 WORKDIR /src
 
