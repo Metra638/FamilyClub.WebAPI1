@@ -13,8 +13,8 @@ RUN npm install custom-event-polyfill --save-dev && \
 
 RUN npm run build
 
-# ------------------- СТАДИЯ 2: СБОРКА .NET -------------------
-FROM mcr.microsoft.com/dotnet/nightly/sdk:10.0-preview AS dotnet-build
+# ------------------- СТАДИЯ 2: СБОРКА .NET (теперь net8.0) -------------------
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS dotnet-build
 
 WORKDIR /src
 
@@ -29,7 +29,7 @@ COPY FamilyClubLibrary/ ./FamilyClubLibrary/
 RUN dotnet publish "./FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" -c Release -o /app/publish --no-restore
 
 # ------------------- СТАДИЯ 3: ФИНАЛЬНЫЙ ОБРАЗ -------------------
-FROM mcr.microsoft.com/dotnet/nightly/aspnet:10.0-preview AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 
 WORKDIR /app
 
