@@ -1,5 +1,5 @@
 # ------------------- СТАДИЯ 1: СБОРКА REACT -------------------
-FROM node:22-bookworm-slim AS react-build
+FROM --platform=linux/arm64 node:22-bookworm-slim AS react-build
 
 WORKDIR /app/react
 
@@ -13,8 +13,8 @@ RUN npm install custom-event-polyfill --save-dev && \
 
 RUN npm run build
 
-# ------------------- СТАДИЯ 2: СБОРКА .NET (теперь net8.0) -------------------
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS dotnet-build
+# ------------------- СТАДИЯ 2: СБОРКА .NET (net8.0) -------------------
+FROM --platform=linux/arm64 mcr.microsoft.com/dotnet/sdk:8.0 AS dotnet-build
 
 WORKDIR /src
 
@@ -29,7 +29,7 @@ COPY FamilyClubLibrary/ ./FamilyClubLibrary/
 RUN dotnet publish "./FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" -c Release -o /app/publish --no-restore
 
 # ------------------- СТАДИЯ 3: ФИНАЛЬНЫЙ ОБРАЗ -------------------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM --platform=linux/arm64 mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 
 WORKDIR /app
 
