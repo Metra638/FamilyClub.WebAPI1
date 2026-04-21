@@ -12,7 +12,6 @@ RUN npm install custom-event-polyfill --save-dev && \
 
 RUN npm run build
 
-# Используем .NET 10 SDK (preview) для AMD64
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS dotnet-build
 
 WORKDIR /src
@@ -27,7 +26,6 @@ COPY FamilyClubLibrary/ ./FamilyClubLibrary/
 
 RUN dotnet publish "./FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" -c Release -o /app/publish --no-restore
 
-# Финальный образ с .NET 10 runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
 
 WORKDIR /app
