@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: familyclub-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: familyclub
+  template:
+    metadata:
+      labels:
+        app: familyclub
+    spec:
+      imagePullSecrets:
+      - name: dockerhub-secret
+      containers:
+      - name: familyclub
+        image: metra638/test1:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
