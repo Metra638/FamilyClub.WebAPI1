@@ -9,7 +9,7 @@ variables:
   imageName: 'test1'
 
 steps:
-  # Логин в Docker Hub (перед сборкой, чтобы buildx мог запушить)
+  # 1. Login to Docker Hub
   - script: |
       echo "$(DOCKERHUB_PASSWORD)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
     displayName: 'Login to Docker Hub'
@@ -17,7 +17,7 @@ steps:
       DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
       DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
 
-  # Сборка и push с помощью buildx (arm64)
+  # 2. Build and push multi-arch (ARM64) image
   - script: |
       docker buildx create --use
       docker buildx build \
@@ -26,3 +26,26 @@ steps:
         -t $(dockerId)/$(imageName):$(Build.BuildId) \
         --push .
     displayName: 'Build and push multi-arch image'
+
+  # 3. Install Trivy scanner
+  - script: |
+      sudo apt-get install -y wget apt-transport-https gnupg
+      wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+      echo "deb https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+      sudo apt-get update
+      sudo apt-get install -y trivy
+    displayName: 'Install Trivy'
+
+  # 4. Pull the freshly pushed image (required for Trivy to access its layers)
+  - script: |
+      docker pull $(dockerId)/$(imageName):$(Build.BuildId)
+    displayName: 'Pull image for scanning'
+
+  # 5. Run Trivy security scan (fail pipeline on HIGH or CRITICAL vulnerabilities)
+  - script: |
+      trivy image \
+        --severity HIGH,CRITICAL \
+        --exit-code 1 \
+        --no-progress \
+        $(dockerId)/$(imageName):$(Build.BuildId)
+    displayName: 'Scan image with Trivy'
