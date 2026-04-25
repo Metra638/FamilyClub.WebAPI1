@@ -28,6 +28,12 @@ RUN dotnet publish "./FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" -c Release -o 
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
 
+# Обновляем пакеты для устранения уязвимостей (включая gpgv)
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=dotnet-build /app/publish .
