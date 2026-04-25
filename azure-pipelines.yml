@@ -9,7 +9,7 @@ variables:
   imageName: 'test1'
 
 steps:
-  # 1. Login to Docker Hub
+  # 1. Логин в Docker Hub
   - script: |
       echo "$(DOCKERHUB_PASSWORD)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
     displayName: 'Login to Docker Hub'
@@ -17,35 +17,53 @@ steps:
       DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
       DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
 
-  # 2. Build and push multi-arch (ARM64) image
+  # 2. Сборка образа в tar-файл (только для arm64, без отправки в registry)
   - script: |
       docker buildx create --use
       docker buildx build \
         --platform linux/arm64 \
-        -t $(dockerId)/$(imageName):latest \
-        -t $(dockerId)/$(imageName):$(Build.BuildId) \
-        --push .
-    displayName: 'Build and push multi-arch image'
+        -o type=docker,dest=image.tar \
+        .
+    displayName: 'Build image and export to tar'
 
-  # 3. Install Trivy scanner
+  # 3. Установка Trivy
   - script: |
+      sudo apt-get update
       sudo apt-get install -y wget apt-transport-https gnupg
       wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-      echo "deb https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+      echo "deb https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
       sudo apt-get update
       sudo apt-get install -y trivy
     displayName: 'Install Trivy'
 
-  # 4. Pull the freshly pushed image (required for Trivy to access its layers)
-  - script: |
-      docker pull $(dockerId)/$(imageName):$(Build.BuildId)
-    displayName: 'Pull image for scanning'
-
-  # 5. Run Trivy security scan (fail pipeline on HIGH or CRITICAL vulnerabilities)
+  # 4. Сканирование образа из tar-файла (с фейлом при HIGH/CRITICAL уязвимостях)
   - script: |
       trivy image \
         --severity HIGH,CRITICAL \
         --exit-code 1 \
         --no-progress \
-        $(dockerId)/$(imageName):$(Build.BuildId)
+        --input image.tar
     displayName: 'Scan image with Trivy'
+
+  # 5. Загрузка образа в локальный Docker daemon
+  - script: |
+      docker load < image.tar
+    displayName: 'Load image from tar'
+
+  # 6. Тегирование образа (нужно получить корректное имя и тег после загрузки)
+  #    После docker load образ обычно появляется с тегом, который был во время сборки.
+  #    Если Dockerfile не задаёт явно имя, то создаётся "none". Поэтому сначала смотрим,
+  #    какие образы загрузились, и тегируем нужный.
+  - script: |
+      # Находим ID образа, который только что загрузили (последний загруженный)
+      IMAGE_ID=$(docker images --format "{{.ID}}" | head -n1)
+      # Тегируем его
+      docker tag $IMAGE_ID $(dockerId)/$(imageName):latest
+      docker tag $IMAGE_ID $(dockerId)/$(imageName):$(Build.BuildId)
+    displayName: 'Tag image'
+
+  # 7. Push образа в Docker Hub
+  - script: |
+      docker push $(dockerId)/$(imageName):latest
+      docker push $(dockerId)/$(imageName):$(Build.BuildId)
+    displayName: 'Push image to Docker Hub'
