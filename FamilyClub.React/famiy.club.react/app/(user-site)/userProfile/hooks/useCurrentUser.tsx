@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiBasePath } from "@/lib/api/services";
-import { getAuthToken } from "@/lib/auth/tokenStorage";
+import { clearAuthSession, getAuthToken } from "@/lib/auth/tokenStorage";
 
 
 export type CurrentUser = {
@@ -35,6 +35,9 @@ export function useCurrentUser() {
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          clearAuthSession(false);
+        }
         setUser(null);
         return;
       }

@@ -37,8 +37,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "My App",
-  description: "Created with Next.js",
+  title: "Librellis",
+  description: "Книжковий клуб Librellis",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
