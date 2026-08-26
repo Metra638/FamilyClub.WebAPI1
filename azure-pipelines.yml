@@ -1,0 +1,276 @@
+#schedules:
+#- cron: "0 1 */3 * *"
+#  displayName: "Cold build"
+#  branches:
+#    include:
+#    - '*'
+#  always: true
+
+trigger:
+  branches:
+    include:
+      - '*'
+  paths:
+    exclude:
+      - KUBERNETES/**
+      - KUBERNETES-TEST/**
+
+variables:
+  dockerId: 'metra638'
+  repoName: 'test1'
+  frontendDigest: ''
+  backendDigest: ''
+  frontendArm64Digest: ''
+  backendArm64Digest: ''
+  frontendCacheTagArm64: '$(dockerId)/$(repoName):frontend-cache-arm64'
+  frontendCacheTagAmd64: '$(dockerId)/$(repoName):frontend-cache-amd64'
+  backendCacheTagArm64: '$(dockerId)/$(repoName):backend-cache-arm64'
+  backendCacheTagAmd64: '$(dockerId)/$(repoName):backend-cache-amd64'
+  testDbPassword: 'test123'
+
+jobs:
+- job: MyPipeline
+  timeoutInMinutes: 90
+  pool:
+    vmImage: 'ubuntu-latest'
+    
+  steps:
+
+  - script: |
+      echo "$(DOCKERHUB_PASSWORD)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
+    displayName: 'Login to Docker Hub'
+    env:
+      DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
+      DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
+
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '22.x'
+    displayName: 'Install Node.js'
+
+  - script: |
+      docker buildx create --use --name multiarch-builder || true
+      export frontendCacheTagArm64="$(frontendCacheTagArm64)"
+      export frontendCacheTagAmd64="$(frontendCacheTagAmd64)"
+      IS_COLD="$([ "$(Build.CronSchedule.DisplayName)" = "Cold build" ] && echo "true" || echo "false")"
+
+      for ARCH in arm64 amd64; do
+        if [ "$IS_COLD" = "true" ]; then
+          NO_CACHE="--no-cache"
+          CACHE_FROM=""
+          CACHE_TO=""
+          echo "Cold build (without cache) for $ARCH"
+        else
+          NO_CACHE=""
+          if [ "$ARCH" = "arm64" ]; then
+            CACHE_REF="$frontendCacheTagArm64"
+          else
+            CACHE_REF="$frontendCacheTagAmd64"
+          fi
+          CACHE_FROM="--cache-from type=registry,ref=$CACHE_REF"
+          CACHE_TO="--cache-to type=registry,ref=$CACHE_REF,mode=max"
+          echo "Regular build (with cache from $CACHE_REF) for $ARCH"
+        fi
+
+        docker buildx build \
+          $NO_CACHE \
+          $CACHE_FROM \
+          $CACHE_TO \
+          --platform linux/$ARCH \
+          -f dockerfile.frontend \
+          -o type=docker,dest=frontend-$ARCH.tar \
+          --build-arg BUILD_DATE=$(date -Iseconds) \
+          --build-arg VCS_REF=$(Build.SourceVersion) \
+          --build-arg VERSION=$(Build.BuildId) \
+          .
+      done
+    displayName: 'Build frontend images for arm64 and amd64'
+
+  - script: |
+      for ARCH in arm64 amd64; do
+        docker load < frontend-$ARCH.tar
+        IMAGE_ID=$(docker images --format "{{.ID}}" | head -n1)
+        FULL_TAG="$(dockerId)/$(repoName):frontend-$(Build.BuildId)-$ARCH"
+        docker tag $IMAGE_ID $FULL_TAG
+        docker push $FULL_TAG | tee push-frontend-$ARCH.log
+        if [ "$ARCH" = "arm64" ]; then
+          DIGEST=$(grep -E 'digest: sha256:[a-f0-9]{64}' push-frontend-arm64.log | head -1 | sed -E 's/.*(sha256:[a-f0-9]{64}).*/\1/')
+          echo "Frontend arm64 digest: $DIGEST"
+          echo "##vso[task.setvariable variable=frontendArm64Digest]$DIGEST"
+        fi
+      done
+    displayName: 'Load, tag and push frontend architecture-specific images'
+
+  - script: |
+      docker manifest create $(dockerId)/$(repoName):frontend-$(Build.BuildId) \
+        --amend $(dockerId)/$(repoName):frontend-$(Build.BuildId)-arm64 \
+        --amend $(dockerId)/$(repoName):frontend-$(Build.BuildId)-amd64
+      docker manifest push $(dockerId)/$(repoName):frontend-$(Build.BuildId)
+    displayName: 'Create and push multi-arch manifest for frontend'
+
+  - script: |
+      rm -rf FamilyClub.React/famiy.club.react/node_modules || true
+      rm -rf ~/.npm/_cacache || true
+      df -h
+    displayName: 'Cleanup frontend dependencies'
+
+  - script: |
+      set -e
+      git config user.email "apofeoz638@gmail.com"
+      git config user.name "Artem Malashevskyi"
+      git checkout $(Build.SourceBranchName) || git checkout -b $(Build.SourceBranchName)
+      if git ls-remote --heads origin $(Build.SourceBranchName) | grep -q $(Build.SourceBranchName); then
+        git pull --rebase --autostash origin $(Build.SourceBranchName)
+      else
+        echo "Remote branch does not exist, skipping pull"
+      fi
+
+      sed -i "s|metra638/test1@[^ ]*|metra638/test1@$(frontendArm64Digest)|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"$(frontendArm64Digest)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|commit-hash: \".*\"|commit-hash: \"$(Build.SourceVersion)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|branch: \".*\"|branch: \"$(Build.SourceBranchName)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+
+      sed -i "s|metra638/test1@[^ ]*|metra638/test1@$(frontendArm64Digest)|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"$(frontendArm64Digest)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|commit-hash: \".*\"|commit-hash: \"$(Build.SourceVersion)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|branch: \".*\"|branch: \"$(Build.SourceBranchName)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+
+      git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $(Build.SourceBranchName)" || echo "No changes to commit"
+      git remote set-url origin https://$(GH_PAT)@github.com/Metra638/FamilyClub.WebAPI1.git
+      git push origin HEAD:$(Build.SourceBranchName)
+    displayName: 'Update frontend manifest on current branch (arm64 digest)'
+
+  - script: |
+      rm -f frontend-*.tar backend-*.tar || true
+      docker container prune -f || true
+      docker volume prune -f || true
+      IMAGE="$(dockerId)/$(repoName):frontend-$(Build.BuildId)-amd64"
+      docker save $IMAGE -o /tmp/frontend-image.tar
+      docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "$IMAGE" | xargs -r docker rmi -f || true
+      docker builder prune -af || true
+      docker system prune -af --volumes || true
+      docker load -i /tmp/frontend-image.tar
+      rm -f /tmp/frontend-image.tar
+      df -h
+      docker images
+    displayName: 'Cleanup before frontend DAST'
+
+  - script: |
+      echo "Freeing disk space before backend build"
+      docker system prune -af --volumes || true
+      docker image prune -af || true
+      docker volume prune -f || true
+      rm -f frontend-*.tar backend-*.tar || true
+      df -h
+    displayName: 'Free disk space before backend build'
+
+  - task: UseDotNet@2
+    inputs:
+      packageType: 'sdk'
+      version: '10.x'
+    displayName: 'Install .NET SDK'
+
+  - script: |
+      docker buildx create --use --name multiarch-builder || true
+      export backendCacheTagArm64="$(backendCacheTagArm64)"
+      export backendCacheTagAmd64="$(backendCacheTagAmd64)"
+      IS_COLD="$([ "$(Build.CronSchedule.DisplayName)" = "Cold build" ] && echo "true" || echo "false")"
+      for ARCH in arm64 amd64; do
+        if [ "$IS_COLD" = "true" ]; then
+          NO_CACHE="--no-cache"
+          CACHE_FROM=""
+          CACHE_TO=""
+          echo "Cold build (without cache) for $ARCH"
+        else
+          NO_CACHE=""
+          if [ "$ARCH" = "arm64" ]; then
+            CACHE_REF="$backendCacheTagArm64"
+          else
+            CACHE_REF="$backendCacheTagAmd64"
+          fi
+          CACHE_FROM="--cache-from type=registry,ref=$CACHE_REF"
+          CACHE_TO="--cache-to type=registry,ref=$CACHE_REF,mode=max"
+          echo "Regular build (with cache from $CACHE_REF) for $ARCH"
+        fi
+        docker buildx build \
+          $NO_CACHE \
+          $CACHE_FROM \
+          $CACHE_TO \
+          --platform linux/$ARCH \
+          -f dockerfile.backend \
+          -o type=docker,dest=backend-$ARCH.tar \
+          --build-arg BUILD_DATE=$(date -Iseconds) \
+          --build-arg VCS_REF=$(Build.SourceVersion) \
+          --build-arg VERSION=$(Build.BuildId) \
+          .
+      done
+    displayName: 'Build backend images for arm64 and amd64'
+
+  - script: |
+      for ARCH in arm64 amd64; do
+        docker load < backend-$ARCH.tar
+        IMAGE_ID=$(docker images --format "{{.ID}}" | head -n1)
+        FULL_TAG="$(dockerId)/$(repoName):backend-$(Build.BuildId)-$ARCH"
+        docker tag $IMAGE_ID $FULL_TAG
+        docker push $FULL_TAG | tee push-backend-$ARCH.log
+        if [ "$ARCH" = "arm64" ]; then
+          DIGEST=$(grep -E 'digest: sha256:[a-f0-9]{64}' push-backend-arm64.log | head -1 | sed -E 's/.*(sha256:[a-f0-9]{64}).*/\1/')
+          echo "Backend arm64 digest: $DIGEST"
+          echo "##vso[task.setvariable variable=backendArm64Digest]$DIGEST"
+        fi
+      done
+    displayName: 'Load, tag and push backend architecture-specific images'
+
+  - script: |
+      docker manifest create $(dockerId)/$(repoName):backend-$(Build.BuildId) \
+        --amend $(dockerId)/$(repoName):backend-$(Build.BuildId)-arm64 \
+        --amend $(dockerId)/$(repoName):backend-$(Build.BuildId)-amd64
+      docker manifest push $(dockerId)/$(repoName):backend-$(Build.BuildId)
+    displayName: 'Create and push multi-arch manifest for backend'
+
+  - script: |
+      set -e
+      git config user.email "apofeoz638@gmail.com"
+      git config user.name "Artem Malashevskyi"
+      git checkout $(Build.SourceBranchName) || git checkout -b $(Build.SourceBranchName)
+      if git ls-remote --heads origin $(Build.SourceBranchName) | grep -q $(Build.SourceBranchName); then
+        git pull --rebase --autostash origin $(Build.SourceBranchName)
+      else
+        echo "Remote branch does not exist, skipping pull"
+      fi
+
+      sed -i "s|metra638/test1@[^ ]*|metra638/test1@$(backendArm64Digest)|g" KUBERNETES/Backend/backend-deployment.yaml
+      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"$(backendArm64Digest)\"|g" KUBERNETES/Backend/backend-deployment.yaml
+      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Backend/backend-deployment.yaml
+      sed -i "s|commit-hash: \".*\"|commit-hash: \"$(Build.SourceVersion)\"|g" KUBERNETES/Backend/backend-deployment.yaml
+      sed -i "s|branch: \".*\"|branch: \"$(Build.SourceBranchName)\"|g" KUBERNETES/Backend/backend-deployment.yaml
+
+      sed -i "s|metra638/test1@[^ ]*|metra638/test1@$(backendArm64Digest)|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"$(backendArm64Digest)\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+      sed -i "s|commit-hash: \".*\"|commit-hash: \"$(Build.SourceVersion)\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+      sed -i "s|branch: \".*\"|branch: \"$(Build.SourceBranchName)\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+
+      git add KUBERNETES/Backend/backend-deployment.yaml KUBERNETES-TEST/Backend/backend-deployment.yaml
+      git commit -m "Update backend manifest with arm64 digest, build-date, commit, branch: $(Build.SourceBranchName)" || echo "No changes to commit"
+      git remote set-url origin https://$(GH_PAT)@github.com/Metra638/FamilyClub.WebAPI1.git
+      git push origin HEAD:$(Build.SourceBranchName)
+    displayName: 'Update backend manifest on current branch (arm64 digest)'
+
+  - script: |
+      rm -f backend-*.tar || true
+      docker container prune -f || true
+      docker volume prune -f || true
+      IMAGE="$(dockerId)/$(repoName):backend-$(Build.BuildId)-amd64"
+      docker save $IMAGE -o /tmp/backend-image.tar
+      docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "$IMAGE" | xargs -r docker rmi -f || true
+      docker builder prune -af || true
+      docker system prune -af --volumes || true
+      docker load -i /tmp/backend-image.tar
+      rm -f /tmp/backend-image.tar
+      df -h
+      docker images
+    displayName: 'Cleanup before backend DAST'
