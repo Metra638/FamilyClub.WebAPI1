@@ -1,0 +1,138 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: familyclub-postgres
+  namespace: production
+  labels:
+    app.kubernetes.io/name: familyclub-postgres
+    app.kubernetes.io/part-of: familyclub
+    app.kubernetes.io/component: postgres
+    app.kubernetes.io/environment: production
+spec:
+  replicas: 1
+  revisionHistoryLimit: 6
+  updateStrategy:
+    type: OnDelete
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: familyclub-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: familyclub-postgres
+      annotations:
+        app.kubernetes.io/repository: "https://github.com/Metra638/FamilyClub.WebAPI1"
+    spec:
+      serviceAccountName: postgres
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: run-postgresql
+        emptyDir: {}
+      initContainers:
+      - name: fix-permissions
+        image: busybox:1.37
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /data/postgres-data
+          chown -R 999:999 /data
+          chmod 700 /data/postgres-data
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /data
+      containers:
+      - name: postgres
+        image: postgres@sha256:74e110c41804365e3915fcc09d5e7a1eff50161aaa94d5da0e58e0cd75ae509c
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        startupProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+            - -h
+            - 127.0.0.1
+          initialDelaySeconds: 90
+          timeoutSeconds: 5
+          periodSeconds: 5
+          failureThreshold: 30
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+            - -h
+            - 127.0.0.1
+          timeoutSeconds: 5
+          periodSeconds: 15
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+            - -h
+            - 127.0.0.1
+          timeoutSeconds: 5
+          periodSeconds: 5
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          value: "familyclub_db"
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+          subPath: postgres-data
+        - name: tmp
+          mountPath: /tmp
+        - name: run-postgresql
+          mountPath: /var/run/postgresql
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 999
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc
+  namespace: production
+  labels:
+    app.kubernetes.io/name: familyclub-postgres
+spec:
+  selector:
+    app.kubernetes.io/name: familyclub-postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP
