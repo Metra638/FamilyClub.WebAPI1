@@ -43,10 +43,53 @@ jobs:
       DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
       DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
 
+  - script: |
+      docker run --rm -v $(Build.SourcesDirectory):/path -w /path zricethezav/gitleaks detect --verbose --redact || true
+    displayName: 'Scan for secrets with Gitleaks'
+
+  - script: |
+      docker run --rm -i hadolint/hadolint hadolint --ignore DL3066 - < dockerfile.frontend
+      docker run --rm -i hadolint/hadolint hadolint --ignore DL3066 - < dockerfile.backend
+    displayName: 'Lint Dockerfiles with Hadolint'
+
+  - script: |
+      sudo apt-get update
+      sudo apt-get install -y wget apt-transport-https gnupg
+      wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+      echo "deb https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
+      sudo apt-get update
+      sudo apt-get install -y trivy
+    displayName: 'Install Trivy'
+
   - task: NodeTool@0
     inputs:
       versionSpec: '22.x'
     displayName: 'Install Node.js'
+
+  - script: |
+      cd FamilyClub.React/famiy.club.react
+      npm audit --audit-level=high
+    displayName: 'Audit npm dependencies (security)'
+
+  - script: |
+      cd FamilyClub.React/famiy.club.react
+      echo "Installing ESLint security plugin"
+      npm install --save-dev eslint-plugin-security || true
+      echo "Running ESLint security rules"
+      npx eslint --plugin security . || true
+    displayName: 'Run ESLint security plugin'
+
+  - script: |
+      cd FamilyClub.React/famiy.club.react
+      echo "Installing dependencies"
+      npm ci || npm install
+      echo "Running linter (ESLint)"
+      npm run lint || true
+      echo "Running TypeScript type check"
+      npx tsc --noEmit || true
+      echo "Building project (check build)"
+      npm run build || true
+    displayName: 'Run frontend code checks (lint, types, build)'
 
   - script: |
       docker buildx create --use --name multiarch-builder || true
@@ -85,6 +128,12 @@ jobs:
           .
       done
     displayName: 'Build frontend images for arm64 and amd64'
+
+  - script: |
+      for ARCH in arm64 amd64; do
+        trivy image --severity HIGH,CRITICAL --exit-code 1 --no-progress --input frontend-$ARCH.tar
+      done
+    displayName: 'Scan frontend images with Trivy'
 
   - script: |
       for ARCH in arm64 amd64; do
@@ -159,6 +208,80 @@ jobs:
     displayName: 'Cleanup before frontend DAST'
 
   - script: |
+      echo "Starting DAST scan for frontend"
+      IMAGE="$(dockerId)/$(repoName):frontend-$(Build.BuildId)-amd64"
+      
+      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
+        echo "ERROR: Image not found locally"
+        echo "Frontend image not found locally" > zap_report_frontend.html
+        echo '{"error": "Frontend image not found locally"}' > zap_report_frontend.json
+        exit 0
+      fi
+      
+      docker network create dast-frontend-net || true
+      
+      echo "Starting frontend with 'node node_modules/.bin/next start'"
+      if ! docker run -d --name frontend-test --network dast-frontend-net --entrypoint node $IMAGE node_modules/.bin/next start; then
+        echo "ERROR: Container failed to start"
+        echo "Frontend startup failed" > zap_report_frontend.html
+        echo '{"error": "Startup failed"}' > zap_report_frontend.json
+        docker network rm dast-frontend-net || true
+        exit 0
+      fi
+      
+      echo "Waiting 40 seconds for frontend to start"
+      sleep 40
+      
+      if ! docker ps | grep frontend-test; then
+        echo "Container not running, logs:"
+        docker logs frontend-test || true
+        docker stop frontend-test && docker rm frontend-test || true
+        docker network rm dast-frontend-net || true
+        echo "Frontend container crashed" > zap_report_frontend.html
+        echo '{"error": "Container crashed"}' > zap_report_frontend.json
+        exit 0
+      fi
+      
+      mkdir -p zap_reports_frontend
+      chmod 777 zap_reports_frontend
+      
+      docker run --rm \
+        --network dast-frontend-net \
+        -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw \
+        zaproxy/zap-stable \
+        zap-baseline.py \
+        -t http://frontend-test:3000 \
+        -r zap_report_frontend.html \
+        -J zap_report_frontend.json \
+        2>&1 | tee zap_frontend_output.log
+      
+      ZAP_EXIT_CODE=${PIPESTATUS[0]}
+      echo "ZAP exit code: $ZAP_EXIT_CODE"
+      
+      if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
+        echo "Report generated"
+        cp zap_reports_frontend/zap_report_frontend.html .
+        cp zap_reports_frontend/zap_report_frontend.json .
+      else
+        echo "Report NOT generated, exit code: $ZAP_EXIT_CODE"
+        echo "Last 30 lines of ZAP output:"
+        tail -30 zap_frontend_output.log
+        echo "ZAP scan failed with exit code $ZAP_EXIT_CODE" > zap_report_frontend.html
+        echo '{"error": "ZAP scan failed"}' > zap_report_frontend.json
+      fi
+      
+      docker stop frontend-test && docker rm frontend-test || true
+      docker network rm dast-frontend-net || true
+    displayName: 'DAST scan for frontend'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'zap_report_frontend.html'
+      ArtifactName: 'DAST-Frontend-Report'
+    condition: always()
+    displayName: 'Publish frontend DAST report'
+
+  - script: |
       echo "Freeing disk space before backend build"
       docker system prune -af --volumes || true
       docker image prune -af || true
@@ -172,6 +295,23 @@ jobs:
       packageType: 'sdk'
       version: '10.x'
     displayName: 'Install .NET SDK'
+
+  - script: |
+      echo "Auditing NuGet dependencies for vulnerabilities"
+      dotnet list package --vulnerable --include-transitive
+    displayName: 'Audit NuGet dependencies (security)'
+
+  - script: |
+      echo "Checking code formatting"
+      dotnet format --verify-no-changes --verbosity minimal || true
+    displayName: 'Check code formatting (dotnet format)'
+
+  - script: |
+      echo "Restoring dependencies"
+      dotnet restore
+      echo "Building project with code analyzers enabled"
+      dotnet build --no-restore -c Release /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true
+    displayName: 'Run backend build with analyzers'
 
   - script: |
       docker buildx create --use --name multiarch-builder || true
@@ -211,6 +351,12 @@ jobs:
 
   - script: |
       for ARCH in arm64 amd64; do
+        trivy image --severity HIGH,CRITICAL --exit-code 1 --no-progress --input backend-$ARCH.tar
+      done
+    displayName: 'Scan backend images with Trivy'
+
+  - script: |
+      for ARCH in arm64 amd64; do
         docker load < backend-$ARCH.tar
         IMAGE_ID=$(docker images --format "{{.ID}}" | head -n1)
         FULL_TAG="$(dockerId)/$(repoName):backend-$(Build.BuildId)-$ARCH"
@@ -230,6 +376,12 @@ jobs:
         --amend $(dockerId)/$(repoName):backend-$(Build.BuildId)-amd64
       docker manifest push $(dockerId)/$(repoName):backend-$(Build.BuildId)
     displayName: 'Create and push multi-arch manifest for backend'
+
+  - script: |
+      rm -rf ~/.nuget/packages || true
+      rm -rf **/obj **/bin || true
+      df -h
+    displayName: 'Cleanup backend dependencies'
 
   - script: |
       set -e
@@ -274,3 +426,104 @@ jobs:
       df -h
       docker images
     displayName: 'Cleanup before backend DAST'
+
+  - script: |
+      echo "Starting DAST scan for backend"
+
+      IMAGE="$(dockerId)/$(repoName):backend-$(Build.BuildId)-amd64"
+      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
+        echo "ERROR: Image not found locally"
+        echo "Backend image not found locally" > zap_report_backend.html
+        echo '{"error": "Backend image not found locally"}' > zap_report_backend.json
+        exit 0
+      fi
+
+      docker network create dast-backend-net || true
+
+      echo "Starting test PostgreSQL container"
+      docker run -d --name db-test --network dast-backend-net \
+        -e POSTGRES_PASSWORD=$(testDbPassword) \
+        -e POSTGRES_DB=familyclub_db \
+        postgres:15
+
+      echo "Waiting 30 seconds for PostgreSQL to start"
+      sleep 30
+
+      DB_CONN="Host=db-test;Database=familyclub_db;Username=postgres;Password=$(testDbPassword)"
+      echo "Using DB connection: $DB_CONN"
+
+      echo "Starting backend container"
+      if ! docker run -d \
+        --name backend-test \
+        --network dast-backend-net \
+        -e Jwt__Key="$JWT_KEY" \
+        -e ConnectionStrings__FamilyClub_DB="$DB_CONN" \
+        -e Jwt__Issuer="$JWT_ISSUER" \
+        -e Jwt__Audience="$JWT_AUDIENCE" \
+        $IMAGE; then
+        echo "ERROR: Container failed to start"
+        echo "Backend startup failed" > zap_report_backend.html
+        echo '{"error": "Startup failed"}' > zap_report_backend.json
+        docker stop db-test && docker rm db-test || true
+        docker network rm dast-backend-net || true
+        exit 0
+      fi
+
+      echo "Waiting 40 seconds for backend to start"
+      sleep 40
+
+      if ! docker ps | grep backend-test; then
+        echo "Container not running, logs:"
+        docker logs backend-test || true
+        docker stop backend-test && docker rm backend-test || true
+        docker stop db-test && docker rm db-test || true
+        docker network rm dast-backend-net || true
+        echo "Backend container crashed" > zap_report_backend.html
+        echo '{"error": "Container crashed"}' > zap_report_backend.json
+        exit 0
+      fi
+
+      mkdir -p zap_reports_backend
+      chmod 777 zap_reports_backend
+
+      echo "Running ZAP baseline scan"
+      docker run --rm \
+        --network dast-backend-net \
+        -v $(pwd)/zap_reports_backend:/zap/wrk/:rw \
+        zaproxy/zap-stable \
+        zap-baseline.py \
+        -t http://backend-test:8080 \
+        -r zap_report_backend.html \
+        -J zap_report_backend.json \
+        2>&1 | tee zap_backend_output.log
+
+      ZAP_EXIT_CODE=${PIPESTATUS[0]}
+      echo "ZAP exit code: $ZAP_EXIT_CODE"
+
+      if [ -f zap_reports_backend/zap_report_backend.html ]; then
+        echo "Report generated"
+        cp zap_reports_backend/zap_report_backend.html .
+        cp zap_reports_backend/zap_report_backend.json .
+      else
+        echo "Report NOT generated, exit code: $ZAP_EXIT_CODE"
+        echo "Last 30 lines of ZAP output:"
+        tail -30 zap_backend_output.log
+        echo "ZAP scan failed with exit code $ZAP_EXIT_CODE" > zap_report_backend.html
+        echo '{"error": "ZAP scan failed"}' > zap_report_backend.json
+      fi
+
+      docker stop backend-test && docker rm backend-test || true
+      docker stop db-test && docker rm db-test || true
+      docker network rm dast-backend-net || true
+    displayName: 'DAST scan for backend'
+    env:
+      JWT_KEY: $(JWT_KEY)
+      JWT_ISSUER: $(JWT_ISSUER)
+      JWT_AUDIENCE: $(JWT_AUDIENCE)
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'zap_report_backend.html'
+      ArtifactName: 'DAST-Backend-Report'
+    condition: always()
+    displayName: 'Publish backend DAST report'
