@@ -97,6 +97,16 @@ spec:
                 secretKeyRef:
                   name: redis-secret
                   key: password
+            - name: OIDC_GOOGLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oidc-google
+                  key: ClientID
+            - name: OIDC_GOOGLE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oidc-google
+                  key: ClientSecret
             - name: AzureCommunicationServices__ConnectionString
               valueFrom:
                 secretKeyRef:
