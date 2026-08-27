@@ -48,17 +48,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <UserSiteProviders>
         <PresenceHeartbeatMount />
         <MobileHeader />
-        <header className="bg-[var(--background-main)] w-full hidden md:flex flex-row overflow-x-0 fixed z-30 h-[62px] shadow-[0px_0px_15px_0px_#24242499]">
+        <header className="bg-[var(--background-main)] w-full hidden md:flex flex-row overflow-x-0 fixed z-[100] h-[62px] shadow-[0px_0px_15px_0px_#24242499]">
           <div className="max-w-[1220px] mx-auto flex items-center lg:px-0">
             <UpNavigation />
           </div>
         </header>
-        <div className="fixed pointer-events-none z-20 hidden md:flex flex-row ml-[26%] items-center justify-between max-w-[900px] mx-auto gap-2 mt-[20px] px-4 lg:px-0">
+        <div className="fixed pointer-events-none z-[95] hidden md:flex flex-row ml-[26%] items-center justify-between max-w-[900px] mx-auto gap-2 mt-[20px] px-4 lg:px-0">
           <HeaderDropDownSection />
           {/* <DropDownList /> */}
         </div>
 
-        <main className="flex-1">
+        <main className="flex-1 md:pt-[62px]">
           {children}
         </main>
 

@@ -10,4 +10,5 @@ public interface IReviewService
     Task<bool> UpdateAsync(int id, ReviewDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
     Task<IEnumerable<ReviewDto>> GetByUserIdAsync(string userId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ReviewDto>> GetByProductIdAsync(int productId, CancellationToken cancellationToken = default);
 }

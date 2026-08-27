@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FamilyClub.BLL.DTOs.Review;
 using FamilyClub.BLL.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -41,6 +42,11 @@ public class ReviewsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Create([FromBody] ReviewDto dto, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(dto.UserId))
+        {
+            dto.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        }
+
         var createdReview = await _reviewService.CreateAsync(dto, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = createdReview.Id }, createdReview);
     }
@@ -78,4 +84,13 @@ public class ReviewsController : ControllerBase
         var reviews = await _reviewService.GetByUserIdAsync(userId, cancellationToken);
         return Ok(reviews);
     }
+
+    [HttpGet("by-product/{productId:int}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IEnumerable<ReviewDto>>> GetByProduct(int productId, CancellationToken cancellationToken)
+    {
+        var reviews = await _reviewService.GetByProductIdAsync(productId, cancellationToken);
+        return Ok(reviews);
+    }
 }
+

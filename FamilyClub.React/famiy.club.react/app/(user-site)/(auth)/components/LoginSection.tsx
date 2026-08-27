@@ -61,7 +61,7 @@ export default function LoginSection({ onGoToRegister }: LoginSectionProps) {
     }
   };
 
-  const handleExternalLogin = (provider: "Google" | "Facebook") => {
+  const handleExternalLogin = (provider: "Google") => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
     window.location.href = `${apiBase}/api/AuthClubMember/external-login?provider=${provider}`;
   };
@@ -193,22 +193,6 @@ export default function LoginSection({ onGoToRegister }: LoginSectionProps) {
           />
           <span className="font-sans text-[18px] text-[#242424]">
             Продовжити через Google
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleExternalLogin("Facebook")}
-          className="w-full rounded-[9px] bg-[#1877F2] text-white shadow-[0px_0px_10px_0px_#00000033] flex items-center justify-center gap-3 border-0 cursor-pointer hover:brightness-110 active:scale-[0.98] transition"
-          style={{ height: INPUT_HEIGHT }}
-        >
-          <img
-            src="/images/Layout/Footer/FacebookIcon.svg"
-            alt="Facebook"
-            className="w-[22px] h-[22px] object-contain brightness-0 invert"
-          />
-          <span className="font-sans text-[18px] text-white font-medium">
-            Продовжити через Facebook
           </span>
         </button>
 

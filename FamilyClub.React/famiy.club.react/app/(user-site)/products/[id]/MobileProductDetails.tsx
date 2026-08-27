@@ -43,6 +43,10 @@ type MobileProductDetailsProps = {
   galleryImages: string[];
   displayImage?: string | null;
   setSelectedImage: (img: string | null) => void;
+  newComment?: string;
+  setNewComment?: (val: string) => void;
+  isSubmittingComment?: boolean;
+  handleCommentSubmit?: () => void;
 };
 
 const clampRating = (value: number) => Math.max(0, Math.min(5, value));
@@ -80,6 +84,10 @@ export default function MobileProductDetails({
   galleryImages,
   displayImage,
   setSelectedImage,
+  newComment = "",
+  setNewComment,
+  isSubmittingComment = false,
+  handleCommentSubmit,
 }: MobileProductDetailsProps) {
   const productTitle = product?.productName ?? "";
   const descriptionText = product?.description ?? "Опис книги відсутній.";
@@ -175,7 +183,7 @@ export default function MobileProductDetails({
                     await alertWarning("Увійдіть в акаунт, щоб додати товар у кошик");
                   }
                 }}
-                className="w-full py-2.5 px-3 rounded-[6px] bg-[#0e503f] hover:bg-[#093529] active:scale-[0.98] transition-all text-white font-medium text-[15px] flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                className="w-full py-3 px-4 rounded-[10px] bg-[#0e503f] hover:bg-[#093529] active:scale-[0.98] transition-all text-white font-bold text-[16px] flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(14,80,63,0.35)] cursor-pointer"
               >
                 <img
                   src="/images/main_page/icons/rec-icon-basket.svg"
@@ -563,16 +571,24 @@ export default function MobileProductDetails({
           <input
             type="text"
             placeholder="Додайте коментар..."
+            value={newComment}
+            onChange={(e) => setNewComment?.(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCommentSubmit?.()}
+            disabled={isSubmittingComment}
             className="bg-transparent text-[14px] text-[#242424] placeholder-[#242424]/50 focus:outline-none flex-1 pr-4 font-sans"
           />
           <button
             type="button"
-            className="w-[42px] h-[42px] rounded-full bg-[#0e503f] text-white flex items-center justify-center shadow-md hover:bg-[#093529] transition-transform active:scale-95 shrink-0"
+            onClick={handleCommentSubmit}
+            disabled={isSubmittingComment || !newComment.trim()}
+            className="w-[42px] h-[42px] rounded-full bg-[#0e503f] text-white flex items-center justify-center shadow-md hover:bg-[#093529] transition-transform active:scale-95 shrink-0 disabled:opacity-50"
             aria-label="Відправити"
           >
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-0.5">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
+            {isSubmittingComment ? "..." : (
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-0.5">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            )}
           </button>
         </div>
       </div>
@@ -601,7 +617,7 @@ export default function MobileProductDetails({
               await alertWarning("Увійдіть в акаунт, щоб додати товар у кошик");
             }
           }}
-          className="bg-[#0e503f] hover:bg-[#093529] active:scale-95 text-white px-4 py-2.5 rounded-[10px] font-bold text-[14px] flex items-center gap-2 shadow-md shrink-0 transition-all cursor-pointer"
+          className="bg-[#0e503f] hover:bg-[#093529] active:scale-95 text-white px-5 py-3 rounded-[12px] font-bold text-[15px] flex items-center gap-2 shadow-[0_4px_15px_rgba(14,80,63,0.4)] shrink-0 transition-all cursor-pointer"
         >
           <img src="/images/main_page/icons/rec-icon-basket.svg" alt="" className="w-4 h-4 brightness-200" />
           <span>У кошик</span>

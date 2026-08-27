@@ -188,8 +188,8 @@ function TornPaperBox({ children, className = "" }: { children: React.ReactNode;
 function ReviewCard({ author, text, timeLabel, avatar, bookImage, likesCount }: ReviewCardData) {
   const displayLikes = likesCount ?? 0;
   return (
-    <div className="flex h-full flex-col justify-between gap-4 rounded-[21px] bg-[#fcfbf8] p-5 shadow-[0px_4px_15px_rgba(0,0,0,0.12)] border border-[#242424]/5">
-      <div className="flex gap-5">
+    <div className="flex h-full flex-col justify-between gap-4 rounded-[21px] bg-[#f5f3ee] p-5 shadow-[0px_4px_15px_rgba(0,0,0,0.12)] border border-[#242424]/5">
+      <div className="flex gap-5 items-start">
         {avatar ? (
           <img
             alt=""
@@ -203,7 +203,7 @@ function ReviewCard({ author, text, timeLabel, avatar, bookImage, likesCount }: 
         )}
         <div className="flex-1 overflow-hidden">
           {author ? (
-            <p className="font-mono text-[22px] font-bold text-[#242424] truncate">
+            <p className="font-mono text-[22px] font-bold text-[#242424] truncate uppercase tracking-wider">
               {author}
             </p>
           ) : null}
@@ -227,7 +227,8 @@ function ReviewCard({ author, text, timeLabel, avatar, bookImage, likesCount }: 
         <span className="text-[14px] font-medium text-[#242424]/70">
           {timeLabel || "Щойно"}
         </span>
-        <div className="flex items-center gap-2 text-[16px] font-semibold text-[#242424]">
+        <div className="flex items-center gap-3 text-[15px] font-semibold text-[#242424]">
+          <span title="Поскаржитись" className="cursor-pointer opacity-40 hover:opacity-100 text-sm">🚩</span>
           <span>{displayLikes}</span>
           <img
             alt="Вподобати"
@@ -280,12 +281,13 @@ export default function ProductDetailsClient({ id }: { id: string }) {
             comment: newComment.trim(),
             rating: 5,
             createdAt: new Date(),
+            approved: true,
           },
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setNewComment("");
-      const updatedReviews = await reviewService.apiReviewsGet().catch(() => []);
+      const updatedReviews = await reviewService.apiReviewsByProductProductIdGet({ productId: pid }).catch(() => reviewService.apiReviewsGet().catch(() => []));
       setReviews(updatedReviews ?? []);
       setCurrentReviewPage(1);
     } catch (e) {
@@ -341,7 +343,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
         ] = await Promise.all([
           productService.apiProductsIdGet({ id: productId }),
           productService.apiProductsGet().catch((err) => { console.warn("Failed to fetch products:", err); return []; }),
-          reviewService.apiReviewsGet().catch((err) => { console.warn("Failed to fetch reviews:", err); return []; }),
+          reviewService.apiReviewsByProductProductIdGet({ productId }).catch(() => reviewService.apiReviewsGet().catch((err) => { console.warn("Failed to fetch reviews:", err); return []; })),
           languageService.apiLanguagesGet().catch((err) => { console.warn("Failed to fetch languages:", err); return []; }),
           publisherService.apiPublishersGet().catch((err) => { console.warn("Failed to fetch publishers:", err); return []; }),
           authorService.apiAuthorsGet().catch((err) => { console.warn("Failed to fetch authors:", err); return []; }),
@@ -661,6 +663,10 @@ export default function ProductDetailsClient({ id }: { id: string }) {
           galleryImages={galleryImages}
           displayImage={displayImage}
           setSelectedImage={setSelectedImage}
+          newComment={newComment}
+          setNewComment={setNewComment}
+          isSubmittingComment={isSubmittingComment}
+          handleCommentSubmit={handleCommentSubmit}
         />
       </div>
 
@@ -808,7 +814,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
 
                       <div className="mt-8 flex items-center justify-between gap-4">
                         <button
-                          className="flex flex-1 items-center cursor-pointer justify-center gap-3 py-3 text-[18px] text-[#242424]/70 hover:text-[#242424] transition-colors"
+                          className="flex flex-1 items-center cursor-pointer justify-center gap-3 py-3.5 px-6 rounded-[12px] bg-[#0e503f] hover:bg-[#093529] active:scale-[0.98] text-white font-bold text-[18px] shadow-[0_6px_20px_rgba(14,80,63,0.35)] transition-all"
                           type="button"
                           onClick={async () => {
                             if (!currentProduct?.id) return;
@@ -820,7 +826,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
                             }
                           }}
                         >
-                          <img alt="" className="h-[24px] w-[24px]" src="/images/main_page/icons/rec-icon-basket.svg" />
+                          <img alt="" className="h-[24px] w-[24px] brightness-200" src="/images/main_page/icons/rec-icon-basket.svg" />
                           <span>Додати в кошик</span>
                         </button>
                         <button
@@ -973,9 +979,9 @@ export default function ProductDetailsClient({ id }: { id: string }) {
             </div>
 
             <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-              <div className="flex items-center gap-4 rounded-full bg-white px-6 py-3 shadow-md border border-[#242424]/10 max-w-[900px] mx-auto mb-12">
+              <div className="flex items-center gap-4 rounded-[30px] bg-[#f5f3ee] px-6 h-[60px] shadow-[0px_0px_15px_rgba(36,36,36,0.2)] border border-[#242424]/10 max-w-[1220px] mx-auto mb-12">
                 <input
-                  className="flex-1 bg-transparent text-[16px] text-[#242424] placeholder:text-[#242424]/60 focus:outline-none"
+                  className="flex-1 bg-transparent text-[18px] text-[#242424] placeholder:text-[#242424]/60 focus:outline-none font-sans"
                   placeholder="Додайте коментар..."
                   type="text"
                   value={newComment}
@@ -984,7 +990,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
                   disabled={isSubmittingComment}
                 />
                 <button
-                  className="flex h-[44px] w-[54px] shrink-0 items-center justify-center rounded-full bg-[#242424] text-[20px] font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
+                  className="flex h-[46px] w-[54px] shrink-0 items-center justify-center rounded-full bg-[#242424] text-[20px] font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
                   type="button"
                   onClick={handleCommentSubmit}
                   disabled={isSubmittingComment || !newComment.trim()}
@@ -997,7 +1003,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
               <div>
                 {reviewCards.length > 0 ? (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1220px] mx-auto">
                       {paginatedReviewCards.map((rev) => (
                         <ReviewCard
                           key={rev.id}
@@ -1011,6 +1017,14 @@ export default function ProductDetailsClient({ id }: { id: string }) {
                         />
                       ))}
                     </div>
+                    {totalReviewPages > 1 && (
+                      <div className="w-full max-w-[1220px] mx-auto mt-10 h-[15px] bg-[#242424]/20 rounded-[62px] overflow-hidden">
+                        <div
+                          className="h-full bg-[#0e503f] rounded-[62px] transition-all duration-300"
+                          style={{ width: `${(currentReviewPage / totalReviewPages) * 100}%` }}
+                        />
+                      </div>
+                    )}
                     <ReviewPagination
                       currentPage={currentReviewPage}
                       totalPages={totalReviewPages}

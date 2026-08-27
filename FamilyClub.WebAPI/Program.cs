@@ -55,9 +55,10 @@ builder.Services.AddDbContext<FamilyClubContext>(options => {
     {
         npgsql.MigrationsAssembly("FamilyClub.DAL");
         npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-        // Note: Aiven cloud PostgreSQL uses "defaultdb" as the admin database.
-        // Standard PostgreSQL instances use "postgres" by default.
-        // npgsql.UseAdminDatabase("defaultdb");
+        npgsql.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null);
     });
     options.UseSnakeCaseNamingConvention(); // Line to use automatic snake_case naming convention for PostgreSQL
 });
@@ -211,12 +212,6 @@ builder.Services.AddAuthentication(options =>
     {
         options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "dummy-google-client-id";
         options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "dummy-google-client-secret";
-        options.SignInScheme = IdentityConstants.ExternalScheme;
-    })
-    .AddFacebook(options =>
-    {
-        options.AppId = builder.Configuration["Authentication:Facebook:AppId"] ?? "dummy-facebook-app-id";
-        options.AppSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "dummy-facebook-app-secret";
         options.SignInScheme = IdentityConstants.ExternalScheme;
     })
     .AddJwtBearer(options =>

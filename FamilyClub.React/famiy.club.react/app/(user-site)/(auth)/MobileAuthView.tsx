@@ -17,7 +17,7 @@ export default function MobileAuthView() {
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
 
-  const handleExternalLogin = (provider: "Google" | "Facebook") => {
+  const handleExternalLogin = (provider: "Google") => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
     window.location.href = `${apiBase}/api/AuthClubMember/external-login?provider=${provider}`;
   };
@@ -185,21 +185,6 @@ export default function MobileAuthView() {
           />
           <span className="text-[18px] text-[#242424]">
             Продовжити через Google
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleExternalLogin("Facebook")}
-          className="bg-[#1877F2] text-white h-[50px] w-full rounded-[9px] drop-shadow-[0px_0px_5px_rgba(0,0,0,0.25)] flex items-center justify-center gap-[15px] hover:brightness-110 active:scale-[0.98]"
-        >
-          <img
-            src="/images/Layout/Footer/FacebookIcon.svg"
-            alt="Facebook"
-            className="w-[24px] h-[24px] object-contain brightness-0 invert"
-          />
-          <span className="text-[18px] text-white font-medium">
-            Продовжити через Facebook
           </span>
         </button>
       </form>

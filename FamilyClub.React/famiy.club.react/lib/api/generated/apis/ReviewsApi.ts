@@ -22,6 +22,10 @@ import {
     ReviewDtoToJSON,
 } from '../models/index';
 
+export interface ApiReviewsByProductProductIdGetRequest {
+    productId: number;
+}
+
 export interface ApiReviewsByUserUserIdGetRequest {
     userId: string;
 }
@@ -291,6 +295,47 @@ export class ReviewsApi extends runtime.BaseAPI {
      */
     async apiReviewsPost(requestParameters: ApiReviewsPostRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.apiReviewsPostRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for apiReviewsByProductProductIdGet without sending the request
+     */
+    async apiReviewsByProductProductIdGetRequestOpts(requestParameters: ApiReviewsByProductProductIdGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['productId'] == null) {
+            throw new runtime.RequiredError(
+                'productId',
+                'Required parameter "productId" was null or undefined when calling apiReviewsByProductProductIdGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        let urlPath = `/api/Reviews/by-product/{productId}`;
+        urlPath = urlPath.replace(`{${"productId"}}`, encodeURIComponent(String(requestParameters['productId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async apiReviewsByProductProductIdGetRaw(requestParameters: ApiReviewsByProductProductIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<ReviewDto>>> {
+        const requestOptions = await this.apiReviewsByProductProductIdGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ReviewDtoFromJSON));
+    }
+
+    /**
+     */
+    async apiReviewsByProductProductIdGet(requestParameters: ApiReviewsByProductProductIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<ReviewDto>> {
+        const response = await this.apiReviewsByProductProductIdGetRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
 }

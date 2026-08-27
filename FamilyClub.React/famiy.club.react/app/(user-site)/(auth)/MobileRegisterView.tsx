@@ -42,7 +42,7 @@ export default function MobileRegisterView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleExternalLogin = (provider: "Google" | "Facebook") => {
+  const handleExternalLogin = (provider: "Google") => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
     window.location.href = `${apiBase}/api/AuthClubMember/external-login?provider=${provider}`;
   };
@@ -435,22 +435,6 @@ export default function MobileRegisterView() {
           />
           <span className="text-[20px] text-[#242424] tracking-[-0.22px] font-normal whitespace-nowrap">
             Продовжити через Google
-          </span>
-        </button>
-
-        {/* Facebook Login Button */}
-        <button
-          type="button"
-          onClick={() => handleExternalLogin("Facebook")}
-          className="bg-[#1877F2] text-white h-[54px] w-full rounded-[9px] px-[20px] py-[10px] drop-shadow-[0px_0px_5px_rgba(0,0,0,0.25)] flex items-center justify-center gap-[15px] transition-all hover:brightness-110 active:scale-[0.98]"
-        >
-          <img
-            src="/images/Layout/Footer/FacebookIcon.svg"
-            alt="Facebook"
-            className="w-[28px] h-[28px] object-contain flex-shrink-0 brightness-0 invert"
-          />
-          <span className="text-[20px] text-white tracking-[-0.22px] font-medium whitespace-nowrap">
-            Продовжити через Facebook
           </span>
         </button>
 

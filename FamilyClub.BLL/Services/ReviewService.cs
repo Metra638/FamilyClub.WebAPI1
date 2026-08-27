@@ -44,7 +44,7 @@ public class ReviewService : IReviewService
             Rating = dto.Rating,
             Comment = dto.Comment,
             CreatedAt = dto.CreatedAt == default ? DateTime.UtcNow : dto.CreatedAt,
-            Approved = dto.Approved
+            Approved = true
         };
 
         await _reviewRepository.AddAsync(review, cancellationToken);
@@ -93,6 +93,16 @@ public class ReviewService : IReviewService
     {
         var rows = await QueryListRows(
             _context.Reviews.AsNoTracking().Where(r => r.UserId == userId),
+            cancellationToken);
+        return rows.Select(MapListRowToDto);
+    }
+
+    public async Task<IEnumerable<ReviewDto>> GetByProductIdAsync(
+        int productId,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryListRows(
+            _context.Reviews.AsNoTracking().Where(r => r.ProductId == productId),
             cancellationToken);
         return rows.Select(MapListRowToDto);
     }

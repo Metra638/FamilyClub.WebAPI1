@@ -1,21 +1,64 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePlatformSettingsOptional } from "@/lib/platformSettings/PlatformSettingsContext";
 import { mediaSrc } from "@/lib/platformSettings/platformSettingsApi";
+import { useCart } from "@/lib/hooks/useCart";
+import { getAuthToken, getAuthUserId } from "@/lib/auth/tokenStorage";
+import { apiBasePath, orderService } from "@/lib/api/services";
 
 export default function MobileHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { settings } = usePlatformSettingsOptional();
+  const { totalItemsCount: cartCount } = useCart();
+  const [ordersCount, setOrdersCount] = useState<number>(0);
+  const [notificationsCount, setNotificationsCount] = useState<number>(0);
+
   const logoSrc =
     mediaSrc(settings.logoData, settings.logoContentType) ??
     "/images/main_page/logo.png";
   const logoAlt = settings.companyName || "LIBRELLIS";
 
+  useEffect(() => {
+    const fetchUserCounts = async () => {
+      const userId = getAuthUserId();
+      const token = getAuthToken();
+      if (!userId || !token) {
+        setOrdersCount(0);
+        setNotificationsCount(0);
+        return;
+      }
+      try {
+        const orders = await orderService
+          .apiOrdersByUserUserIdGet({ userId }, { headers: { Authorization: `Bearer ${token}` } })
+          .catch(() => []);
+        setOrdersCount(Array.isArray(orders) ? orders.length : 0);
+      } catch {
+        setOrdersCount(0);
+      }
+
+      try {
+        const res = await fetch(`${apiBasePath}/api/Notifications?userId=${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null);
+        if (res && res.ok) {
+          const notifs = await res.json();
+          setNotificationsCount(Array.isArray(notifs) ? notifs.length : 0);
+        }
+      } catch {
+        setNotificationsCount(0);
+      }
+    };
+
+    fetchUserCounts();
+    window.addEventListener("auth-change", fetchUserCounts);
+    return () => window.removeEventListener("auth-change", fetchUserCounts);
+  }, []);
+
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 block md:hidden h-[65px] bg-transparent">
+      <header className="fixed top-0 left-0 right-0 z-[100] block md:hidden h-[65px] bg-transparent">
         {/* Figma Rectangle 56 / Group 895 (hand-drawn textured cream paper background and border) */}
         <div className="absolute -top-[10px] -left-[15px] -right-[15px] -bottom-[18px] z-0 pointer-events-none">
           <img
@@ -32,7 +75,7 @@ export default function MobileHeader() {
             <Link
               href="/"
               aria-label="Головна"
-              className="absolute top-0 left-[16px] z-50 block w-[85px] h-[56px] sm:w-[95px] sm:h-[62px] isolate transition-transform hover:scale-105"
+              className="absolute top-0 left-[16px] z-[110] block w-[85px] h-[56px] sm:w-[95px] sm:h-[62px] isolate transition-transform hover:scale-105"
             >
               <img
                 src="/images/main_page/logo-background.png"
@@ -104,11 +147,11 @@ export default function MobileHeader() {
 
       {/* Mobile Dropdown Menu Overlay (Figma Node 2773:6881 / "Меню" — 1-to-1 Dev Mode specification) */}
       {menuOpen && (
-        <div className="fixed top-[65px] bottom-[70px] left-0 right-0 z-30 bg-[rgba(36,36,36,0.65)] backdrop-blur-[8px] md:hidden overflow-y-auto animate-in fade-in duration-200 select-none">
+        <div className="fixed top-[65px] bottom-[70px] left-0 right-0 z-[90] bg-[rgba(25,25,25,0.88)] backdrop-blur-[12px] md:hidden overflow-y-auto animate-in fade-in duration-200 select-none">
           <nav className="flex flex-col justify-evenly gap-4 py-6 px-6 sm:px-10 min-h-full max-w-[480px] mx-auto">
             {/* 1. Сповіщення (Figma Node 2773:7053) */}
             <Link
-              href="/userProfile"
+              href="/notifications"
               onClick={() => setMenuOpen(false)}
               className="flex items-center justify-between group py-2 cursor-pointer"
             >
@@ -121,13 +164,13 @@ export default function MobileHeader() {
                 </span>
               </div>
               <div className="w-[32px] h-[32px] rounded-full bg-[#4C85B2] flex items-center justify-center text-[#f5f3ee] font-sans text-[16px] font-medium shadow-md">
-                2
+                {notificationsCount}
               </div>
             </Link>
 
             {/* 2. Мої замовлення (Figma Node 2773:7073) */}
             <Link
-              href="/userProfile"
+              href="/orders"
               onClick={() => setMenuOpen(false)}
               className="flex items-center justify-between group py-2 cursor-pointer"
             >
@@ -140,7 +183,7 @@ export default function MobileHeader() {
                 </span>
               </div>
               <div className="w-[32px] h-[32px] rounded-full bg-[#4C85B2] flex items-center justify-center text-[#f5f3ee] font-sans text-[16px] font-medium shadow-md">
-                2
+                {ordersCount}
               </div>
             </Link>
 
@@ -175,7 +218,7 @@ export default function MobileHeader() {
                 </span>
               </div>
               <div className="w-[32px] h-[32px] rounded-full bg-[#4C85B2] flex items-center justify-center text-[#f5f3ee] font-sans text-[16px] font-medium shadow-md">
-                2
+                {cartCount}
               </div>
             </Link>
 

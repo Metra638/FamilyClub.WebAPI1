@@ -349,30 +349,6 @@ public class AuthClubMemberService : IAuthClubMemberService
                 throw new UnauthorizedAccessException($"Invalid Google token: {ex.Message}");
             }
         }
-        else if (dto.Provider.Equals("Facebook", StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(dto.AccessToken))
-                throw new ArgumentException("AccessToken is required for Facebook login.");
-
-            try
-            {
-                using var httpClient = new HttpClient();
-                var fbResponse = await httpClient.GetFromJsonAsync<FacebookUserData>(
-                    $"https://graph.facebook.com/me?fields=id,name,first_name,last_name,email&access_token={dto.AccessToken}", cancellationToken);
-
-                if (fbResponse == null || string.IsNullOrWhiteSpace(fbResponse.Id))
-                    throw new UnauthorizedAccessException("Failed to validate Facebook token.");
-
-                email = fbResponse.Email ?? $"{fbResponse.Id}@facebook.com";
-                providerKey = fbResponse.Id;
-                name = fbResponse.First_Name ?? fbResponse.Name ?? "Facebook User";
-                surname = fbResponse.Last_Name ?? "";
-            }
-            catch (Exception ex)
-            {
-                throw new UnauthorizedAccessException($"Invalid Facebook token: {ex.Message}");
-            }
-        }
         else
         {
             throw new ArgumentException($"Unsupported provider '{dto.Provider}'.");
@@ -426,14 +402,5 @@ public class AuthClubMemberService : IAuthClubMemberService
         public string UserId { get; set; } = string.Empty;
         public string Code { get; set; } = string.Empty;
         public string IdentityToken { get; set; } = string.Empty;
-    }
-
-    private class FacebookUserData
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string? First_Name { get; set; }
-        public string? Last_Name { get; set; }
-        public string? Email { get; set; }
     }
 }

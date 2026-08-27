@@ -31,7 +31,7 @@ export default function BookSection({ title, books, showMore = false, showMoreHr
             }}
         >
             {/* Top Full-Width Wooden Bookshelf Bar (on which books and pill hang) */}
-            <div className="relative z-20 h-[105px] w-full shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] bg-[#7e4d1e]">
+            <div className="relative z-10 h-[105px] w-full shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] bg-[#7e4d1e]">
                 <img src="/images/catalog/shelf_tex1.png" className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-50 pointer-events-none" alt="" />
                 <div className="absolute inset-0 bg-[rgba(0,0,0,0.27)] pointer-events-none" />
                 <div className="absolute left-0 right-0 bottom-0 h-[70px]">

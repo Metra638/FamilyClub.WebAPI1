@@ -117,7 +117,7 @@ export default function MobileBottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 block md:hidden h-[70px] bg-[#f5f3ee] border-t border-[#d4b595] shadow-[0px_-4px_15px_rgba(0,0,0,0.15)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-[100] block md:hidden h-[70px] bg-[#f5f3ee] border-t border-[#d4b595] shadow-[0px_-4px_15px_rgba(0,0,0,0.15)]">
       <div className="flex items-center justify-around h-full px-2">
         {navItems.map((item) => {
           const active = isActive(item.href);
