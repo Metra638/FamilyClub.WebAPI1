@@ -43,7 +43,8 @@ export default function RegisterSection({ onGoToLogin }: RegisterSectionProps) {
 
   const handleExternalLogin = (provider: "Google") => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
-    window.location.href = `${apiBase}/api/AuthClubMember/external-login?provider=${provider}`;
+    const returnUrl = encodeURIComponent(`${window.location.origin}/auth/callback`);
+    window.location.href = `${apiBase}/api/AuthClubMember/external-login?provider=${provider}&returnUrl=${returnUrl}`;
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {

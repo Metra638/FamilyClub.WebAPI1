@@ -133,7 +133,7 @@ public class AuthClubMemberController : ControllerBase
     [HttpGet("external-login-callback")]
     public async Task<IActionResult> ExternalLoginCallback([FromQuery] string? returnUrl = null, CancellationToken cancellationToken = default)
     {
-        var clientReturnUrl = returnUrl ?? "/auth/callback";
+        var clientReturnUrl = returnUrl ?? "https://familyclubqwerqwer12.pp.ua/auth/callback";
         try
         {
             var authResponse = await _authService.ExternalLoginCallbackAsync(cancellationToken);
