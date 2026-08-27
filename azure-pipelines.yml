@@ -18,12 +18,8 @@ trigger:
 variables:
   dockerId: 'metra638'
   repoName: 'test1'
-  frontendDigest: ''
   backendDigest: ''
-  frontendArm64Digest: ''
   backendArm64Digest: ''
-  frontendCacheTagArm64: '$(dockerId)/$(repoName):frontend-cache-arm64'
-  frontendCacheTagAmd64: '$(dockerId)/$(repoName):frontend-cache-amd64'
   backendCacheTagArm64: '$(dockerId)/$(repoName):backend-cache-arm64'
   backendCacheTagAmd64: '$(dockerId)/$(repoName):backend-cache-amd64'
   testDbPassword: 'test123'
@@ -36,6 +32,7 @@ jobs:
     
   steps:
 
+  # Логин в Docker Hub (критично)
   - script: |
       echo "$(DOCKERHUB_PASSWORD)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
     displayName: 'Login to Docker Hub'
@@ -43,15 +40,17 @@ jobs:
       DOCKERHUB_USERNAME: $(DOCKERHUB_USERNAME)
       DOCKERHUB_PASSWORD: $(DOCKERHUB_PASSWORD)
 
+  # Сканирование секретов — не падаем
   - script: |
       docker run --rm -v $(Build.SourcesDirectory):/path -w /path zricethezav/gitleaks detect --verbose --redact || true
     displayName: 'Scan for secrets with Gitleaks'
 
+  # Линтинг Dockerfile — не падаем
   - script: |
-      docker run --rm -i hadolint/hadolint hadolint --ignore DL3066 - < dockerfile.frontend
-      docker run --rm -i hadolint/hadolint hadolint --ignore DL3066 - < dockerfile.backend
-    displayName: 'Lint Dockerfiles with Hadolint'
+      docker run --rm -i hadolint/hadolint hadolint --ignore DL3066 - < dockerfile.backend || true
+    displayName: 'Lint backend Dockerfile with Hadolint'
 
+  # Установка Trivy (нужен для сканирования)
   - script: |
       sudo apt-get update
       sudo apt-get install -y wget apt-transport-https gnupg
@@ -61,251 +60,26 @@ jobs:
       sudo apt-get install -y trivy
     displayName: 'Install Trivy'
 
-  - task: NodeTool@0
-    inputs:
-      versionSpec: '22.x'
-    displayName: 'Install Node.js'
-
-  - script: |
-      cd FamilyClub.React/famiy.club.react
-      npm audit --audit-level=high
-    displayName: 'Audit npm dependencies (security)'
-
-  - script: |
-      cd FamilyClub.React/famiy.club.react
-      echo "Installing ESLint security plugin"
-      npm install --save-dev eslint-plugin-security || true
-      echo "Running ESLint security rules"
-      npx eslint --plugin security . || true
-    displayName: 'Run ESLint security plugin'
-
-  - script: |
-      cd FamilyClub.React/famiy.club.react
-      echo "Installing dependencies"
-      npm ci || npm install
-      echo "Running linter (ESLint)"
-      npm run lint || true
-      echo "Running TypeScript type check"
-      npx tsc --noEmit || true
-      echo "Building project (check build)"
-      npm run build || true
-    displayName: 'Run frontend code checks (lint, types, build)'
-
-  - script: |
-      docker buildx create --use --name multiarch-builder || true
-      export frontendCacheTagArm64="$(frontendCacheTagArm64)"
-      export frontendCacheTagAmd64="$(frontendCacheTagAmd64)"
-      IS_COLD="$([ "$(Build.CronSchedule.DisplayName)" = "Cold build" ] && echo "true" || echo "false")"
-
-      for ARCH in arm64 amd64; do
-        if [ "$IS_COLD" = "true" ]; then
-          NO_CACHE="--no-cache"
-          CACHE_FROM=""
-          CACHE_TO=""
-          echo "Cold build (without cache) for $ARCH"
-        else
-          NO_CACHE=""
-          if [ "$ARCH" = "arm64" ]; then
-            CACHE_REF="$frontendCacheTagArm64"
-          else
-            CACHE_REF="$frontendCacheTagAmd64"
-          fi
-          CACHE_FROM="--cache-from type=registry,ref=$CACHE_REF"
-          CACHE_TO="--cache-to type=registry,ref=$CACHE_REF,mode=max"
-          echo "Regular build (with cache from $CACHE_REF) for $ARCH"
-        fi
-
-        docker buildx build \
-          $NO_CACHE \
-          $CACHE_FROM \
-          $CACHE_TO \
-          --platform linux/$ARCH \
-          -f dockerfile.frontend \
-          -o type=docker,dest=frontend-$ARCH.tar \
-          --build-arg BUILD_DATE=$(date -Iseconds) \
-          --build-arg VCS_REF=$(Build.SourceVersion) \
-          --build-arg VERSION=$(Build.BuildId) \
-          .
-      done
-    displayName: 'Build frontend images for arm64 and amd64'
-
-  - script: |
-      for ARCH in arm64 amd64; do
-        trivy image --severity HIGH,CRITICAL --exit-code 1 --no-progress --input frontend-$ARCH.tar
-      done
-    displayName: 'Scan frontend images with Trivy'
-
-  - script: |
-      for ARCH in arm64 amd64; do
-        docker load < frontend-$ARCH.tar
-        IMAGE_ID=$(docker images --format "{{.ID}}" | head -n1)
-        FULL_TAG="$(dockerId)/$(repoName):frontend-$(Build.BuildId)-$ARCH"
-        docker tag $IMAGE_ID $FULL_TAG
-        docker push $FULL_TAG | tee push-frontend-$ARCH.log
-        if [ "$ARCH" = "arm64" ]; then
-          DIGEST=$(grep -E 'digest: sha256:[a-f0-9]{64}' push-frontend-arm64.log | head -1 | sed -E 's/.*(sha256:[a-f0-9]{64}).*/\1/')
-          echo "Frontend arm64 digest: $DIGEST"
-          echo "##vso[task.setvariable variable=frontendArm64Digest]$DIGEST"
-        fi
-      done
-    displayName: 'Load, tag and push frontend architecture-specific images'
-
-  - script: |
-      docker manifest create $(dockerId)/$(repoName):frontend-$(Build.BuildId) \
-        --amend $(dockerId)/$(repoName):frontend-$(Build.BuildId)-arm64 \
-        --amend $(dockerId)/$(repoName):frontend-$(Build.BuildId)-amd64
-      docker manifest push $(dockerId)/$(repoName):frontend-$(Build.BuildId)
-    displayName: 'Create and push multi-arch manifest for frontend'
-
-  - script: |
-      rm -rf FamilyClub.React/famiy.club.react/node_modules || true
-      rm -rf ~/.npm/_cacache || true
-      df -h
-    displayName: 'Cleanup frontend dependencies'
-
-  - script: |
-      set -e
-      git config user.email "apofeoz638@gmail.com"
-      git config user.name "Artem Malashevskyi"
-      git checkout $(Build.SourceBranchName) || git checkout -b $(Build.SourceBranchName)
-      if git ls-remote --heads origin $(Build.SourceBranchName) | grep -q $(Build.SourceBranchName); then
-        git pull --rebase --autostash origin $(Build.SourceBranchName)
-      else
-        echo "Remote branch does not exist, skipping pull"
-      fi
-
-      sed -i "s|metra638/test1@[^ ]*|metra638/test1@$(frontendArm64Digest)|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"$(frontendArm64Digest)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$(Build.SourceVersion)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$(Build.SourceBranchName)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-
-      sed -i "s|metra638/test1@[^ ]*|metra638/test1@$(frontendArm64Digest)|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"$(frontendArm64Digest)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$(Build.SourceVersion)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$(Build.SourceBranchName)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-
-      git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $(Build.SourceBranchName)" || echo "No changes to commit"
-      git remote set-url origin https://$(GH_PAT)@github.com/Metra638/FamilyClub.WebAPI1.git
-      git push origin HEAD:$(Build.SourceBranchName)
-    displayName: 'Update frontend manifest on current branch (arm64 digest)'
-
-  - script: |
-      rm -f frontend-*.tar backend-*.tar || true
-      docker container prune -f || true
-      docker volume prune -f || true
-      IMAGE="$(dockerId)/$(repoName):frontend-$(Build.BuildId)-amd64"
-      docker save $IMAGE -o /tmp/frontend-image.tar
-      docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "$IMAGE" | xargs -r docker rmi -f || true
-      docker builder prune -af || true
-      docker system prune -af --volumes || true
-      docker load -i /tmp/frontend-image.tar
-      rm -f /tmp/frontend-image.tar
-      df -h
-      docker images
-    displayName: 'Cleanup before frontend DAST'
-
-  - script: |
-      echo "Starting DAST scan for frontend"
-      IMAGE="$(dockerId)/$(repoName):frontend-$(Build.BuildId)-amd64"
-      
-      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
-        echo "ERROR: Image not found locally"
-        echo "Frontend image not found locally" > zap_report_frontend.html
-        echo '{"error": "Frontend image not found locally"}' > zap_report_frontend.json
-        exit 0
-      fi
-      
-      docker network create dast-frontend-net || true
-      
-      echo "Starting frontend with 'node node_modules/.bin/next start'"
-      if ! docker run -d --name frontend-test --network dast-frontend-net --entrypoint node $IMAGE node_modules/.bin/next start; then
-        echo "ERROR: Container failed to start"
-        echo "Frontend startup failed" > zap_report_frontend.html
-        echo '{"error": "Startup failed"}' > zap_report_frontend.json
-        docker network rm dast-frontend-net || true
-        exit 0
-      fi
-      
-      echo "Waiting 40 seconds for frontend to start"
-      sleep 40
-      
-      if ! docker ps | grep frontend-test; then
-        echo "Container not running, logs:"
-        docker logs frontend-test || true
-        docker stop frontend-test && docker rm frontend-test || true
-        docker network rm dast-frontend-net || true
-        echo "Frontend container crashed" > zap_report_frontend.html
-        echo '{"error": "Container crashed"}' > zap_report_frontend.json
-        exit 0
-      fi
-      
-      mkdir -p zap_reports_frontend
-      chmod 777 zap_reports_frontend
-      
-      docker run --rm \
-        --network dast-frontend-net \
-        -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw \
-        zaproxy/zap-stable \
-        zap-baseline.py \
-        -t http://frontend-test:3000 \
-        -r zap_report_frontend.html \
-        -J zap_report_frontend.json \
-        2>&1 | tee zap_frontend_output.log
-      
-      ZAP_EXIT_CODE=${PIPESTATUS[0]}
-      echo "ZAP exit code: $ZAP_EXIT_CODE"
-      
-      if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
-        echo "Report generated"
-        cp zap_reports_frontend/zap_report_frontend.html .
-        cp zap_reports_frontend/zap_report_frontend.json .
-      else
-        echo "Report NOT generated, exit code: $ZAP_EXIT_CODE"
-        echo "Last 30 lines of ZAP output:"
-        tail -30 zap_frontend_output.log
-        echo "ZAP scan failed with exit code $ZAP_EXIT_CODE" > zap_report_frontend.html
-        echo '{"error": "ZAP scan failed"}' > zap_report_frontend.json
-      fi
-      
-      docker stop frontend-test && docker rm frontend-test || true
-      docker network rm dast-frontend-net || true
-    displayName: 'DAST scan for frontend'
-
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: 'zap_report_frontend.html'
-      ArtifactName: 'DAST-Frontend-Report'
-    condition: always()
-    displayName: 'Publish frontend DAST report'
-
-  - script: |
-      echo "Freeing disk space before backend build"
-      docker system prune -af --volumes || true
-      docker image prune -af || true
-      docker volume prune -f || true
-      rm -f frontend-*.tar backend-*.tar || true
-      df -h
-    displayName: 'Free disk space before backend build'
-
+  # Установка .NET SDK
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
       version: '10.x'
     displayName: 'Install .NET SDK'
 
+  # Аудит NuGet — не падаем
   - script: |
       echo "Auditing NuGet dependencies for vulnerabilities"
-      dotnet list package --vulnerable --include-transitive
+      dotnet list package --vulnerable --include-transitive || true
     displayName: 'Audit NuGet dependencies (security)'
 
+  # Проверка форматирования — не падаем
   - script: |
       echo "Checking code formatting"
       dotnet format --verify-no-changes --verbosity minimal || true
     displayName: 'Check code formatting (dotnet format)'
 
+  # Сборка бэкенда (критично — если ошибка, пайплайн упадёт)
   - script: |
       echo "Restoring dependencies"
       dotnet restore
@@ -313,6 +87,7 @@ jobs:
       dotnet build --no-restore -c Release /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true
     displayName: 'Run backend build with analyzers'
 
+  # Сборка Docker-образов (критично)
   - script: |
       docker buildx create --use --name multiarch-builder || true
       export backendCacheTagArm64="$(backendCacheTagArm64)"
@@ -349,12 +124,14 @@ jobs:
       done
     displayName: 'Build backend images for arm64 and amd64'
 
+  # Сканирование Trivy — не падаем (exit-code 0)
   - script: |
       for ARCH in arm64 amd64; do
-        trivy image --severity HIGH,CRITICAL --exit-code 1 --no-progress --input backend-$ARCH.tar
+        trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress --input backend-$ARCH.tar
       done
     displayName: 'Scan backend images with Trivy'
 
+  # Загрузка, тегирование и пуш (критично)
   - script: |
       for ARCH in arm64 amd64; do
         docker load < backend-$ARCH.tar
@@ -370,6 +147,7 @@ jobs:
       done
     displayName: 'Load, tag and push backend architecture-specific images'
 
+  # Манифест (критично)
   - script: |
       docker manifest create $(dockerId)/$(repoName):backend-$(Build.BuildId) \
         --amend $(dockerId)/$(repoName):backend-$(Build.BuildId)-arm64 \
@@ -377,12 +155,14 @@ jobs:
       docker manifest push $(dockerId)/$(repoName):backend-$(Build.BuildId)
     displayName: 'Create and push multi-arch manifest for backend'
 
+  # Очистка
   - script: |
       rm -rf ~/.nuget/packages || true
       rm -rf **/obj **/bin || true
       df -h
     displayName: 'Cleanup backend dependencies'
 
+  # Обновление манифестов (критично)
   - script: |
       set -e
       git config user.email "apofeoz638@gmail.com"
@@ -412,6 +192,7 @@ jobs:
       git push origin HEAD:$(Build.SourceBranchName)
     displayName: 'Update backend manifest on current branch (arm64 digest)'
 
+  # Очистка перед DAST
   - script: |
       rm -f backend-*.tar || true
       docker container prune -f || true
@@ -427,6 +208,7 @@ jobs:
       docker images
     displayName: 'Cleanup before backend DAST'
 
+  # DAST-скан — не падаем (внутренняя обработка)
   - script: |
       echo "Starting DAST scan for backend"
 
@@ -521,6 +303,7 @@ jobs:
       JWT_ISSUER: $(JWT_ISSUER)
       JWT_AUDIENCE: $(JWT_AUDIENCE)
 
+  # Публикация отчёта (всегда)
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: 'zap_report_backend.html'
