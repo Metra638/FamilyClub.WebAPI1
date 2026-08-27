@@ -1,6 +1,7 @@
 "use client";
 
 import { showConfirm } from "@/lib/ui/sweetAlert";
+import { getReviewProductCoverUrl } from "@/lib/reviews/reviewCoverUrl";
 import { Review } from "../types";
 import StarRating from "../ui/StarRating";
 
@@ -95,29 +96,27 @@ export default function ReviewDetail({
                     </p>
                 </div>
                 <div className="mt-6">
-                    {review.productImages && review.productImages.length > 0 && (
+                    {(() => {
+                        const coverUrl = getReviewProductCoverUrl(review);
+                        if (!coverUrl) return null;
+
+                        return (
                         <div className="flex flex-col gap-1.5">
-                            <h4 className="font-semibold text-sm text-gray-900">Додані фото</h4>
+                            <h4 className="font-semibold text-sm text-gray-900">Обкладинка книги</h4>
                             <div className="flex gap-2 overflow-x-auto pb-1">
-                                {review.productImages.map((img, index) => (
-                                    <div
-                                        key={img.id ?? index}
-                                        className="w-[80px] h-[80px] shrink-0 rounded-md overflow-hidden bg-gray-200 border border-gray-200"
-                                    >
+                                    <div className="w-[80px] h-[80px] shrink-0 rounded-md overflow-hidden bg-gray-200 border border-gray-200">
                                         <img
-                                            src={
-                                                img.imageData?.startsWith("data:")
-                                                    ? img.imageData
-                                                    : `data:image/jpeg;base64,${img.imageData}`
-                                            }
-                                            alt={img.imageName ?? "Фото відгуку"}
+                                            src={coverUrl}
+                                            alt={review.productName ?? "Обкладинка"}
                                             className="w-full h-full object-cover"
+                                            loading="lazy"
+                                            decoding="async"
                                         />
                                     </div>
-                                ))}
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
             </div>
 

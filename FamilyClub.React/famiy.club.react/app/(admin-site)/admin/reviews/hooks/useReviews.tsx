@@ -15,8 +15,8 @@ export default function useReviews() {
             const token = getAuthToken();
             const res = await fetch(`${apiBasePath}/api/Reviews`, {
                 headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
             });
             if (!res.ok) throw new Error(`Failed to fetch reviews (${res.status})`);
             const data: Review[] = await res.json();

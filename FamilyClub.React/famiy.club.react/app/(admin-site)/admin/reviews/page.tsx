@@ -7,6 +7,7 @@ import ReviewsFilterBar from "./section/ReviewsFilterBar";
 import ReviewsList from "./section/ReviewsList";
 import ReviewDetail from "./section/ReviewDetail";
 import { Review } from "./types";
+import { getReviewProductCoverUrl } from "@/lib/reviews/reviewCoverUrl";
 
 export default function Page() {
     const { reviews, loadingReviews, refetch } = useReviews();
@@ -100,15 +101,7 @@ export default function Page() {
         setRating("all");
     };
 
-    const getImageSrc = (review: Review) => {
-        const firstImage = review.productImages?.[0];
-
-        if (!firstImage?.imageData) return null;
-
-        return firstImage.imageData.startsWith("data:")
-            ? firstImage.imageData
-            : `data:image/jpeg;base64,${firstImage.imageData}`;
-    };
+    const getImageSrc = (review: Review) => getReviewProductCoverUrl(review);
 
     return (
         <div

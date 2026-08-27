@@ -5,9 +5,9 @@ import AddEditButton from "./add_edit_button";
 import DeleteWithConfirm from "./delete_with_confirm"; 
 
 // Імпортуємо саме з services.ts
-import { productService, languageService, authorService, translatorService, categoriesService, publisherService, formatService, bookSizeService } from "@/lib/api/services"; 
+import { productService, languageService, authorService, translatorService, categoriesService, publisherService, formatService, bookSizeService, blockReasonsService } from "@/lib/api/services"; 
 
-type EntityType = "product" | "language" | "author" | "translator" | "category" | "publisher" | "format" | "bookSize";
+type EntityType = "product" | "language" | "author" | "translator" | "category" | "publisher" | "format" | "bookSize" | "blockReason"; // Додано новий тип для BlockReason
 
 interface ItemActionsProps {
   id: number | undefined;
@@ -27,6 +27,7 @@ export default function ItemActions({ id, type, onDeleteSuccess }: ItemActionsPr
     publisher: `/admin/books/publishers/editPublisher/${id}`,
     format: `/admin/books/formats/editFormat/${id}`,
     bookSize: `/admin/books/bookSizes/editBookSize/${id}`,
+    blockReason: `/admin/books/blockReasons/editBlockReasons/${id}`, // Додано шлях для BlockReason
   };
 
   // 2. Карта назв для повідомлень
@@ -39,6 +40,7 @@ export default function ItemActions({ id, type, onDeleteSuccess }: ItemActionsPr
     publisher: "видавництво",
     format: "формат",
     bookSize: "розмір книги",
+    blockReason: "причину блокування", // Додано назву для BlockReason
   };
 
   // 3. Функція видалення, яка викликає відповідний готовий сервіс
@@ -69,6 +71,9 @@ export default function ItemActions({ id, type, onDeleteSuccess }: ItemActionsPr
         break;
       case "bookSize":
         await bookSizeService.apiBookSizesIdDelete({ id: currentId });
+        break;
+      case "blockReason":
+        await blockReasonsService.apiBlockReasonsIdDelete({ id: currentId });
         break;
       default:
         console.error("Невідомий тип сутності для видалення");

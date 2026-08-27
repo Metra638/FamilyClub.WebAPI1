@@ -1,10 +1,19 @@
 import { apiBasePath } from "@/lib/api/services";
+import { getAuthToken } from "@/lib/auth/tokenStorage";
 import { Review } from "../types";
+
+function authJsonHeaders(): HeadersInit {
+    const token = getAuthToken();
+    return {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+}
 
 export async function updateReview(review: Review): Promise<boolean> {
     const res = await fetch(`${apiBasePath}/api/Reviews/${review.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authJsonHeaders(),
         body: JSON.stringify({
             id: review.id,
             productId: review.productId,
@@ -32,8 +41,10 @@ export async function setReviewApproved(review: Review, approved: boolean) {
 }
 
 export async function deleteReview(id: number) {
+    const token = getAuthToken();
     const res = await fetch(`${apiBasePath}/api/Reviews/${id}`, {
         method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
     if (!res.ok) {
