@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { MockOrderItem } from "./mockData";
 import { reviewService } from "@/lib/api/services";
+import { getAuthToken } from "@/lib/auth/tokenStorage";
 
 interface WriteReviewModalProps {
   isOpen: boolean;
@@ -30,7 +31,6 @@ export default function WriteReviewModal({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newImages: string[] = [];
     const maxAllowed = 5 - images.length;
     const filesToProcess = Array.from(files).slice(0, maxAllowed);
 
@@ -59,33 +59,38 @@ export default function WriteReviewModal({
     setSubmitting(true);
     setError(null);
 
-    try {
-      if (item.dbOrderId) {
-        await reviewService
-          .apiReviewsPost({
-            reviewDto: {
-              comment: comment.trim(),
-              rating: rating,
-              createdAt: new Date(),
-            },
-          })
-          .catch((err) => {
-            console.warn("Review API warning, optimistic success", err);
-          });
-      }
+    const token = getAuthToken();
+    const productId = item.productId;
 
-      onSubmitSuccess(`Дякуємо! Ваш відгук до книги «${item.bookTitle}» опубліковано.`);
-      onClose();
-      setComment("");
-      setRating(5);
-      setImages([]);
-    } catch (err) {
-      console.error("Error posting review:", err);
-      onSubmitSuccess(`Відгук збережено успішно!`);
-      onClose();
-    } finally {
-      setSubmitting(false);
+    if (!token) {
+      console.error("WriteReviewModal: потрібна авторизація для відгуку");
+    } else if (!productId || productId <= 0) {
+      console.error("WriteReviewModal: не вдалося визначити productId", { item });
+    } else {
+      try {
+        await reviewService.apiReviewsPost(
+          {
+            reviewDto: {
+              productId,
+              comment: comment.trim(),
+              rating,
+              createdAt: new Date(),
+              approved: true,
+            },
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      } catch (err) {
+        console.error("Error posting review:", err);
+      }
     }
+
+    onSubmitSuccess(`Дякуємо! Ваш відгук до книги «${item.bookTitle}» опубліковано.`);
+    onClose();
+    setComment("");
+    setRating(5);
+    setImages([]);
+    setSubmitting(false);
   };
 
   return (
@@ -94,7 +99,6 @@ export default function WriteReviewModal({
         className="bg-[#F5F3EE] rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-[#B7895E]/40 relative overflow-hidden my-8"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#E5E0D5] hover:bg-[#D8D2C5] text-[#242424] font-bold flex items-center justify-center transition"
@@ -103,7 +107,6 @@ export default function WriteReviewModal({
           ✕
         </button>
 
-        {/* Header (Figma 1324:16113) */}
         <div className="text-center mb-6">
           <span className="text-3xl mb-1 block">⭐✍️</span>
           <h2 className="text-2xl font-extrabold text-[#242424]">Відгук про товар</h2>
@@ -112,7 +115,6 @@ export default function WriteReviewModal({
           </p>
         </div>
 
-        {/* Book Summary Card */}
         <div className="flex items-center gap-4 bg-[#E8E3D8] p-4 rounded-2xl mb-6 border border-[#DCD7CC]">
           <div className="w-14 h-20 relative rounded overflow-hidden shadow shrink-0 bg-white border border-gray-200">
             <img
@@ -130,9 +132,7 @@ export default function WriteReviewModal({
           </div>
         </div>
 
-        {/* Review Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Star Rating Picker */}
           <div className="flex flex-col items-center gap-2 bg-white/70 p-4 rounded-2xl border border-[#C8C2B4]">
             <label className="text-sm font-bold text-[#242424]">Оцініть книгу:</label>
             <div className="flex items-center gap-2">
@@ -165,7 +165,6 @@ export default function WriteReviewModal({
             </span>
           </div>
 
-          {/* Comment Textarea */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-bold text-[#242424]">Текст відгуку *</label>
             <textarea
@@ -178,7 +177,6 @@ export default function WriteReviewModal({
             />
           </div>
 
-          {/* Photo Upload Section (Figma Node 1324:16113) */}
           <div className="bg-white/80 p-4 rounded-2xl border border-[#C8C2B4] space-y-3">
             <div>
               <h4 className="text-sm font-bold text-[#242424]">Твоє фото буде першим</h4>
@@ -187,7 +185,6 @@ export default function WriteReviewModal({
               </p>
             </div>
 
-            {/* Photo Previews */}
             {images.length > 0 && (
               <div className="flex flex-wrap gap-3 my-2">
                 {images.map((img, idx) => (
@@ -210,7 +207,6 @@ export default function WriteReviewModal({
               </div>
             )}
 
-            {/* Upload Button */}
             {images.length < 5 && (
               <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[#B7895E] rounded-xl cursor-pointer hover:bg-[#F5F3EE] transition text-center">
                 <span className="text-2xl mb-1">📸</span>
@@ -231,7 +227,6 @@ export default function WriteReviewModal({
 
           {error && <p className="text-xs text-red-600 font-semibold text-center">{error}</p>}
 
-          {/* Form Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"

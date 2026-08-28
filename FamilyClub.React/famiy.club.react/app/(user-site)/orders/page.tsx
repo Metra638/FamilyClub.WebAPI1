@@ -196,6 +196,7 @@ export default function OrdersPage() {
           const cardItem: MockOrderItem = {
             id: `${order.id}-${item.id || Math.random()}`,
             dbOrderId: order.id,
+            productId: item.productId ?? undefined,
             orderNumber: `№${String(order.id).padStart(12, "0")}`,
             statusText: itemStatusText,
             statusColor: itemStatusColor,

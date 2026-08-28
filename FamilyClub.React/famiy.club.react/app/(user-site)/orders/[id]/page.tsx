@@ -142,6 +142,7 @@ export default function OrderDetailPage() {
     return {
       id: `item-${dbOrder?.id || idx}-${idx}`,
       dbOrderId: dbOrder?.id || orderId || 0,
+      productId: item.productId ?? undefined,
       orderNumber: `№ ${dbOrder?.id ? String(dbOrder.id).padStart(10, "0") : "0000000001"}`,
       statusText: statusBadgeText,
       statusColor: statusBadgeColor,

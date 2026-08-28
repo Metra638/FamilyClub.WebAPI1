@@ -24,6 +24,7 @@ export const ORDERS_TABS: OrderTabInfo[] = [
 export interface MockOrderItem {
   id: string;
   dbOrderId?: number;
+  productId?: number;
   orderNumber: string;
   statusText: string;
   statusColor: string;
