@@ -88,16 +88,18 @@ spec:
                   key: password
             - name: Redis__Database
               value: "0"
-            - name: OIDC_GOOGLE_ID
+              
+            - name: Authentication__Google__ClientId
               valueFrom:
                 secretKeyRef:
                   name: oidc-google
                   key: ClientID
-            - name: OIDC_GOOGLE_SECRET
+            - name: Authentication__Google__ClientSecret
               valueFrom:
                 secretKeyRef:
                   name: oidc-google
                   key: ClientSecret
+                  
             - name: AzureCommunicationServices__ConnectionString
               valueFrom:
                 secretKeyRef:
