@@ -64,6 +64,10 @@ const nextConfig: NextConfig = {
         source: "/images/:path*",
         destination: `${internalApi}/images/:path*`,
       },
+      {
+        source: "/signin-google",
+        destination: `${internalApi}/signin-google`,
+      },
     ];
   },
 };

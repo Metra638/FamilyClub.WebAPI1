@@ -225,6 +225,12 @@ builder.Services.AddAuthentication(options =>
         options.ClientId = !string.IsNullOrWhiteSpace(clientId) ? clientId : "dummy-google-client-id";
         options.ClientSecret = !string.IsNullOrWhiteSpace(clientSecret) ? clientSecret : "dummy-google-client-secret";
         options.SignInScheme = IdentityConstants.ExternalScheme;
+
+        var callbackPath = builder.Configuration["Authentication:Google:CallbackPath"];
+        if (!string.IsNullOrWhiteSpace(callbackPath))
+        {
+            options.CallbackPath = callbackPath;
+        }
     })
     .AddJwtBearer(options =>
     {
@@ -291,7 +297,7 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
     options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
 });
@@ -317,8 +323,8 @@ using (IServiceScope scope = app.Services.CreateScope())
 	await DbInitializer.Initialize(services, app.Configuration);
 }
 
+app.UseForwardedHeaders(); // Must be first in pipeline to resolve real IP, scheme (HTTPS), and host
 app.UseMiddleware<GlobalExceptionMiddleware>(); // Catch client cancellation & internal errors
-app.UseForwardedHeaders(); // Must be early in pipeline to resolve real IP
 // Liveness for K8s/Docker — before HTTPS redirect, rate limit, and IP block
 app.UseHealthChecks("/health");
 app.UseCors("AllowReact"); // Allowing to use React
