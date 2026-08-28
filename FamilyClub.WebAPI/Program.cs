@@ -210,8 +210,20 @@ builder.Services.AddAuthentication(options =>
 })
     .AddGoogle(options =>
     {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "dummy-google-client-id";
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "dummy-google-client-secret";
+        var clientId = builder.Configuration["Authentication:Google:ClientId"]
+            ?? builder.Configuration["Authentication:Google:ClientID"]
+            ?? builder.Configuration["Google:ClientId"]
+            ?? builder.Configuration["Google:ClientID"]
+            ?? builder.Configuration["ClientId"]
+            ?? builder.Configuration["ClientID"];
+
+        var clientSecret = builder.Configuration["Authentication:Google:ClientSecret"]
+            ?? builder.Configuration["Authentication:Google:ClientSecret"]
+            ?? builder.Configuration["Google:ClientSecret"]
+            ?? builder.Configuration["ClientSecret"];
+
+        options.ClientId = !string.IsNullOrWhiteSpace(clientId) ? clientId : "dummy-google-client-id";
+        options.ClientSecret = !string.IsNullOrWhiteSpace(clientSecret) ? clientSecret : "dummy-google-client-secret";
         options.SignInScheme = IdentityConstants.ExternalScheme;
     })
     .AddJwtBearer(options =>
@@ -280,7 +292,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    // Note: If you have a trusted proxy, you might need to add it to KnownProxies or KnownNetworks here.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
 });
 
 builder.Services.AddRateLimiter(options =>
