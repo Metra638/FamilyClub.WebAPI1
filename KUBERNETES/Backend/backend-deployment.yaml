@@ -88,15 +88,6 @@ spec:
                   key: password
             - name: Redis__Database
               value: "0"
-            - name: REDIS_HOST
-              value: "redis-0.production.svc.cluster.local"
-            - name: REDIS_PORT
-              value: "6379"
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: redis-secret
-                  key: password
             - name: OIDC_GOOGLE_ID
               valueFrom:
                 secretKeyRef:
