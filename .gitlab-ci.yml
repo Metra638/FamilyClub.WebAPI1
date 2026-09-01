@@ -1,6 +1,7 @@
 stages:
   - sync
   - gitleaks
+  - hadolint
 
 variables:
   UPSTREAM_URL: "https://github.com/Metra638/FamilyClub.WebAPI1.git"
@@ -24,6 +25,17 @@ gitleaks:
   stage: gitleaks
   script:
     - gitleaks detect --verbose --redact --source $CI_PROJECT_DIR || true
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+hadolint:
+  stage: hadolint
+  script:
+    - hadolint --ignore DL3066 - < dockerfile.frontend || true
+    - hadolint --ignore DL3066 - < dockerfile.backend || true
   allow_failure: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
