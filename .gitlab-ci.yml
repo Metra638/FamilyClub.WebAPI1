@@ -21,16 +21,10 @@ sync-repo:
     - when: never
 
 gitleaks:
-  image: docker:stable
-  services:
-    - docker:dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-  script:
-    - docker run --rm -v $CI_PROJECT_DIR:/path -w /path zricethezav/gitleaks detect --verbose --redact || true
-  allow_failure: true
   stage: gitleaks
+  script:
+    - gitleaks detect --verbose --redact --source $CI_PROJECT_DIR || true
+  allow_failure: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
