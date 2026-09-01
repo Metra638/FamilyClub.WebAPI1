@@ -6,6 +6,7 @@ stages:
   - eslint-security
   - frontend-checks
   - build-frontend
+
 variables:
   UPSTREAM_URL: "https://github.com/Metra638/FamilyClub.WebAPI1.git"
 
@@ -91,12 +92,11 @@ frontend-checks:
 build-frontend:
   stage: build-frontend
   script:
-    - echo "Сборка фронтенд-образов для arm64 и amd64"
-    - docker buildx create --use --name multiarch-builder || true
-
-    - for ARCH in arm64 amd64; do
-    -   echo "Сборка для $ARCH"
-    -   docker buildx build \
+    - |
+      docker buildx create --use --name multiarch-builder || true
+      for ARCH in arm64 amd64; do
+        echo "Сборка для $ARCH"
+        docker buildx build \
           --platform linux/$ARCH \
           -f dockerfile.frontend \
           -o type=docker,dest=frontend-$ARCH.tar \
@@ -104,7 +104,7 @@ build-frontend:
           --build-arg VCS_REF=$CI_COMMIT_SHA \
           --build-arg VERSION=$CI_PIPELINE_ID \
           .
-    - done
+      done
   artifacts:
     paths:
       - frontend-*.tar
