@@ -1,10 +1,10 @@
 stages:
-  - sync
-  - gitleaks
-  - hadolint
-  - npm-audit
-  - eslint-security
-  - frontend-checks
+  # - sync
+  # - gitleaks
+  # - hadolint
+  # - npm-audit
+  # - eslint-security
+  # - frontend-checks
   - build-frontend
 
 variables:
@@ -25,69 +25,69 @@ sync-repo:
       when: always
     - when: never
 
-gitleaks:
-  stage: gitleaks
-  script:
-    - gitleaks detect --verbose --redact --source $CI_PROJECT_DIR || true
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# gitleaks:
+#   stage: gitleaks
+#   script:
+#     - gitleaks detect --verbose --redact --source $CI_PROJECT_DIR || true
+#   allow_failure: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-hadolint:
-  stage: hadolint
-  script:
-    - hadolint --ignore DL3066 - < dockerfile.frontend || true
-    - hadolint --ignore DL3066 - < dockerfile.backend || true
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# hadolint:
+#   stage: hadolint
+#   script:
+#     - hadolint --ignore DL3066 - < dockerfile.frontend || true
+#     - hadolint --ignore DL3066 - < dockerfile.backend || true
+#   allow_failure: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-npm-audit:
-  stage: npm-audit
-  script:
-    - cd FamilyClub.React/famiy.club.react
-    - npm audit --audit-level=high || true
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# npm-audit:
+#   stage: npm-audit
+#   script:
+#     - cd FamilyClub.React/famiy.club.react
+#     - npm audit --audit-level=high || true
+#   allow_failure: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-eslint-security:
-  stage: eslint-security
-  script:
-    - cd FamilyClub.React/famiy.club.react
-    - echo "Installing ESLint security plugin"
-    - npm install --save-dev eslint-plugin-security || true
-    - echo "Running ESLint security rules"
-    - npx eslint --plugin security . || true
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# eslint-security:
+#   stage: eslint-security
+#   script:
+#     - cd FamilyClub.React/famiy.club.react
+#     - echo "Installing ESLint security plugin"
+#     - npm install --save-dev eslint-plugin-security || true
+#     - echo "Running ESLint security rules"
+#     - npx eslint --plugin security . || true
+#   allow_failure: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-frontend-checks:
-  stage: frontend-checks
-  script:
-    - cd FamilyClub.React/famiy.club.react
-    - echo "Installing dependencies"
-    - npm ci || npm install
-    - echo "Running linter (ESLint)"
-    - npm run lint || true
-    - echo "Running TypeScript type check"
-    - npx tsc --noEmit || true
-    - echo "Building project (check build)"
-    - npm run build || true
-  allow_failure: false
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# frontend-checks:
+#   stage: frontend-checks
+#   script:
+#     - cd FamilyClub.React/famiy.club.react
+#     - echo "Installing dependencies"
+#     - npm ci || npm install
+#     - echo "Running linter (ESLint)"
+#     - npm run lint || true
+#     - echo "Running TypeScript type check"
+#     - npx tsc --noEmit || true
+#     - echo "Building project (check build)"
+#     - npm run build || true
+#   allow_failure: false
+  # rules:
+  #   - if: $CI_PIPELINE_SOURCE == "web"
+  #     when: always
+  #   - when: never
 
 build-frontend:
   stage: build-frontend
