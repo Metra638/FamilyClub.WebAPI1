@@ -2,6 +2,7 @@ stages:
   - sync
   - gitleaks
   - hadolint
+  - npm-audit
 
 variables:
   UPSTREAM_URL: "https://github.com/Metra638/FamilyClub.WebAPI1.git"
@@ -36,6 +37,17 @@ hadolint:
   script:
     - hadolint --ignore DL3066 - < dockerfile.frontend || true
     - hadolint --ignore DL3066 - < dockerfile.backend || true
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+npm-audit:
+  stage: npm-audit
+  script:
+    - cd FamilyClub.React/famiy.club.react
+    - npm audit --audit-level=high || true
   allow_failure: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
