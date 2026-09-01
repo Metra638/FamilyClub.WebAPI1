@@ -93,6 +93,7 @@ build-frontend:
   stage: build-frontend
   script:
     - |
+      export BUILDKIT_NO_CLIENT_IPV6=1
       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
       docker buildx create --use --name multiarch-builder || true
       for ARCH in arm64 amd64; do
