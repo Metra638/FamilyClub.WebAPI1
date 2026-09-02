@@ -466,50 +466,58 @@ push-backend:
       when: always
     - when: never
 
-update-frontend-manifests:
-  stage: update-frontend-manifests
-  script:
-    - |
-      set -e
-      git config user.email "apofeoz638@gmail.com"
-      git config user.name "Artem Malashevskyi"
-      git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-      if git ls-remote --heads origin $CI_COMMIT_BRANCH | grep -q $CI_COMMIT_BRANCH; then
-        git pull --rebase --autostash origin $CI_COMMIT_BRANCH
-      else
-        echo "Remote branch does not exist, skipping pull"
-      fi
+# update-frontend-manifests:
+#   stage: update-frontend-manifests
+#   script:
+#     - |
+#       set -e
+#       echo "=== DIAGNOSTIC START ==="
+#       echo "frontendArm64Digest: $frontendArm64Digest"
+#       echo "=== DIAGNOSTIC END ==="
 
-      sed -i "s|metra638/test1@[^ ]*|metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       git config user.email "apofeoz638@gmail.com"
+#       git config user.name "Artem Malashevskyi"
+#       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
+#       if git ls-remote --heads origin $CI_COMMIT_BRANCH | grep -q $CI_COMMIT_BRANCH; then
+#         git pull --rebase --autostash origin $CI_COMMIT_BRANCH
+#       else
+#         echo "Remote branch does not exist, skipping pull"
+#       fi
 
-      sed -i "s|metra638/test1@[^ ]*|metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       # Заменяем всю строку image целиком
+#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
 
-      git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
-      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-      git push origin HEAD:$CI_COMMIT_BRANCH
-  # needs:
-  #   - job: push-frontend
-  #     artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+
+#       git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
+#       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
+#       git push origin HEAD:$CI_COMMIT_BRANCH
+#   needs:
+#     - job: push-frontend
+#       artifacts: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
 update-backend-manifests:
   stage: update-backend-manifests
   script:
     - |
       set -e
-      echo "Backend digest: $backendArm64Digest"   # диагностика
+      echo "=== DIAGNOSTIC START ==="
+      echo "backendArm64Digest: $backendArm64Digest"
+      echo "=== DIAGNOSTIC END ==="
+
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
