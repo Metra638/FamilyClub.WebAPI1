@@ -496,9 +496,9 @@ update-frontend-manifests:
       git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
       git push origin HEAD:$CI_COMMIT_BRANCH
-  needs:
-    - job: push-frontend
-      artifacts: true
+  # needs:
+  #   - job: push-frontend
+  #     artifacts: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
@@ -534,9 +534,9 @@ update-backend-manifests:
       git commit -m "Update backend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
       git push origin HEAD:$CI_COMMIT_BRANCH
-  needs:
-    - job: push-backend
-      artifacts: true
+  # needs:
+  #   - job: push-backend
+  #     artifacts: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
