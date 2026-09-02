@@ -5,10 +5,11 @@ stages:
   # - npm-audit
   # - eslint-security
   # - frontend-checks
-  - build-frontend
-  - scan-frontend
-  - dast-frontend
-  - push-frontend
+  # - build-frontend
+  # - scan-frontend
+  # - dast-frontend
+  # - push-frontend
+  - backend-checks
 
 variables:
   UPSTREAM_URL: "https://github.com/Metra638/FamilyClub.WebAPI1.git"
@@ -94,164 +95,184 @@ sync-repo:
   #     when: always
   #   - when: never
 
-build-frontend:
-  stage: build-frontend
-  script:
-    - |
-      export BUILDKIT_NO_CLIENT_IPV6=1
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      docker buildx use default
-      for ARCH in arm64 amd64; do
-        echo "Сборка для $ARCH"
-        docker buildx build \
-          --platform linux/$ARCH \
-          -f dockerfile.frontend \
-          -o type=docker,dest=frontend-$ARCH.tar \
-          --build-arg BUILD_DATE=$(date -Iseconds) \
-          --build-arg VCS_REF=$CI_COMMIT_SHA \
-          --build-arg VERSION=$CI_PIPELINE_ID \
-          .
-        LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
-        IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
-        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
-        docker tag $IMAGE_ID $FULL_TAG
-        rm -f frontend-$ARCH.tar
-      done
-      DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
-      echo "frontendArm64Digest=$DIGEST" > frontend.env
-  artifacts:
-    reports:
-      dotenv: frontend.env
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# build-frontend:
+#   stage: build-frontend
+#   script:
+#     - |
+#       export BUILDKIT_NO_CLIENT_IPV6=1
+#       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+#       docker buildx use default
+#       for ARCH in arm64 amd64; do
+#         echo "Сборка для $ARCH"
+#         docker buildx build \
+#           --platform linux/$ARCH \
+#           -f dockerfile.frontend \
+#           -o type=docker,dest=frontend-$ARCH.tar \
+#           --build-arg BUILD_DATE=$(date -Iseconds) \
+#           --build-arg VCS_REF=$CI_COMMIT_SHA \
+#           --build-arg VERSION=$CI_PIPELINE_ID \
+#           .
+#         LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
+#         IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
+#         FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
+#         docker tag $IMAGE_ID $FULL_TAG
+#         rm -f frontend-$ARCH.tar
+#       done
+#       DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
+#       echo "frontendArm64Digest=$DIGEST" > frontend.env
+#   artifacts:
+#     reports:
+#       dotenv: frontend.env
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-scan-frontend:
-  stage: scan-frontend
+# scan-frontend:
+#   stage: scan-frontend
+#   script:
+#     - |
+#       for ARCH in arm64 amd64; do
+#         trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" || true
+#       done
+#   allow_failure: true
+#   needs:
+#     - job: build-frontend
+#       artifacts: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
+
+# dast-frontend:
+#   stage: dast-frontend
+#   script:
+#     - |
+#       set +e
+#       echo "Starting DAST scan for frontend"
+#       IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
+
+#       if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
+#         echo "ERROR: Image not found locally"
+#         echo "Frontend image not found locally" > zap_report_frontend.html
+#         echo '{"error": "Frontend image not found locally"}' > zap_report_frontend.json
+#         exit 0
+#       fi
+
+#       docker network create dast-frontend-net || true
+
+#       echo "Starting frontend with 'node node_modules/.bin/next start'"
+#       if ! docker run -d --name frontend-test --network dast-frontend-net --entrypoint node $IMAGE node_modules/.bin/next start; then
+#         echo "ERROR: Container failed to start"
+#         echo "Frontend startup failed" > zap_report_frontend.html
+#         echo '{"error": "Startup failed"}' > zap_report_frontend.json
+#         docker network rm dast-frontend-net || true
+#         exit 0
+#       fi
+
+#       echo "Waiting 40 seconds for frontend to start"
+#       sleep 40
+
+#       if ! docker ps | grep frontend-test; then
+#         echo "Container not running, logs:"
+#         docker logs frontend-test || true
+#         docker stop frontend-test && docker rm frontend-test || true
+#         docker network rm dast-frontend-net || true
+#         echo "Frontend container crashed" > zap_report_frontend.html
+#         echo '{"error": "Container crashed"}' > zap_report_frontend.json
+#         exit 0
+#       fi
+
+#       mkdir -p zap_reports_frontend
+#       chmod 777 zap_reports_frontend
+
+#       docker run --rm \
+#         --network dast-frontend-net \
+#         -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw \
+#         zaproxy/zap-stable \
+#         zap-baseline.py \
+#         -t http://frontend-test:3000 \
+#         -r zap_report_frontend.html \
+#         -J zap_report_frontend.json \
+#         2>&1 | tee zap_frontend_output.log || true
+
+#       ZAP_EXIT_CODE=${PIPESTATUS[0]}
+#       echo "ZAP exit code: $ZAP_EXIT_CODE"
+
+#       if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
+#         echo "Report generated"
+#         cp zap_reports_frontend/zap_report_frontend.html .
+#         cp zap_reports_frontend/zap_report_frontend.json .
+#       else
+#         echo "Report NOT generated, exit code: $ZAP_EXIT_CODE"
+#         echo "Last 30 lines of ZAP output:"
+#         tail -30 zap_frontend_output.log
+#         echo "ZAP scan failed with exit code $ZAP_EXIT_CODE" > zap_report_frontend.html
+#         echo '{"error": "ZAP scan failed"}' > zap_report_frontend.json
+#       fi
+
+#       docker stop frontend-test && docker rm frontend-test || true
+#       docker network rm dast-frontend-net || true
+#       exit 0
+#   artifacts:
+#     paths:
+#       - zap_report_frontend.html
+#       - zap_report_frontend.json
+#     expire_in: 1 week
+#   allow_failure: true
+#   needs:
+#     - job: build-frontend
+#       artifacts: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
+
+# push-frontend:
+#   stage: push-frontend
+#   script:
+#     - |
+#       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+#       for ARCH in arm64 amd64; do
+#         FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
+#         docker push $FULL_TAG | tee push-frontend-$ARCH.log
+#         if [ "$ARCH" = "arm64" ]; then
+#           DIGEST=$(grep -E 'digest: sha256:[a-f0-9]{64}' push-frontend-arm64.log | head -1 | sed -E 's/.*(sha256:[a-f0-9]{64}).*/\1/')
+#           echo "frontendArm64Digest=$DIGEST" > frontend.env
+#         fi
+#       done
+#       docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
+#         --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
+#         --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
+#       docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}
+#   artifacts:
+#     reports:
+#       dotenv: frontend.env
+#   needs:
+#     - job: build-frontend
+#       artifacts: true
+#     - job: scan-frontend
+#     - job: dast-frontend
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
+
+backend-checks:
+  stage: backend-checks
   script:
-    - |
-      for ARCH in arm64 amd64; do
-        trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" || true
-      done
+    - echo "Auditing NuGet dependencies for vulnerabilities"
+    - dotnet list package --vulnerable --include-transitive || true
+
+    - echo "Checking code formatting"
+    - dotnet format --verify-no-changes --verbosity minimal || true
+
+    - echo "Restoring dependencies"
+    - dotnet restore
+
+    - echo "Building project with code analyzers enabled"
+    - dotnet build --no-restore -c Release /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true
   allow_failure: true
-  needs:
-    - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-dast-frontend:
-  stage: dast-frontend
-  script:
-    - |
-      set +e
-      echo "Starting DAST scan for frontend"
-      IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
-
-      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
-        echo "ERROR: Image not found locally"
-        echo "Frontend image not found locally" > zap_report_frontend.html
-        echo '{"error": "Frontend image not found locally"}' > zap_report_frontend.json
-        exit 0
-      fi
-
-      docker network create dast-frontend-net || true
-
-      echo "Starting frontend with 'node node_modules/.bin/next start'"
-      if ! docker run -d --name frontend-test --network dast-frontend-net --entrypoint node $IMAGE node_modules/.bin/next start; then
-        echo "ERROR: Container failed to start"
-        echo "Frontend startup failed" > zap_report_frontend.html
-        echo '{"error": "Startup failed"}' > zap_report_frontend.json
-        docker network rm dast-frontend-net || true
-        exit 0
-      fi
-
-      echo "Waiting 40 seconds for frontend to start"
-      sleep 40
-
-      if ! docker ps | grep frontend-test; then
-        echo "Container not running, logs:"
-        docker logs frontend-test || true
-        docker stop frontend-test && docker rm frontend-test || true
-        docker network rm dast-frontend-net || true
-        echo "Frontend container crashed" > zap_report_frontend.html
-        echo '{"error": "Container crashed"}' > zap_report_frontend.json
-        exit 0
-      fi
-
-      mkdir -p zap_reports_frontend
-      chmod 777 zap_reports_frontend
-
-      docker run --rm \
-        --network dast-frontend-net \
-        -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw \
-        zaproxy/zap-stable \
-        zap-baseline.py \
-        -t http://frontend-test:3000 \
-        -r zap_report_frontend.html \
-        -J zap_report_frontend.json \
-        2>&1 | tee zap_frontend_output.log || true
-
-      ZAP_EXIT_CODE=${PIPESTATUS[0]}
-      echo "ZAP exit code: $ZAP_EXIT_CODE"
-
-      if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
-        echo "Report generated"
-        cp zap_reports_frontend/zap_report_frontend.html .
-        cp zap_reports_frontend/zap_report_frontend.json .
-      else
-        echo "Report NOT generated, exit code: $ZAP_EXIT_CODE"
-        echo "Last 30 lines of ZAP output:"
-        tail -30 zap_frontend_output.log
-        echo "ZAP scan failed with exit code $ZAP_EXIT_CODE" > zap_report_frontend.html
-        echo '{"error": "ZAP scan failed"}' > zap_report_frontend.json
-      fi
-
-      docker stop frontend-test && docker rm frontend-test || true
-      docker network rm dast-frontend-net || true
-      exit 0
-  artifacts:
-    paths:
-      - zap_report_frontend.html
-      - zap_report_frontend.json
-    expire_in: 1 week
-  allow_failure: true
-  needs:
-    - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-push-frontend:
-  stage: push-frontend
-  script:
-    - |
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      for ARCH in arm64 amd64; do
-        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
-        docker push $FULL_TAG | tee push-frontend-$ARCH.log
-        if [ "$ARCH" = "arm64" ]; then
-          DIGEST=$(grep -E 'digest: sha256:[a-f0-9]{64}' push-frontend-arm64.log | head -1 | sed -E 's/.*(sha256:[a-f0-9]{64}).*/\1/')
-          echo "frontendArm64Digest=$DIGEST" > frontend.env
-        fi
-      done
-      docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
-        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
-        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
-      docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}
-  artifacts:
-    reports:
-      dotenv: frontend.env
-  needs:
-    - job: build-frontend
-      artifacts: true
-    - job: scan-frontend
-    - job: dast-frontend
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
