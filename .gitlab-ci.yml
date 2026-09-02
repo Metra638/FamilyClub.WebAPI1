@@ -7,6 +7,7 @@ stages:
   # - frontend-checks
   - build-frontend
   - scan-frontend
+  - dast-frontend
   - push-frontend
 
 variables:
@@ -142,6 +143,90 @@ scan-frontend:
       when: always
     - when: never
 
+dast-frontend:
+  stage: dast-frontend
+  script:
+    - |
+      set +e
+      echo "Starting DAST scan for frontend"
+      IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
+
+      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
+        echo "ERROR: Image not found locally"
+        echo "Frontend image not found locally" > zap_report_frontend.html
+        echo '{"error": "Frontend image not found locally"}' > zap_report_frontend.json
+        exit 0
+      fi
+
+      docker network create dast-frontend-net || true
+
+      echo "Starting frontend with 'node node_modules/.bin/next start'"
+      if ! docker run -d --name frontend-test --network dast-frontend-net --entrypoint node $IMAGE node_modules/.bin/next start; then
+        echo "ERROR: Container failed to start"
+        echo "Frontend startup failed" > zap_report_frontend.html
+        echo '{"error": "Startup failed"}' > zap_report_frontend.json
+        docker network rm dast-frontend-net || true
+        exit 0
+      fi
+
+      echo "Waiting 40 seconds for frontend to start"
+      sleep 40
+
+      if ! docker ps | grep frontend-test; then
+        echo "Container not running, logs:"
+        docker logs frontend-test || true
+        docker stop frontend-test && docker rm frontend-test || true
+        docker network rm dast-frontend-net || true
+        echo "Frontend container crashed" > zap_report_frontend.html
+        echo '{"error": "Container crashed"}' > zap_report_frontend.json
+        exit 0
+      fi
+
+      mkdir -p zap_reports_frontend
+      chmod 777 zap_reports_frontend
+
+      docker run --rm \
+        --network dast-frontend-net \
+        -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw \
+        zaproxy/zap-stable \
+        zap-baseline.py \
+        -t http://frontend-test:3000 \
+        -r zap_report_frontend.html \
+        -J zap_report_frontend.json \
+        2>&1 | tee zap_frontend_output.log || true
+
+      ZAP_EXIT_CODE=${PIPESTATUS[0]}
+      echo "ZAP exit code: $ZAP_EXIT_CODE"
+
+      if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
+        echo "Report generated"
+        cp zap_reports_frontend/zap_report_frontend.html .
+        cp zap_reports_frontend/zap_report_frontend.json .
+      else
+        echo "Report NOT generated, exit code: $ZAP_EXIT_CODE"
+        echo "Last 30 lines of ZAP output:"
+        tail -30 zap_frontend_output.log
+        echo "ZAP scan failed with exit code $ZAP_EXIT_CODE" > zap_report_frontend.html
+        echo '{"error": "ZAP scan failed"}' > zap_report_frontend.json
+      fi
+
+      docker stop frontend-test && docker rm frontend-test || true
+      docker network rm dast-frontend-net || true
+      exit 0
+  artifacts:
+    paths:
+      - zap_report_frontend.html
+      - zap_report_frontend.json
+    expire_in: 1 week
+  allow_failure: true
+  needs:
+    - job: build-frontend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
 push-frontend:
   stage: push-frontend
   script:
@@ -166,6 +251,7 @@ push-frontend:
     - job: build-frontend
       artifacts: true
     - job: scan-frontend
+    - job: dast-frontend
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
