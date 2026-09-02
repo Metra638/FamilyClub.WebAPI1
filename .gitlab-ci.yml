@@ -471,6 +471,13 @@ push-backend:
 #   script:
 #     - |
 #       set -e
+#       # Загружаем переменные из dotenv артефакта вручную
+#       if [ -f frontend.env ]; then
+#         export $(cat frontend.env | xargs)
+#       else
+#         echo "WARNING: frontend.env not found"
+#       fi
+
 #       echo "=== DIAGNOSTIC START ==="
 #       echo "frontendArm64Digest: $frontendArm64Digest"
 #       echo "=== DIAGNOSTIC END ==="
@@ -484,7 +491,6 @@ push-backend:
 #         echo "Remote branch does not exist, skipping pull"
 #       fi
 
-#       # Заменяем всю строку image целиком
 #       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
 #       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
 #       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
@@ -514,8 +520,15 @@ update-backend-manifests:
   script:
     - |
       set -e
+      # Загружаем переменные из dotenv артефакта вручную
+      if [ -f backend.env ]; then
+        export $(cat backend.env | xargs)
+      else
+        echo "WARNING: backend.env not found"
+      fi
+
       echo "=== DIAGNOSTIC START ==="
-      echo "backendArm64Digest: $backendArm64Digest"
+      echo "BackendArm64Digest: $BackendArm64Digest"
       echo "=== DIAGNOSTIC END ==="
 
       git config user.email "apofeoz638@gmail.com"
@@ -527,14 +540,14 @@ update-backend-manifests:
         echo "Remote branch does not exist, skipping pull"
       fi
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${backendArm64Digest}|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${backendArm64Digest}\"|g" KUBERNETES/Backend/backend-deployment.yaml
+      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES/Backend/backend-deployment.yaml
+      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES/Backend/backend-deployment.yaml
       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Backend/backend-deployment.yaml
       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Backend/backend-deployment.yaml
       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Backend/backend-deployment.yaml
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${backendArm64Digest}|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${backendArm64Digest}\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
