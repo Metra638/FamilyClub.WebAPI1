@@ -289,13 +289,7 @@ test-backend:
   stage: test-backend
   script:
     - echo "Running backend unit tests"
-    - dotnet test FamilyClub.WebAPI.Tests/FamilyClub.WebAPI.Tests.csproj --logger "junit;LogFilePath=test_results.xml"
-  artifacts:
-    reports:
-      junit: test_results.xml
-    paths:
-      - test_results.xml
-    expire_in: 1 week
+    - dotnet test FamilyClub.WebAPI.Tests/FamilyClub.WebAPI.Tests.csproj
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
