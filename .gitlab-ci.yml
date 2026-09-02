@@ -1,14 +1,14 @@
 stages:
   - sync
-  - gitleaks
-  - hadolint
-  - npm-audit
-  - eslint-security
-  - frontend-checks
-  - build-frontend
-  - scan-frontend
-  - dast-frontend
-  - push-frontend
+  # - gitleaks
+  # - hadolint
+  # - npm-audit
+  # - eslint-security
+  # - frontend-checks
+  # - build-frontend
+  # - scan-frontend
+  # - dast-frontend
+  # - push-frontend
   - backend-checks
   - build-backend
   - scan-backend
@@ -37,232 +37,232 @@ sync-repo:
       when: always
     - when: never
 
-gitleaks:
-  stage: gitleaks
-  script:
-    - gitleaks detect --verbose --redact --source $CI_PROJECT_DIR || true
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# gitleaks:
+#   stage: gitleaks
+#   script:
+#     - gitleaks detect --verbose --redact --source $CI_PROJECT_DIR || true
+#   allow_failure: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-hadolint:
-  stage: hadolint
-  script:
-    - hadolint --ignore DL3066 - < dockerfile.frontend || true
-    - hadolint --ignore DL3066 - < dockerfile.backend || true
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# hadolint:
+#   stage: hadolint
+#   script:
+#     - hadolint --ignore DL3066 - < dockerfile.frontend || true
+#     - hadolint --ignore DL3066 - < dockerfile.backend || true
+#   allow_failure: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-npm-audit:
-  stage: npm-audit
-  script:
-    - cd FamilyClub.React/famiy.club.react
-    - npm audit --audit-level=high || true
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# npm-audit:
+#   stage: npm-audit
+#   script:
+#     - cd FamilyClub.React/famiy.club.react
+#     - npm audit --audit-level=high || true
+  # allow_failure: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-eslint-security:
-  stage: eslint-security
-  script:
-    - cd FamilyClub.React/famiy.club.react
-    - echo "Installing ESLint security plugin"
-    - npm install --save-dev eslint-plugin-security || true
-    - echo "Running ESLint security rules"
-    - npx eslint --plugin security . || true
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# eslint-security:
+#   stage: eslint-security
+#   script:
+#     - cd FamilyClub.React/famiy.club.react
+#     - echo "Installing ESLint security plugin"
+#     - npm install --save-dev eslint-plugin-security || true
+#     - echo "Running ESLint security rules"
+#     - npx eslint --plugin security . || true
+#   allow_failure: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-frontend-checks:
-  stage: frontend-checks
-  script:
-    - cd FamilyClub.React/famiy.club.react
-    - echo "Installing dependencies"
-    - npm ci || npm install
-    - echo "Running linter (ESLint)"
-    - npm run lint || true
-    - echo "Running TypeScript type check"
-    - npx tsc --noEmit || true
-    - echo "Building project (check build)"
-    - npm run build || true
-  allow_failure: false
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# frontend-checks:
+#   stage: frontend-checks
+#   script:
+#     - cd FamilyClub.React/famiy.club.react
+#     - echo "Installing dependencies"
+#     - npm ci || npm install
+#     - echo "Running linter (ESLint)"
+#     - npm run lint || true
+#     - echo "Running TypeScript type check"
+#     - npx tsc --noEmit || true
+#     - echo "Building project (check build)"
+#     - npm run build || true
+#   allow_failure: false
+  # rules:
+  #   - if: $CI_PIPELINE_SOURCE == "web"
+  #     when: always
+  #   - when: never
 
-build-frontend:
-  stage: build-frontend
-  script:
-    - |
-      export BUILDKIT_NO_CLIENT_IPV6=1
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      docker buildx use default
-      for ARCH in arm64 amd64; do
-        echo "Сборка для $ARCH"
-        docker buildx build \
-          --platform linux/$ARCH \
-          -f dockerfile.frontend \
-          -o type=docker,dest=frontend-$ARCH.tar \
-          --build-arg BUILD_DATE=$(date -Iseconds) \
-          --build-arg VCS_REF=$CI_COMMIT_SHA \
-          --build-arg VERSION=$CI_PIPELINE_ID \
-          .
-        LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
-        IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
-        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
-        docker tag $IMAGE_ID $FULL_TAG
-        rm -f frontend-$ARCH.tar
-      done
-      DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
-      echo "frontendArm64Digest=$DIGEST" > frontend.env
-  artifacts:
-    reports:
-      dotenv: frontend.env
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# build-frontend:
+#   stage: build-frontend
+#   script:
+#     - |
+#       export BUILDKIT_NO_CLIENT_IPV6=1
+#       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+#       docker buildx use default
+#       for ARCH in arm64 amd64; do
+#         echo "Сборка для $ARCH"
+#         docker buildx build \
+#           --platform linux/$ARCH \
+#           -f dockerfile.frontend \
+#           -o type=docker,dest=frontend-$ARCH.tar \
+#           --build-arg BUILD_DATE=$(date -Iseconds) \
+#           --build-arg VCS_REF=$CI_COMMIT_SHA \
+#           --build-arg VERSION=$CI_PIPELINE_ID \
+#           .
+#         LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
+#         IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
+#         FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
+#         docker tag $IMAGE_ID $FULL_TAG
+#         rm -f frontend-$ARCH.tar
+#       done
+#       DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
+#       echo "frontendArm64Digest=$DIGEST" > frontend.env
+#   artifacts:
+#     reports:
+#       dotenv: frontend.env
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-scan-frontend:
-  stage: scan-frontend
-  script:
-    - |
-      for ARCH in arm64 amd64; do
-        trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" || true
-      done
-  allow_failure: true
-  needs:
-    - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# scan-frontend:
+#   stage: scan-frontend
+#   script:
+#     - |
+#       for ARCH in arm64 amd64; do
+#         trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" || true
+#       done
+#   allow_failure: true
+#   needs:
+#     - job: build-frontend
+#       artifacts: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-dast-frontend:
-  stage: dast-frontend
-  script:
-    - |
-      set +e
-      echo "Starting DAST scan for frontend"
-      IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
+# dast-frontend:
+#   stage: dast-frontend
+#   script:
+#     - |
+#       set +e
+#       echo "Starting DAST scan for frontend"
+#       IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
 
-      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
-        echo "ERROR: Image not found locally"
-        echo "Frontend image not found locally" > zap_report_frontend.html
-        echo '{"error": "Frontend image not found locally"}' > zap_report_frontend.json
-        exit 0
-      fi
+#       if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
+#         echo "ERROR: Image not found locally"
+#         echo "Frontend image not found locally" > zap_report_frontend.html
+#         echo '{"error": "Frontend image not found locally"}' > zap_report_frontend.json
+#         exit 0
+#       fi
 
-      docker network create dast-frontend-net || true
+#       docker network create dast-frontend-net || true
 
-      echo "Starting frontend with 'node node_modules/.bin/next start'"
-      if ! docker run -d --name frontend-test --network dast-frontend-net --entrypoint node $IMAGE node_modules/.bin/next start; then
-        echo "ERROR: Container failed to start"
-        echo "Frontend startup failed" > zap_report_frontend.html
-        echo '{"error": "Startup failed"}' > zap_report_frontend.json
-        docker network rm dast-frontend-net || true
-        exit 0
-      fi
+#       echo "Starting frontend with 'node node_modules/.bin/next start'"
+#       if ! docker run -d --name frontend-test --network dast-frontend-net --entrypoint node $IMAGE node_modules/.bin/next start; then
+#         echo "ERROR: Container failed to start"
+#         echo "Frontend startup failed" > zap_report_frontend.html
+#         echo '{"error": "Startup failed"}' > zap_report_frontend.json
+#         docker network rm dast-frontend-net || true
+#         exit 0
+#       fi
 
-      echo "Waiting 40 seconds for frontend to start"
-      sleep 40
+#       echo "Waiting 40 seconds for frontend to start"
+#       sleep 40
 
-      if ! docker ps | grep frontend-test; then
-        echo "Container not running, logs:"
-        docker logs frontend-test || true
-        docker stop frontend-test && docker rm frontend-test || true
-        docker network rm dast-frontend-net || true
-        echo "Frontend container crashed" > zap_report_frontend.html
-        echo '{"error": "Container crashed"}' > zap_report_frontend.json
-        exit 0
-      fi
+#       if ! docker ps | grep frontend-test; then
+#         echo "Container not running, logs:"
+#         docker logs frontend-test || true
+#         docker stop frontend-test && docker rm frontend-test || true
+#         docker network rm dast-frontend-net || true
+#         echo "Frontend container crashed" > zap_report_frontend.html
+#         echo '{"error": "Container crashed"}' > zap_report_frontend.json
+#         exit 0
+#       fi
 
-      mkdir -p zap_reports_frontend
-      chmod 777 zap_reports_frontend
+#       mkdir -p zap_reports_frontend
+#       chmod 777 zap_reports_frontend
 
-      docker run --rm \
-        --network dast-frontend-net \
-        -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw \
-        zaproxy/zap-stable \
-        zap-baseline.py \
-        -t http://frontend-test:3000 \
-        -r zap_report_frontend.html \
-        -J zap_report_frontend.json \
-        2>&1 | tee zap_frontend_output.log || true
+#       docker run --rm \
+#         --network dast-frontend-net \
+#         -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw \
+#         zaproxy/zap-stable \
+#         zap-baseline.py \
+#         -t http://frontend-test:3000 \
+#         -r zap_report_frontend.html \
+#         -J zap_report_frontend.json \
+#         2>&1 | tee zap_frontend_output.log || true
 
-      ZAP_EXIT_CODE=${PIPESTATUS[0]}
-      echo "ZAP exit code: $ZAP_EXIT_CODE"
+#       ZAP_EXIT_CODE=${PIPESTATUS[0]}
+#       echo "ZAP exit code: $ZAP_EXIT_CODE"
 
-      if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
-        echo "Report generated"
-        cp zap_reports_frontend/zap_report_frontend.html .
-        cp zap_reports_frontend/zap_report_frontend.json .
-      else
-        echo "Report NOT generated, exit code: $ZAP_EXIT_CODE"
-        echo "Last 30 lines of ZAP output:"
-        tail -30 zap_frontend_output.log
-        echo "ZAP scan failed with exit code $ZAP_EXIT_CODE" > zap_report_frontend.html
-        echo '{"error": "ZAP scan failed"}' > zap_report_frontend.json
-      fi
+#       if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
+#         echo "Report generated"
+#         cp zap_reports_frontend/zap_report_frontend.html .
+#         cp zap_reports_frontend/zap_report_frontend.json .
+#       else
+#         echo "Report NOT generated, exit code: $ZAP_EXIT_CODE"
+#         echo "Last 30 lines of ZAP output:"
+#         tail -30 zap_frontend_output.log
+#         echo "ZAP scan failed with exit code $ZAP_EXIT_CODE" > zap_report_frontend.html
+#         echo '{"error": "ZAP scan failed"}' > zap_report_frontend.json
+#       fi
 
-      docker stop frontend-test && docker rm frontend-test || true
-      docker network rm dast-frontend-net || true
-      exit 0
-  artifacts:
-    paths:
-      - zap_report_frontend.html
-      - zap_report_frontend.json
-    expire_in: 1 week
-  allow_failure: true
-  needs:
-    - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+#       docker stop frontend-test && docker rm frontend-test || true
+#       docker network rm dast-frontend-net || true
+#       exit 0
+#   artifacts:
+#     paths:
+#       - zap_report_frontend.html
+#       - zap_report_frontend.json
+#     expire_in: 1 week
+#   allow_failure: true
+#   needs:
+#     - job: build-frontend
+#       artifacts: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-push-frontend:
-  stage: push-frontend
-  script:
-    - |
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      for ARCH in arm64 amd64; do
-        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
-        docker push $FULL_TAG | tee push-frontend-$ARCH.log
-      done
-      docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
-        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
-        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
-      MANIFEST_PUSH_OUTPUT=$(docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} 2>&1)
-      echo "$MANIFEST_PUSH_OUTPUT"
-      MANIFEST_DIGEST=$(echo "$MANIFEST_PUSH_OUTPUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
-      echo "Frontend multi-arch digest: $MANIFEST_DIGEST"
-      echo "frontendArm64Digest=$MANIFEST_DIGEST" > frontend.env
-  artifacts:
-    reports:
-      dotenv: frontend.env
-  needs:
-    - job: build-frontend
-      artifacts: true
-    - job: scan-frontend
-    - job: dast-frontend
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+# push-frontend:
+#   stage: push-frontend
+#   script:
+#     - |
+#       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+#       for ARCH in arm64 amd64; do
+#         FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
+#         docker push $FULL_TAG | tee push-frontend-$ARCH.log
+#       done
+#       docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
+#         --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
+#         --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
+#       MANIFEST_PUSH_OUTPUT=$(docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} 2>&1)
+#       echo "$MANIFEST_PUSH_OUTPUT"
+#       MANIFEST_DIGEST=$(echo "$MANIFEST_PUSH_OUTPUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
+#       echo "Frontend multi-arch digest: $MANIFEST_DIGEST"
+#       echo "frontendArm64Digest=$MANIFEST_DIGEST" > frontend.env
+#   artifacts:
+#     reports:
+#       dotenv: frontend.env
+#   needs:
+#     - job: build-frontend
+#       artifacts: true
+#     - job: scan-frontend
+#     - job: dast-frontend
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
 backend-checks:
   stage: backend-checks
@@ -466,53 +466,53 @@ push-backend:
       when: always
     - when: never
 
-update-frontend-manifests:
-  stage: update-frontend-manifests
-  script:
-    - |
-      set -e
-      if [ -f frontend.env ]; then
-        export $(cat frontend.env | xargs)
-      else
-        echo "WARNING: frontend.env not found"
-      fi
+# update-frontend-manifests:
+#   stage: update-frontend-manifests
+#   script:
+#     - |
+#       set -e
+#       if [ -f frontend.env ]; then
+#         export $(cat frontend.env | xargs)
+#       else
+#         echo "WARNING: frontend.env not found"
+#       fi
 
-      echo "=== DIAGNOSTIC START ==="
-      echo "frontendArm64Digest: $frontendArm64Digest"
-      echo "=== DIAGNOSTIC END ==="
+#       echo "=== DIAGNOSTIC START ==="
+#       echo "frontendArm64Digest: $frontendArm64Digest"
+#       echo "=== DIAGNOSTIC END ==="
 
-      git config user.email "apofeoz638@gmail.com"
-      git config user.name "Artem Malashevskyi"
-      git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-      if git ls-remote --heads origin $CI_COMMIT_BRANCH | grep -q $CI_COMMIT_BRANCH; then
-        git pull --rebase --autostash origin $CI_COMMIT_BRANCH
-      else
-        echo "Remote branch does not exist, skipping pull"
-      fi
+#       git config user.email "apofeoz638@gmail.com"
+#       git config user.name "Artem Malashevskyi"
+#       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
+#       if git ls-remote --heads origin $CI_COMMIT_BRANCH | grep -q $CI_COMMIT_BRANCH; then
+#         git pull --rebase --autostash origin $CI_COMMIT_BRANCH
+#       else
+#         echo "Remote branch does not exist, skipping pull"
+#       fi
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
 
-      git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
-      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-      git push origin HEAD:$CI_COMMIT_BRANCH
-  needs:
-    - job: push-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+#       git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
+#       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
+#       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
+#   needs:
+#     - job: push-frontend
+#       artifacts: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
 update-backend-manifests:
   stage: update-backend-manifests
@@ -553,7 +553,7 @@ update-backend-manifests:
       git add KUBERNETES/Backend/backend-deployment.yaml KUBERNETES-TEST/Backend/backend-deployment.yaml
       git commit -m "Update backend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-      git push origin HEAD:$CI_COMMIT_BRANCH
+      git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
   needs:
     - job: push-backend
       artifacts: true
