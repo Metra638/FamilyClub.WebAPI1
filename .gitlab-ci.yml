@@ -6,9 +6,13 @@ stages:
   # - eslint-security
   # - frontend-checks
   - build-frontend
+  - scan-frontend
+  - push-frontend
 
 variables:
   UPSTREAM_URL: "https://github.com/Metra638/FamilyClub.WebAPI1.git"
+  dockerId: "metra638"
+  repoName: "test1"
 
 sync-repo:
   stage: sync
@@ -95,7 +99,7 @@ build-frontend:
     - |
       export BUILDKIT_NO_CLIENT_IPV6=1
       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      docker buildx create --use --name multiarch-builder || true
+      docker buildx use default
       for ARCH in arm64 amd64; do
         echo "Сборка для $ARCH"
         docker buildx build \
@@ -106,11 +110,62 @@ build-frontend:
           --build-arg VCS_REF=$CI_COMMIT_SHA \
           --build-arg VERSION=$CI_PIPELINE_ID \
           .
+        LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
+        IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
+        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
+        docker tag $IMAGE_ID $FULL_TAG
+        rm -f frontend-$ARCH.tar
       done
+      DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
+      echo "frontendArm64Digest=$DIGEST" > frontend.env
   artifacts:
-    paths:
-      - frontend-*.tar
-    expire_in: 1 day
+    reports:
+      dotenv: frontend.env
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+scan-frontend:
+  stage: scan-frontend
+  script:
+    - |
+      for ARCH in arm64 amd64; do
+        trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" || true
+      done
+  allow_failure: true
+  needs:
+    - job: build-frontend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+push-frontend:
+  stage: push-frontend
+  script:
+    - |
+      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      for ARCH in arm64 amd64; do
+        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
+        docker push $FULL_TAG | tee push-frontend-$ARCH.log
+        if [ "$ARCH" = "arm64" ]; then
+          DIGEST=$(grep -E 'digest: sha256:[a-f0-9]{64}' push-frontend-arm64.log | head -1 | sed -E 's/.*(sha256:[a-f0-9]{64}).*/\1/')
+          echo "frontendArm64Digest=$DIGEST" > frontend.env
+        fi
+      done
+      docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
+        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
+        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
+      docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}
+  artifacts:
+    reports:
+      dotenv: frontend.env
+  needs:
+    - job: build-frontend
+      artifacts: true
+    - job: scan-frontend
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
