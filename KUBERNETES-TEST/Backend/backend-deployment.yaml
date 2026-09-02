@@ -24,8 +24,8 @@ spec:
         app.kubernetes.io/version: "1.0"
       annotations:
         image-digest: ""
-        build-date: "2026-09-02T17:04:22+01:00"
-        commit-hash: "a046716d683d4f8cb67f8e6b17010e7eba60b415"
+        build-date: "2026-09-02T17:31:01+01:00"
+        commit-hash: "f852bfeea8878a90cf791cccb01ec1ee7573a9d9"
         branch: "Final"
         repository: "https://github.com/Metra638/FamilyClub.WebAPI1"
     spec:
