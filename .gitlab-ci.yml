@@ -348,11 +348,28 @@ dast-backend:
 
       docker network create dast-backend-net || true
 
-      echo "Starting backend container (ASP.NET Core)"
-      if ! docker run -d --name backend-test --network dast-backend-net $IMAGE; then
+      echo "Starting test PostgreSQL container"
+      docker run -d --name db-test --network dast-backend-net \
+        -e POSTGRES_PASSWORD=MyStrongPass123! \
+        -e POSTGRES_DB=familyclub_db \
+        postgres:15
+
+      echo "Waiting 30 seconds for PostgreSQL to start"
+      sleep 30
+
+      DB_CONN="Host=db-test;Database=familyclub_db;Username=postgres;Password=MyStrongPass123!"
+
+      echo "Starting backend container with environment variables"
+      if ! docker run -d --name backend-test --network dast-backend-net \
+        -e Jwt__Key="${JWT_KEY}" \
+        -e Jwt__Issuer="${JWT_ISSUER}" \
+        -e Jwt__Audience="${JWT_AUDIENCE}" \
+        -e ConnectionStrings__FamilyClub_DB="${DB_CONN}" \
+        $IMAGE; then
         echo "ERROR: Container failed to start"
         echo "Backend startup failed" > zap_report_backend.html
         echo '{"error": "Startup failed"}' > zap_report_backend.json
+        docker stop db-test && docker rm db-test || true
         docker network rm dast-backend-net || true
         exit 0
       fi
@@ -364,6 +381,7 @@ dast-backend:
         echo "Container not running, logs:"
         docker logs backend-test || true
         docker stop backend-test && docker rm backend-test || true
+        docker stop db-test && docker rm db-test || true
         docker network rm dast-backend-net || true
         echo "Backend container crashed" > zap_report_backend.html
         echo '{"error": "Container crashed"}' > zap_report_backend.json
@@ -399,6 +417,7 @@ dast-backend:
       fi
 
       docker stop backend-test && docker rm backend-test || true
+      docker stop db-test && docker rm db-test || true
       docker network rm dast-backend-net || true
       exit 0
   artifacts:
