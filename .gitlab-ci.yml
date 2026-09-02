@@ -242,15 +242,15 @@ sync-repo:
 #       for ARCH in arm64 amd64; do
 #         FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
 #         docker push $FULL_TAG | tee push-frontend-$ARCH.log
-#         if [ "$ARCH" = "arm64" ]; then
-#           DIGEST=$(grep -E 'digest: sha256:[a-f0-9]{64}' push-frontend-arm64.log | head -1 | sed -E 's/.*(sha256:[a-f0-9]{64}).*/\1/')
-#           echo "frontendArm64Digest=$DIGEST" > frontend.env
-#         fi
 #       done
 #       docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
 #         --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
 #         --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
-#       docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}
+#       MANIFEST_PUSH_OUTPUT=$(docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} 2>&1)
+#       echo "$MANIFEST_PUSH_OUTPUT"
+#       MANIFEST_DIGEST=$(echo "$MANIFEST_PUSH_OUTPUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
+#       echo "Frontend multi-arch digest: $MANIFEST_DIGEST"
+#       echo "frontendArm64Digest=$MANIFEST_DIGEST" > frontend.env
 #   artifacts:
 #     reports:
 #       dotenv: frontend.env
@@ -444,15 +444,15 @@ push-backend:
       for ARCH in arm64 amd64; do
         FULL_TAG="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-$ARCH"
         docker push $FULL_TAG | tee push-backend-$ARCH.log
-        if [ "$ARCH" = "arm64" ]; then
-          DIGEST=$(grep -E 'digest: sha256:[a-f0-9]{64}' push-backend-arm64.log | head -1 | sed -E 's/.*(sha256:[a-f0-9]{64}).*/\1/')
-          echo "BackendArm64Digest=$DIGEST" > backend.env
-        fi
       done
       docker manifest create ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID} \
         --amend ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-arm64 \
         --amend ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64
-      docker manifest push ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}
+      MANIFEST_PUSH_OUTPUT=$(docker manifest push ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID} 2>&1)
+      echo "$MANIFEST_PUSH_OUTPUT"
+      MANIFEST_DIGEST=$(echo "$MANIFEST_PUSH_OUTPUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
+      echo "Backend multi-arch digest: $MANIFEST_DIGEST"
+      echo "BackendArm64Digest=$MANIFEST_DIGEST" > backend.env
   artifacts:
     reports:
       dotenv: backend.env
@@ -466,54 +466,54 @@ push-backend:
       when: always
     - when: never
 
-# update-frontend-manifests:
-#   stage: update-frontend-manifests
-#   script:
-#     - |
-#       set -e
-#       # Загружаем переменные из dotenv артефакта вручную
-#       if [ -f frontend.env ]; then
-#         export $(cat frontend.env | xargs)
-#       else
-#         echo "WARNING: frontend.env not found"
-#       fi
+update-frontend-manifests:
+  stage: update-frontend-manifests
+  script:
+    - |
+      set -e
+      # Загружаем переменные из dotenv артефакта вручную
+      if [ -f frontend.env ]; then
+        export $(cat frontend.env | xargs)
+      else
+        echo "WARNING: frontend.env not found"
+      fi
 
-#       echo "=== DIAGNOSTIC START ==="
-#       echo "frontendArm64Digest: $frontendArm64Digest"
-#       echo "=== DIAGNOSTIC END ==="
+      echo "=== DIAGNOSTIC START ==="
+      echo "frontendArm64Digest: $frontendArm64Digest"
+      echo "=== DIAGNOSTIC END ==="
 
-#       git config user.email "apofeoz638@gmail.com"
-#       git config user.name "Artem Malashevskyi"
-#       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-#       if git ls-remote --heads origin $CI_COMMIT_BRANCH | grep -q $CI_COMMIT_BRANCH; then
-#         git pull --rebase --autostash origin $CI_COMMIT_BRANCH
-#       else
-#         echo "Remote branch does not exist, skipping pull"
-#       fi
+      git config user.email "apofeoz638@gmail.com"
+      git config user.name "Artem Malashevskyi"
+      git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
+      if git ls-remote --heads origin $CI_COMMIT_BRANCH | grep -q $CI_COMMIT_BRANCH; then
+        git pull --rebase --autostash origin $CI_COMMIT_BRANCH
+      else
+        echo "Remote branch does not exist, skipping pull"
+      fi
 
-#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
-#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
 
-#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
 
-#       git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-#       git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
-#       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-#       git push origin HEAD:$CI_COMMIT_BRANCH
-#   needs:
-#     - job: push-frontend
-#       artifacts: true
-#   rules:
-#     - if: $CI_PIPELINE_SOURCE == "web"
-#       when: always
-#     - when: never
+      git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
+      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
+      git push origin HEAD:$CI_COMMIT_BRANCH
+  needs:
+    - job: push-frontend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
 
 update-backend-manifests:
   stage: update-backend-manifests
