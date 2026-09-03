@@ -17,6 +17,7 @@ stages:
   - push-backend
   - update-frontend-manifests
   - update-backend-manifests
+  - sync2
 
 variables:
   UPSTREAM_URL: "https://github.com/Metra638/FamilyClub.WebAPI1.git"
@@ -574,7 +575,7 @@ update-backend-manifests:
     - when: never
 
 sync-repo:
-  stage: sync
+  stage: sync2
   script:
     - git config --global user.email "ci@gitlab.local"
     - git config --global user.name "GitLab CI"
