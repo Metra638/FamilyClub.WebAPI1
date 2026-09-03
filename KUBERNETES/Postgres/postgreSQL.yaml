@@ -26,6 +26,10 @@ spec:
     spec:
       serviceAccountName: postgres
       terminationGracePeriodSeconds: 60
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       volumes:
       - name: tmp
         emptyDir: {}
