@@ -30,6 +30,10 @@ spec:
         repository: "https://github.com/Metra638/FamilyClub.WebAPI1"
     spec:
       serviceAccountName: backend
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       imagePullSecrets:
         - name: dockerhub-secret
       terminationGracePeriodSeconds: 60
@@ -88,7 +92,6 @@ spec:
                   key: password
             - name: Redis__Database
               value: "0"
-              
             - name: Authentication__Google__ClientId
               valueFrom:
                 secretKeyRef:
@@ -99,7 +102,6 @@ spec:
                 secretKeyRef:
                   name: oidc-google
                   key: ClientSecret
-                  
             - name: AzureCommunicationServices__ConnectionString
               valueFrom:
                 secretKeyRef:
