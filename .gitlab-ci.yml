@@ -574,7 +574,7 @@ update-backend-manifests:
       when: always
     - when: never
 
-sync-repo:
+sync-repo2:
   stage: sync2
   script:
     - git config --global user.email "ci@gitlab.local"
