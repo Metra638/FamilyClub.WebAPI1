@@ -572,3 +572,18 @@ update-backend-manifests:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
     - when: never
+
+sync-repo:
+  stage: sync
+  script:
+    - git config --global user.email "ci@gitlab.local"
+    - git config --global user.name "GitLab CI"
+    - rm -rf /tmp/repo
+    - git clone --branch Final $UPSTREAM_URL /tmp/repo
+    - cd /tmp/repo
+    - git remote set-url origin http://root:${GITLAB_PUSH_TOKEN}@localhost/root/librellis1.git
+    - git push origin Final --force
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
