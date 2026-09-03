@@ -30,6 +30,10 @@ spec:
         repository: "https://github.com/Metra638/FamilyClub.WebAPI1"
     spec:
       serviceAccountName: frontend
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       imagePullSecrets:
       - name: dockerhub-secret
       terminationGracePeriodSeconds: 60
@@ -40,8 +44,6 @@ spec:
         ports:
         - containerPort: 3000
           protocol: TCP
-        # Ресурсы (requests/limits) не указаны намеренно:
-        # - Кластер имеет жёсткие ограничения по CPU/памяти, это приводит к "Pending".
         startupProbe:
           httpGet:
             path: /health
@@ -105,4 +107,3 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: familyclub-frontend
-
