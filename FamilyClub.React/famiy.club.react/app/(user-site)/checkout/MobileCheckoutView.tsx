@@ -243,7 +243,7 @@ export default function MobileCheckoutView({
             <div className="bg-[#f5f3ee] h-[65px] rounded-[9px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.25)] flex items-center px-5 sm:px-6">
               <input
                 type="text"
-                placeholder="Приізвище *"
+                placeholder="Прізвище *"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 className="w-full bg-transparent text-[20px] text-[#242424] placeholder:text-[#242424]/70 focus:outline-none"

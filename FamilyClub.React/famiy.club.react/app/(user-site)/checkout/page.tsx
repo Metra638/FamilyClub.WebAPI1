@@ -10,6 +10,7 @@ import {
 import type { ProductDto } from "@/lib/api/generated";
 import { getAuthToken, getAuthUserId } from "@/lib/auth/tokenStorage";
 import { alertError, alertSuccess, alertWarning } from "@/lib/ui/sweetAlert";
+import { useCurrentUser } from "@/app/(user-site)/userProfile/hooks/useCurrentUser";
 import styles from "./checkout.module.css";
 import MobileCheckoutView from "./MobileCheckoutView";
 
@@ -59,11 +60,41 @@ export default function CheckoutPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Current user (pre-fill personal data)
+  const { user: currentUser } = useCurrentUser();
+  const [hasPrefilled, setHasPrefilled] = useState(false);
+
   // Personal data
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("+380");
+  const [phone, setPhone] = useState("");
+
+  // Pre-fill personal data from current user profile
+  useEffect(() => {
+    if (!currentUser || hasPrefilled) return;
+
+    const rawName = currentUser.name?.trim() || "";
+    const rawSurname = currentUser.surname?.trim() || "";
+    const cleanEmail = currentUser.email?.trim() || "";
+    const cleanPhone = currentUser.phoneNumber?.trim() || "";
+
+    let fName = rawName.toLowerCase() !== "string" ? rawName : "";
+    let lName = rawSurname.toLowerCase() !== "string" ? rawSurname : "";
+
+    if (fName.includes(" ") && !lName) {
+      const parts = fName.split(/\s+/);
+      fName = parts[0] || "";
+      lName = parts.slice(1).join(" ") || "";
+    }
+
+    setFirstName((prev) => (prev.trim() ? prev : fName));
+    setLastName((prev) => (prev.trim() ? prev : lName));
+    setEmail((prev) => (prev.trim() ? prev : (cleanEmail.toLowerCase() !== "string" ? cleanEmail : "")));
+    setPhone((prev) => (prev.trim() ? prev : (cleanPhone.toLowerCase() !== "string" ? cleanPhone : "")));
+
+    setHasPrefilled(true);
+  }, [currentUser, hasPrefilled]);
 
   // Delivery
   const [deliveryProvider, setDeliveryProvider] = useState<DeliveryProvider>("nova_poshta");
@@ -409,7 +440,7 @@ export default function CheckoutPage() {
               <input
                 className={styles.formInput}
                 type="text"
-                placeholder="Приізвище *"
+                placeholder="Прізвище *"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 id="checkout-last-name"

@@ -49,6 +49,49 @@ export default function WriteReviewModal({
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!comment.trim()) {
+  //     setError("Будь ласка, введіть декілька слів про ваші враження");
+  //     return;
+  //   }
+
+  //   setSubmitting(true);
+  //   setError(null);
+
+  //   const token = getAuthToken();
+  //   const productId = item.productId;
+
+  //   if (!token) {
+  //     console.error("WriteReviewModal: потрібна авторизація для відгуку");
+  //   } else if (!productId || productId <= 0) {
+  //     console.error("WriteReviewModal: не вдалося визначити productId", { item });
+  //   } else {
+  //     try {
+  //       await reviewService.apiReviewsPost(
+  //         {
+  //           reviewDto: {
+  //             productId,
+  //             comment: comment.trim(),
+  //             rating,
+  //             createdAt: new Date(),
+  //             approved: true,
+  //           },
+  //         },
+  //         { headers: { Authorization: `Bearer ${token}` } },
+  //       );
+  //     } catch (err) {
+  //       console.error("Error posting review:", err);
+  //     }
+  //   }
+
+  //   onSubmitSuccess(`Дякуємо! Ваш відгук до книги «${item.bookTitle}» опубліковано.`);
+  //   onClose();
+  //   setComment("");
+  //   setRating(5);
+  //   setImages([]);
+  //   setSubmitting(false);
+  // };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) {
@@ -56,41 +99,49 @@ export default function WriteReviewModal({
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) {
+      setError("Для додавання відгуку необхідно увійти до свого акаунту");
+      return;
+    }
+
+    const productId = item.productId;
+    if (!productId || productId <= 0) {
+      setError("Не вдалося визначити товар для відгуку");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
-    const token = getAuthToken();
-    const productId = item.productId;
+    try {
+      // reviewService сам підставить Authorization через authMiddleware,
+      // не перетираючи заголовок Content-Type: application/json
+      await reviewService.apiReviewsPost({
+        reviewDto: {
+          productId,
+          comment: comment.trim(),
+          rating,
+          createdAt: new Date(),
+          approved: true,
+        },
+      });
 
-    if (!token) {
-      console.error("WriteReviewModal: потрібна авторизація для відгуку");
-    } else if (!productId || productId <= 0) {
-      console.error("WriteReviewModal: не вдалося визначити productId", { item });
-    } else {
-      try {
-        await reviewService.apiReviewsPost(
-          {
-            reviewDto: {
-              productId,
-              comment: comment.trim(),
-              rating,
-              createdAt: new Date(),
-              approved: true,
-            },
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-      } catch (err) {
-        console.error("Error posting review:", err);
+      onSubmitSuccess(`Дякуємо! Ваш відгук до книги «${item.bookTitle}» опубліковано.`);
+      onClose();
+      setComment("");
+      setRating(5);
+      setImages([]);
+    } catch (err: any) {
+      console.error("Error posting review:", err);
+      if (err?.response?.status === 401) {
+        setError("Сесія закінчилася. Будь ласка, авторизуйтесь знову.");
+      } else {
+        setError("Не вдалося надіслати відгук. Спробуйте пізніше.");
       }
+    } finally {
+      setSubmitting(false);
     }
-
-    onSubmitSuccess(`Дякуємо! Ваш відгук до книги «${item.bookTitle}» опубліковано.`);
-    onClose();
-    setComment("");
-    setRating(5);
-    setImages([]);
-    setSubmitting(false);
   };
 
   return (
@@ -156,12 +207,12 @@ export default function WriteReviewModal({
               {rating === 5
                 ? "Відмінно! (5/5)"
                 : rating === 4
-                ? "Добре (4/5)"
-                : rating === 3
-                ? "Нормально (3/5)"
-                : rating === 2
-                ? "Погано (2/5)"
-                : "Жахливо (1/5)"}
+                  ? "Добре (4/5)"
+                  : rating === 3
+                    ? "Нормально (3/5)"
+                    : rating === 2
+                      ? "Погано (2/5)"
+                      : "Жахливо (1/5)"}
             </span>
           </div>
 
