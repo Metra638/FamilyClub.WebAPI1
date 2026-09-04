@@ -289,8 +289,8 @@ backend-checks:
 test-backend:
   stage: test-backend
   script:
-    - echo "Running backend unit tests"
     - dotnet test FamilyClub.WebAPI.Tests/FamilyClub.WebAPI.Tests.csproj
+    - dotnet test FamilyClub.BLL.Tests/FamilyClub.BLL.Tests.csproj
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
