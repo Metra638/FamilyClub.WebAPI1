@@ -496,11 +496,10 @@ update-frontend-manifests:
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-      if git ls-remote --heads origin $CI_COMMIT_BRANCH | grep -q $CI_COMMIT_BRANCH; then
-        git pull --rebase --autostash origin $CI_COMMIT_BRANCH
-      else
-        echo "Remote branch does not exist, skipping pull"
-      fi
+
+      # Исправление: вместо git pull --rebase используем fetch + reset
+      git fetch origin $CI_COMMIT_BRANCH
+      git reset --hard origin/$CI_COMMIT_BRANCH
 
       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
@@ -544,11 +543,10 @@ update-backend-manifests:
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-      if git ls-remote --heads origin $CI_COMMIT_BRANCH | grep -q $CI_COMMIT_BRANCH; then
-        git pull --rebase --autostash origin $CI_COMMIT_BRANCH
-      else
-        echo "Remote branch does not exist, skipping pull"
-      fi
+
+      # Исправление: вместо git pull --rebase используем fetch + reset
+      git fetch origin $CI_COMMIT_BRANCH
+      git reset --hard origin/$CI_COMMIT_BRANCH
 
       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES/Backend/backend-deployment.yaml
       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES/Backend/backend-deployment.yaml
