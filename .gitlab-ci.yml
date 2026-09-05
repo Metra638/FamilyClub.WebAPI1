@@ -497,7 +497,8 @@ update-frontend-manifests:
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
 
-      # Исправление: вместо git pull --rebase используем fetch + reset
+      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
+
       git fetch origin $CI_COMMIT_BRANCH
       git reset --hard origin/$CI_COMMIT_BRANCH
 
@@ -515,7 +516,6 @@ update-frontend-manifests:
 
       git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
       git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
-      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
   needs:
     - job: push-frontend
@@ -544,7 +544,8 @@ update-backend-manifests:
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
 
-      # Исправление: вместо git pull --rebase используем fetch + reset
+      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
+
       git fetch origin $CI_COMMIT_BRANCH
       git reset --hard origin/$CI_COMMIT_BRANCH
 
@@ -562,7 +563,6 @@ update-backend-manifests:
 
       git add KUBERNETES/Backend/backend-deployment.yaml KUBERNETES-TEST/Backend/backend-deployment.yaml
       git commit -m "Update backend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
-      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
   needs:
     - job: push-backend
