@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart, type FormatType } from "@/lib/hooks/useCart";
 import {
@@ -61,8 +61,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
 
   // Current user (pre-fill personal data)
-  const { user: currentUser } = useCurrentUser();
-  const [hasPrefilled, setHasPrefilled] = useState(false);
+  const { user: currentUser, loading: userLoading } = useCurrentUser();
+  const prefilledUserIdRef = useRef<string | null>(null);
 
   // Personal data
   const [firstName, setFirstName] = useState("");
@@ -70,17 +70,22 @@ export default function CheckoutPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Pre-fill personal data from current user profile
+  // Pre-fill personal data from /api/AuthClubMember/me once per user id.
+  // Wait until userLoading finishes — otherwise an early empty paint can "stick"
+  // if a latch is set before the profile response arrives.
   useEffect(() => {
-    if (!currentUser || hasPrefilled) return;
+    if (userLoading || !currentUser?.id) return;
+    if (prefilledUserIdRef.current === currentUser.id) return;
 
-    const rawName = currentUser.name?.trim() || "";
-    const rawSurname = currentUser.surname?.trim() || "";
-    const cleanEmail = currentUser.email?.trim() || "";
-    const cleanPhone = currentUser.phoneNumber?.trim() || "";
+    const rawName = (currentUser.name ?? "").trim();
+    const rawSurname = (currentUser.surname ?? "").trim();
+    const cleanEmail = (currentUser.email ?? "").trim();
+    const cleanPhone = (currentUser.phoneNumber ?? "").trim();
 
-    let fName = rawName.toLowerCase() !== "string" ? rawName : "";
-    let lName = rawSurname.toLowerCase() !== "string" ? rawSurname : "";
+    const isPlaceholder = (v: string) => !v || v.toLowerCase() === "string";
+
+    let fName = isPlaceholder(rawName) ? "" : rawName;
+    let lName = isPlaceholder(rawSurname) ? "" : rawSurname;
 
     if (fName.includes(" ") && !lName) {
       const parts = fName.split(/\s+/);
@@ -90,11 +95,11 @@ export default function CheckoutPage() {
 
     setFirstName((prev) => (prev.trim() ? prev : fName));
     setLastName((prev) => (prev.trim() ? prev : lName));
-    setEmail((prev) => (prev.trim() ? prev : (cleanEmail.toLowerCase() !== "string" ? cleanEmail : "")));
-    setPhone((prev) => (prev.trim() ? prev : (cleanPhone.toLowerCase() !== "string" ? cleanPhone : "")));
+    setEmail((prev) => (prev.trim() ? prev : (isPlaceholder(cleanEmail) ? "" : cleanEmail)));
+    setPhone((prev) => (prev.trim() ? prev : (isPlaceholder(cleanPhone) ? "" : cleanPhone)));
 
-    setHasPrefilled(true);
-  }, [currentUser, hasPrefilled]);
+    prefilledUserIdRef.current = currentUser.id;
+  }, [currentUser, userLoading]);
 
   // Delivery
   const [deliveryProvider, setDeliveryProvider] = useState<DeliveryProvider>("nova_poshta");
