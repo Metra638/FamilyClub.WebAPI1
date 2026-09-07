@@ -157,7 +157,7 @@
 import React from "react";
 import "../../styles/globals.css";
 import { Source_Sans_3, Roboto_Mono } from "next/font/google";
-import UpNavigation from "../(user-site)/layout/header/UpNavigation";
+import UpNavigation from "@/app/(user-site)/layout/header/UpNavigation";
 import AdminLayoutSidebarItems from "./layout/layoutNav";
 import PresenceHeartbeatMount from "./admin/users/section/PresenceHeartbeatMount";
 import AdminSidebarUserCard from "./layout/AdminSidebarUserCard";

@@ -7,6 +7,9 @@ import Footer from "@/app/(user-site)/layout/footer/Footer";
 import MobileHeader from "@/app/(user-site)/layout/header/MobileHeader";
 import MobileBottomNav from "@/app/(user-site)/layout/header/MobileBottomNav";
 import MobileNotFoundView from "./MobileNotFoundView";
+import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
+import ukDictionary from "@/messages/uk.json";
+import type { Dictionary } from "@/lib/i18n/types";
 
 const sourceSans = Source_Sans_3({
   subsets: ["cyrillic", "latin"],
@@ -29,6 +32,7 @@ const imgNotebookLines  = "/images/not-found/notebook-lines.svg";
 
 export default function NotFound() {
   return (
+    <LocaleProvider locale="uk" dictionary={ukDictionary as Dictionary}>
     <html lang="uk" className={`${sourceSans.variable} ${robotoMono.variable}`}>
       <body className="antialiased bg-[#F5F3EE] text-foreground font-sans m-0 p-0 flex flex-col min-h-screen">
         <MobileHeader />
@@ -224,7 +228,7 @@ export default function NotFound() {
                   </div>
 
                   <Link
-                    href="/"
+                    href="/uk"
                     className="inline-flex items-center justify-center text-[#F5F3EE] transition-colors duration-200 hover:bg-[#00452a] active:scale-95"
                     style={{
                       fontFamily: "var(--font-sans)",
@@ -255,5 +259,6 @@ export default function NotFound() {
         <MobileBottomNav />
       </body>
     </html>
+    </LocaleProvider>
   );
 }

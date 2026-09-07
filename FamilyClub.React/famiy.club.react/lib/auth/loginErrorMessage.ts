@@ -1,13 +1,21 @@
 import { readApiErrorMessage } from "@/lib/api/readApiError";
 
-/** Maps login API errors to short Ukrainian UI copy. */
-export async function loginErrorMessage(err: unknown): Promise<string> {
-  const raw = await readApiErrorMessage(err, "Невірний email або пароль");
+type LoginErrorCopy = {
+  invalidCredentials: string;
+  accountLocked: string;
+};
+
+/** Maps login API errors to short localized UI copy. */
+export async function loginErrorMessage(
+  err: unknown,
+  copy: LoginErrorCopy,
+): Promise<string> {
+  const raw = await readApiErrorMessage(err, copy.invalidCredentials);
   if (/locked/i.test(raw)) {
-    return "Акаунт тимчасово заблоковано. Спробуйте пізніше.";
+    return copy.accountLocked;
   }
   if (/wrong email or password/i.test(raw) || /unauthorized/i.test(raw)) {
-    return "Невірний email або пароль";
+    return copy.invalidCredentials;
   }
   return raw;
 }

@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@/app/(user-site)/*": ["./app/[locale]/(user-site)/*"]
     }
   },
   "include": [
