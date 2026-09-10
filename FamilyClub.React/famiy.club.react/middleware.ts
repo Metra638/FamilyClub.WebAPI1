@@ -6,9 +6,10 @@ const PUBLIC_FILE = /\.[^/]+$/;
 
 function shouldBypassLocale(pathname: string): boolean {
   return (
+    pathname === "/health" ||
+    pathname.startsWith("/health/") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/health") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/images") ||
     PUBLIC_FILE.test(pathname)
@@ -24,6 +25,7 @@ function pathnameHasLocale(pathname: string): boolean {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // K8s/Docker probes must hit /health with 200 — never redirect to /uk/health.
   if (shouldBypassLocale(pathname)) {
     return NextResponse.next();
   }
@@ -44,5 +46,8 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|admin|health|_next|images|favicon.ico|.*\\..*).*)"],
+  // Do not run locale middleware for health/api/admin/static assets.
+  matcher: [
+    "/((?!api(?:/|$)|admin(?:/|$)|health(?:/|$)|_next(?:/|$)|images(?:/|$)|favicon\\.ico$).*)",
+  ],
 };
