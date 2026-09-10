@@ -8,6 +8,7 @@ function shouldBypassLocale(pathname: string): boolean {
   return (
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api") ||
+    pathname.startsWith("/health") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/images") ||
     PUBLIC_FILE.test(pathname)
@@ -43,5 +44,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|admin|_next|images|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!api|admin|health|_next|images|favicon.ico|.*\\..*).*)"],
 };
