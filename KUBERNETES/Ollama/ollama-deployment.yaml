@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: production
+  labels:
+    app: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      initContainers:
+        - name: pull-models
+          image: ollama/ollama:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              ollama serve &
+              PID=$!
+              echo "Waiting for Ollama to be ready..."
+              until ollama list >/dev/null 2>&1; do
+                sleep 2
+              done
+              echo "Ollama is ready. Pulling models..."
+              ollama pull qwen2.5:1.5b
+              ollama pull nomic-embed-text
+              echo "Models pulled successfully."
+              kill $PID
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /root/.ollama
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - name: http
+              containerPort: 11434
+              protocol: TCP
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+          resources:
+            requests:
+              cpu: "2"
+              memory: "3Gi"
+            limits:
+              cpu: "4"
+              memory: "6Gi"
+          readinessProbe:
+            exec:
+              command: ["ollama", "list"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["ollama", "list"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /root/.ollama
+      volumes:
+        - name: ollama-models
+          persistentVolumeClaim:
+            claimName: ollama-models-pvc
