@@ -117,6 +117,14 @@ spec:
                 secretKeyRef:
                   name: azure-communication-secret
                   key: AzureCommunicationServices__FromName
+
+            - name: InkAssistant__OllamaBaseUrl
+              value: http://ollama:11434
+            - name: InkAssistant__Model
+              value: qwen2.5:1.5b
+            - name: InkAssistant__EmbeddingModel
+              value: nomic-embed-text
+              
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
