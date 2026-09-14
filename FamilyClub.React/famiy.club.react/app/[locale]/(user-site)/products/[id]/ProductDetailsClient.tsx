@@ -7,6 +7,7 @@ import ReviewPagination from "./ReviewPagination";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getProductCoverApiUrl, getProductCoverUrl, getProductImageUrl } from "@/lib/products/productCoverUrl";
 import {
   authorService,
   bookSizeService,
@@ -83,30 +84,7 @@ const formatReviewDate = (value?: Date) => {
 };
 
 const getImageSrc = (product?: ProductDto | null) => {
-  if (!product) return null;
-  const image = product.productImages?.[0];
-  if (!image?.imageData) return null;
-  const normalizedData = image.imageData.trim();
-  if (normalizedData.startsWith("data:")) {
-    return normalizedData;
-  }
-
-  const mimeType = (() => {
-    if (normalizedData.startsWith("UklGR")) return "image/webp";
-    if (normalizedData.startsWith("/9j/")) return "image/jpeg";
-    if (normalizedData.startsWith("iVBORw0KGgo")) return "image/png";
-    if (normalizedData.startsWith("R0lGOD")) return "image/gif";
-
-    const extension = image.imageName?.split(".").pop()?.toLowerCase();
-    switch (extension) {
-      case "webp": return "image/webp";
-      case "png": return "image/png";
-      case "gif": return "image/gif";
-      default: return "image/jpeg";
-    }
-  })();
-
-  return `data:${mimeType};base64,${normalizedData}`;
+  return getProductCoverUrl(product);
 };
 
 const getAvatarSrc = (avatarData?: string | null) => {
@@ -127,31 +105,9 @@ const getAvatarSrc = (avatarData?: string | null) => {
 
 const getGalleryImages = (product?: ProductDto | null) => {
   if (!product) return [];
-  const images = (product.productImages ?? [])
-    .map((image) => {
-      if (!image.imageData) return null;
-      const normalizedData = image.imageData.trim();
-      if (normalizedData.startsWith("data:")) return normalizedData;
-
-      const mimeType = (() => {
-        if (normalizedData.startsWith("UklGR")) return "image/webp";
-        if (normalizedData.startsWith("/9j/")) return "image/jpeg";
-        if (normalizedData.startsWith("iVBORw0KGgo")) return "image/png";
-        if (normalizedData.startsWith("R0lGOD")) return "image/gif";
-
-        const extension = image.imageName?.split(".").pop()?.toLowerCase();
-        switch (extension) {
-          case "webp": return "image/webp";
-          case "png": return "image/png";
-          case "gif": return "image/gif";
-          default: return "image/jpeg";
-        }
-      })();
-      return `data:${mimeType};base64,${normalizedData}`;
-    })
-    .filter(Boolean) as string[];
-
-  return images;
+  return (product.productImages ?? [])
+    .map((image) => getProductImageUrl(product, image))
+    .filter((url): url is string => Boolean(url));
 };
 
 const formatYear = (value?: Date | string | null) => {
@@ -252,6 +208,8 @@ export default function ProductDetailsClient({ id }: { id: string }) {
   const lp = useLocalizedPath();
   const { locale } = useLocale();
   const [product, setProduct] = useState<ProductDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isNotFound, setIsNotFound] = useState(false);
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [reviews, setReviews] = useState<ReviewDto[]>([]);
   const [languages, setLanguages] = useState<LanguageDto[]>([]);
@@ -329,13 +287,20 @@ export default function ProductDetailsClient({ id }: { id: string }) {
       console.error(e);
     }
   };
+
   useEffect(() => {
     const productId = Number(id);
-    if (!Number.isFinite(productId)) return;
+    if (!Number.isFinite(productId)) {
+      setIsNotFound(true);
+      setIsLoading(false);
+      return;
+    }
     let isMounted = true;
 
     const loadData = async () => {
       try {
+        setIsLoading(true);
+        setIsNotFound(false);
         const [
           productResult,
           productsResult,
@@ -347,7 +312,10 @@ export default function ProductDetailsClient({ id }: { id: string }) {
           formatsResult,
           bookSizesResult,
         ] = await Promise.all([
-          productService.apiProductsIdGet({ id: productId }),
+          productService.apiProductsIdGet({ id: productId }).catch((err) => {
+            if (err?.response?.status === 404) return null;
+            throw err;
+          }),
           productService.apiProductsGet().catch((err) => { console.warn("Failed to fetch products:", err); return []; }),
           reviewService.apiReviewsByProductProductIdGet({ productId }).catch(() => reviewService.apiReviewsGet().catch((err) => { console.warn("Failed to fetch reviews:", err); return []; })),
           languageService.apiLanguagesGet().catch((err) => { console.warn("Failed to fetch languages:", err); return []; }),
@@ -359,6 +327,10 @@ export default function ProductDetailsClient({ id }: { id: string }) {
         ]);
 
         if (!isMounted) return;
+        if (!productResult || !productResult.id) {
+          setIsNotFound(true);
+          return;
+        }
         setProduct(productResult);
         setProducts(productsResult ?? []);
         setReviews(reviewsResult ?? []);
@@ -384,6 +356,9 @@ export default function ProductDetailsClient({ id }: { id: string }) {
         }
       } catch (error) {
         console.error("Failed to load product details:", error);
+        if (isMounted) setIsNotFound(true);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
 
@@ -769,6 +744,52 @@ export default function ProductDetailsClient({ id }: { id: string }) {
       formatDisplay,
     ],
   );
+
+  if (isLoading && !product) {
+    return (
+      <div className="relative min-h-screen w-full bg-[#3a2618] flex items-center justify-center p-4">
+        <div className="rounded-[16px] bg-[#f5f3ee] p-8 shadow-xl text-center">
+          <div className="animate-spin text-4xl mb-3">⏳</div>
+          <p className="text-lg font-medium text-[#242424]">
+            {locale === "uk" ? "Завантаження товару..." : "Loading product..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isNotFound || !product) {
+    return (
+      <div className="relative min-h-screen w-full bg-[#3a2618] flex items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-[16px] bg-[#f5f3ee] p-8 shadow-xl text-center">
+          <div className="text-5xl mb-4">📖</div>
+          <h1 className="font-serif text-2xl font-bold text-[#242424] mb-2">
+            {locale === "uk" ? "Товар не знайдено" : "Product not found"}
+          </h1>
+          <p className="text-sm text-[#242424]/70 mb-6">
+            {locale === "uk"
+              ? "Книгу з таким ідентифікатором не знайдено або її було видалено."
+              : "The product with this ID was not found or has been removed."}
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => router.back()}
+              type="button"
+              className="px-5 py-2.5 rounded-[12px] bg-[#e8e6e1] text-[#242424] font-medium hover:bg-[#dedbd4] transition-colors"
+            >
+              {locale === "uk" ? "Назад" : "Back"}
+            </button>
+            <Link
+              href={lp("/catalog")}
+              className="px-5 py-2.5 rounded-[12px] bg-[#1a4331] text-white font-medium hover:bg-[#153728] transition-colors"
+            >
+              {locale === "uk" ? "До каталогу" : "To catalog"}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

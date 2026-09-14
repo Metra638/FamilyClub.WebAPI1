@@ -6,6 +6,7 @@ using FamilyClub.DAL.Interfaces;
 using FamilyClub.DAL.Repositories;
 using FamilyClubLibrary;
 using FamilyClub.WebAPI.Middlewares;
+using FamilyClub.WebAPI.Filters;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
@@ -30,11 +31,20 @@ builder.Services.AddCors(options =>
         });
 });
 
-
+// Configure Stripe
+var stripeSecret = builder.Configuration["Stripe:SecretKey"];
+if (!string.IsNullOrWhiteSpace(stripeSecret))
+{
+    Stripe.StripeConfiguration.ApiKey = stripeSecret;
+    builder.Services.AddSingleton(new Stripe.StripeClient(stripeSecret));
+}
 
 // MVC + Views
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<OperationCanceledExceptionFilter>();
+});
 //builder.Services.AddControllersWithViews();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -119,6 +129,7 @@ builder.Services.Configure<FamilyClub.BLL.Options.SmtpOptions>(
     builder.Configuration.GetSection(FamilyClub.BLL.Options.SmtpOptions.SectionName));
 builder.Services.Configure<FamilyClub.BLL.Options.AzureCommunicationServicesOptions>(
     builder.Configuration.GetSection(FamilyClub.BLL.Options.AzureCommunicationServicesOptions.SectionName));
+
 
 var azureEmailOptions = builder.Configuration
     .GetSection(FamilyClub.BLL.Options.AzureCommunicationServicesOptions.SectionName)
@@ -282,7 +293,7 @@ try
     builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(multiplexer);
     builder.Services.AddStackExchangeRedisCache(options =>
     {
-        options.Configuration = redisConnStr;
+        options.ConnectionMultiplexerFactory = () => Task.FromResult<StackExchange.Redis.IConnectionMultiplexer>(multiplexer);
         options.InstanceName = builder.Configuration["CacheSettings:InstanceName"] ?? "FamilyClubCache_";
     });
 }

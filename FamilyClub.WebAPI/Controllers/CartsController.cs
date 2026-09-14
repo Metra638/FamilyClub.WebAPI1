@@ -21,8 +21,15 @@ namespace FamilyClub.WebAPI.Controllers
 		[HttpGet("{clubMemberId}")]
 		public async Task<ActionResult<CartDTO>> GetByMemberId(string clubMemberId, CancellationToken cancellationToken)
 		{
-			var cart = await _cartService.GetOrCreateByMemberIdAsync(clubMemberId, cancellationToken);
-			return Ok(cart);
+			try
+			{
+				var cart = await _cartService.GetOrCreateByMemberIdAsync(clubMemberId, cancellationToken);
+				return Ok(cart);
+			}
+			catch (OperationCanceledException)
+			{
+				return Ok(new CartDTO { ClubMemberId = clubMemberId, CartItems = new List<CartItemDTO>() });
+			}
 		}
 
 		[HttpPost("{clubMemberId}/items")]

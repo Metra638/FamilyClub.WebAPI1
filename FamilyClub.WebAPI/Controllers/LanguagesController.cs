@@ -1,4 +1,4 @@
-﻿using FamilyClub.BLL.DTOs.Language;
+using FamilyClub.BLL.DTOs.Language;
 using FamilyClub.BLL.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,8 +20,15 @@ public class LanguagesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<LanguageDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var languages = await _languageService.GetAllAsync(cancellationToken);
-        return Ok(languages);
+        try
+        {
+            var languages = await _languageService.GetAllAsync(cancellationToken);
+            return Ok(languages);
+        }
+        catch (OperationCanceledException)
+        {
+            return Ok(Array.Empty<LanguageDto>());
+        }
     }
 
     [HttpGet("{id:int}")]

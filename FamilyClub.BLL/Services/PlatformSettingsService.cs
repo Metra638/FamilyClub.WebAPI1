@@ -14,6 +14,7 @@ public class PlatformSettingsService : IPlatformSettingsService
     private readonly ICacheService _cacheService;
 
     private const string SettingsCacheKey = "platform_settings_singleton";
+    private static readonly SemaphoreSlim _settingsLock = new(1, 1);
 
     public PlatformSettingsService(
         IPlatformSettingsRepository repository,
@@ -35,18 +36,32 @@ public class PlatformSettingsService : IPlatformSettingsService
             return cachedSettings;
         }
 
-        var entity = await _repository.GetSingletonAsync(cancellationToken);
-        if (entity is null)
+        await _settingsLock.WaitAsync(cancellationToken);
+        try
         {
-            entity = CreateDefault();
-            await _repository.AddAsync(entity, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            cachedSettings = await _cacheService.GetAsync<PlatformSettingsDto>(SettingsCacheKey, CancellationToken.None);
+            if (cachedSettings is not null)
+            {
+                return cachedSettings;
+            }
+
+            var entity = await _repository.GetSingletonAsync(CancellationToken.None);
+            if (entity is null)
+            {
+                entity = CreateDefault();
+                await _repository.AddAsync(entity, CancellationToken.None);
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+            }
+
+            var dto = Map(entity);
+            await _cacheService.SetAsync(SettingsCacheKey, dto, TimeSpan.FromHours(1), CancellationToken.None);
+
+            return dto;
         }
-
-        var dto = Map(entity);
-        await _cacheService.SetAsync(SettingsCacheKey, dto, TimeSpan.FromHours(1), cancellationToken);
-
-        return dto;
+        finally
+        {
+            _settingsLock.Release();
+        }
     }
 
     public async Task<PlatformSettingsDto> UpdateAsync(

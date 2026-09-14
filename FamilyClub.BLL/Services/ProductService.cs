@@ -1,4 +1,4 @@
-﻿using FamilyClub.BLL.DTOs.ActionLog;
+using FamilyClub.BLL.DTOs.ActionLog;
 using FamilyClub.BLL.DTOs.Product;
 using FamilyClub.BLL.Interfaces;
 using FamilyClub.DAL.EF;
@@ -17,8 +17,9 @@ public class ProductService : IProductService
 	private readonly IActionLogService _actionLog;
 	private readonly ICacheService _cacheService;
 
-	private const string AllProductsCacheKey = "products_all_v2";
-	private static string GetProductCacheKey(int id) => $"products_item_{id}";
+	private const string AllProductsCacheKey = "products_all_v3";
+	private static string GetProductCacheKey(int id) => $"products_item_v3_{id}";
+	private static readonly SemaphoreSlim _productsLock = new(1, 1);
 
 	public ProductService(
 		IProductRepository productRepository,
@@ -42,94 +43,103 @@ public class ProductService : IProductService
             return cachedProducts;
         }
 
-        // Lightweight list: never load ImageData from DB. Map DTO in memory after EF projection.
-        var rows = await _context.Products
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Select(p => new
-            {
-                p.Id,
-                p.ProductName,
-                p.Price,
-                p.DiscountPrice,
-                p.Description,
-                p.PublisherId,
-                p.OriginalTitle,
-                p.PageCount,
-                p.PublishingDate,
-                p.CoverType,
-                p.Availability,
-                p.QuantityInStock,
-                p.ProductCode,
-                p.WeightGrams,
-                p.ItemsInSet,
-                p.OriginalLanguageId,
-                p.ISBN,
-                p.PromotionId,
-                CoverImageId = p.ProductImages
-                    .OrderBy(i => i.Id)
-                    .Select(i => (int?)i.Id)
-                    .FirstOrDefault(),
-                CoverImageName = p.ProductImages
-                    .OrderBy(i => i.Id)
-                    .Select(i => i.ImageName)
-                    .FirstOrDefault(),
-                AuthorIds = p.Authors.Select(a => a.Id).ToList(),
-                LanguageIds = p.Languages.Select(l => l.Id).ToList(),
-                CategoryIds = p.Categories.Select(c => c.Id).ToList(),
-                SeriesIds = p.Series.Select(s => s.Id).ToList(),
-                TranslatorIds = p.Translators.Select(t => t.Id).ToList(),
-                FormatIds = p.Formats.Select(f => f.Id).ToList(),
-                BookSizeIds = p.BookSizes.Select(f => f.Id).ToList(),
-                AgeRestrictionIds = p.AgeRestrictions.Select(a => a.Id).ToList(),
-            })
-            .ToListAsync(cancellationToken);
-
-        var dtos = rows.Select(p => new ProductDto
+        await _productsLock.WaitAsync(cancellationToken);
+        try
         {
-            Id = p.Id,
-            ProductName = p.ProductName,
-            Price = p.Price,
-            DiscountPrice = p.DiscountPrice,
-            Description = p.Description,
-            PublisherId = p.PublisherId,
-            OriginalTitle = p.OriginalTitle,
-            PageCount = p.PageCount,
-            PublishingDate = p.PublishingDate,
-            CoverType = p.CoverType,
-            Availability = p.Availability,
-            QuantityInStock = p.QuantityInStock,
-            ProductCode = p.ProductCode,
-            WeightGrams = p.WeightGrams,
-            ItemsInSet = p.ItemsInSet,
-            OriginalLanguageId = p.OriginalLanguageId,
-            ISBN = p.ISBN,
-            PromotionId = p.PromotionId,
-            ProductImages = p.CoverImageId is null
-                ? new List<ProductImage>()
-                : new List<ProductImage>
+            cachedProducts = await _cacheService.GetAsync<List<ProductDto>>(AllProductsCacheKey, CancellationToken.None);
+            if (cachedProducts is not null)
+            {
+                return cachedProducts;
+            }
+
+            // Single query with primary cover image data directly included to avoid 50+ separate HTTP/DB requests on frontend
+            var rows = await _context.Products
+                .AsNoTracking()
+                .Select(p => new
                 {
-                    new()
+                    p.Id,
+                    p.ProductName,
+                    p.Price,
+                    p.DiscountPrice,
+                    p.Description,
+                    p.PublisherId,
+                    p.OriginalTitle,
+                    p.PageCount,
+                    p.PublishingDate,
+                    p.CoverType,
+                    p.Availability,
+                    p.QuantityInStock,
+                    p.ProductCode,
+                    p.WeightGrams,
+                    p.ItemsInSet,
+                    p.OriginalLanguageId,
+                    p.ISBN,
+                    p.PromotionId,
+                    CoverImage = p.ProductImages
+                        .OrderBy(i => i.Id)
+                        .Select(i => new { i.Id, i.ImageName, i.ImageData })
+                        .FirstOrDefault(),
+                    AuthorIds = p.Authors.Select(a => a.Id).ToList(),
+                    LanguageIds = p.Languages.Select(l => l.Id).ToList(),
+                    CategoryIds = p.Categories.Select(c => c.Id).ToList(),
+                    SeriesIds = p.Series.Select(s => s.Id).ToList(),
+                    TranslatorIds = p.Translators.Select(t => t.Id).ToList(),
+                    FormatIds = p.Formats.Select(f => f.Id).ToList(),
+                    BookSizeIds = p.BookSizes.Select(f => f.Id).ToList(),
+                    AgeRestrictionIds = p.AgeRestrictions.Select(a => a.Id).ToList(),
+                })
+                .ToListAsync(CancellationToken.None);
+
+            var dtos = rows.Select(p => new ProductDto
+            {
+                Id = p.Id,
+                ProductName = p.ProductName,
+                Price = p.Price,
+                DiscountPrice = p.DiscountPrice,
+                Description = p.Description,
+                PublisherId = p.PublisherId,
+                OriginalTitle = p.OriginalTitle,
+                PageCount = p.PageCount,
+                PublishingDate = p.PublishingDate,
+                CoverType = p.CoverType,
+                Availability = p.Availability,
+                QuantityInStock = p.QuantityInStock,
+                ProductCode = p.ProductCode,
+                WeightGrams = p.WeightGrams,
+                ItemsInSet = p.ItemsInSet,
+                OriginalLanguageId = p.OriginalLanguageId,
+                ISBN = p.ISBN,
+                PromotionId = p.PromotionId,
+                ProductImages = p.CoverImage is null
+                    ? new List<ProductImage>()
+                    : new List<ProductImage>
                     {
-                        Id = p.CoverImageId.Value,
-                        ImageName = p.CoverImageName ?? string.Empty,
-                        ImageData = Array.Empty<byte>(),
-                        ProductId = p.Id,
+                        new()
+                        {
+                            Id = p.CoverImage.Id,
+                            ImageName = p.CoverImage.ImageName ?? string.Empty,
+                            ImageData = p.CoverImage.ImageData ?? Array.Empty<byte>(),
+                            ProductId = p.Id,
+                        },
                     },
-                },
-            AuthorIds = p.AuthorIds,
-            LanguageIds = p.LanguageIds,
-            CategoryIds = p.CategoryIds,
-            SeriesIds = p.SeriesIds,
-            TranslatorIds = p.TranslatorIds,
-            FormatIds = p.FormatIds,
-            BookSizeIds = p.BookSizeIds,
-            AgeRestrictionIds = p.AgeRestrictionIds,
-        }).ToList();
+                AuthorIds = p.AuthorIds,
+                LanguageIds = p.LanguageIds,
+                CategoryIds = p.CategoryIds,
+                SeriesIds = p.SeriesIds,
+                TranslatorIds = p.TranslatorIds,
+                FormatIds = p.FormatIds,
+                BookSizeIds = p.BookSizeIds,
+                AgeRestrictionIds = p.AgeRestrictionIds,
+            }).ToList();
 
-        await _cacheService.SetAsync(AllProductsCacheKey, dtos, TimeSpan.FromMinutes(15), cancellationToken);
+            await _cacheService.SetAsync(AllProductsCacheKey, dtos, TimeSpan.FromMinutes(30), CancellationToken.None);
 
-        return dtos;
+            return dtos;
+        }
+        finally
+        {
+            _productsLock.Release();
+        }
     }
 
     public async Task<(byte[] Data, string ContentType)?> GetProductImageAsync(
@@ -137,6 +147,13 @@ public class ProductService : IProductService
         int imageId,
         CancellationToken cancellationToken = default)
     {
+        var cacheKey = $"product_img_{productId}_{imageId}";
+        var cached = await _cacheService.GetAsync<CachedProductImage>(cacheKey, cancellationToken);
+        if (cached is not null && cached.Data is not null && cached.Data.Length > 0)
+        {
+            return (cached.Data, cached.ContentType);
+        }
+
         var image = await _context.Set<ProductImage>()
             .AsNoTracking()
             .Where(i => i.ProductId == productId && i.Id == imageId)
@@ -148,7 +165,14 @@ public class ProductService : IProductService
             return null;
         }
 
-        return (image.ImageData, ResolveImageContentType(image.ImageName, image.ImageData));
+        var contentType = ResolveImageContentType(image.ImageName, image.ImageData);
+        await _cacheService.SetAsync(
+            cacheKey,
+            new CachedProductImage { Data = image.ImageData, ContentType = contentType },
+            TimeSpan.FromDays(7),
+            cancellationToken);
+
+        return (image.ImageData, contentType);
     }
 
     public async Task<ProductDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -160,14 +184,43 @@ public class ProductService : IProductService
             return cachedProduct;
         }
 
-        var product = await _productRepository.GetByIdAsync(id, cancellationToken);
+        var product = await _context.Products
+            .AsNoTracking()
+            .Where(p => p.Id == id)
+            .Include(p => p.Authors)
+            .Include(p => p.Languages)
+            .Include(p => p.Categories)
+            .Include(p => p.Series)
+            .Include(p => p.Translators)
+            .Include(p => p.Formats)
+            .Include(p => p.BookSizes)
+            .Include(p => p.AgeRestrictions)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(cancellationToken);
+
         if (product is null)
         {
             return null;
         }
 
+        // Load images for this single product
+        var images = await _context.Set<ProductImage>()
+            .AsNoTracking()
+            .Where(i => i.ProductId == id)
+            .OrderBy(i => i.Id)
+            .Select(i => new ProductImage
+            {
+                Id = i.Id,
+                ImageName = i.ImageName,
+                ProductId = i.ProductId,
+                ImageData = i.ImageData ?? Array.Empty<byte>()
+            })
+            .ToListAsync(cancellationToken);
+
+        product.ProductImages = images;
         var dto = MapToDto(product);
-        await _cacheService.SetAsync(cacheKey, dto, TimeSpan.FromMinutes(15), cancellationToken);
+
+        await _cacheService.SetAsync(cacheKey, dto, TimeSpan.FromMinutes(30), cancellationToken);
 
         return dto;
     }
@@ -578,7 +631,6 @@ public class ProductService : IProductService
 	private async Task InvalidateCacheAsync(CancellationToken cancellationToken, int? id = null)
 	{
 		await _cacheService.RemoveAsync(AllProductsCacheKey, cancellationToken);
-		await _cacheService.RemoveAsync("products_all", cancellationToken);
 		if (id.HasValue)
 		{
 			await _cacheService.RemoveAsync(GetProductCacheKey(id.Value), cancellationToken);
@@ -622,4 +674,10 @@ public class ProductService : IProductService
 
 		return "image/jpeg";
 	}
+}
+
+public class CachedProductImage
+{
+	public byte[] Data { get; set; } = Array.Empty<byte>();
+	public string ContentType { get; set; } = "image/jpeg";
 }

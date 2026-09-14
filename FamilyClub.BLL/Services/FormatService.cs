@@ -1,12 +1,7 @@
-﻿using FamilyClub.BLL.DTOs.Format;
-using FamilyClub.BLL.DTOs.Language;
+using FamilyClub.BLL.DTOs.Format;
 using FamilyClub.BLL.Interfaces;
 using FamilyClub.DAL.Interfaces;
-using FamilyClub.DAL.Repositories;
 using FamilyClubLibrary;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace FamilyClub.BLL.Services
 {
@@ -14,23 +9,68 @@ namespace FamilyClub.BLL.Services
 	{
 		private readonly IFormatRepository _formatRepository;
 		private readonly IUnitOfWork _unitOfWork;
+		private readonly ICacheService _cacheService;
 
-		public FormatService(IFormatRepository formatRepository, IUnitOfWork unitOfWork)
+		private const string AllFormatsCacheKey = "formats_all";
+		private static string GetFormatCacheKey(int id) => $"formats_item_{id}";
+		private static readonly SemaphoreSlim _formatsLock = new(1, 1);
+
+		public FormatService(
+			IFormatRepository formatRepository,
+			IUnitOfWork unitOfWork,
+			ICacheService cacheService)
 		{
 			_formatRepository = formatRepository;
 			_unitOfWork = unitOfWork;
+			_cacheService = cacheService;
 		}
 
 		public async Task<IEnumerable<FormatDto>> GetAllAsync(CancellationToken cancellationToken = default)
 		{
-			var formats = await _formatRepository.GetAllAsync(cancellationToken);
-			return formats.Select(MapToReadDto);
+			var cached = await _cacheService.GetAsync<List<FormatDto>>(AllFormatsCacheKey, cancellationToken);
+			if (cached is not null)
+			{
+				return cached;
+			}
+
+			await _formatsLock.WaitAsync(cancellationToken);
+			try
+			{
+				cached = await _cacheService.GetAsync<List<FormatDto>>(AllFormatsCacheKey, CancellationToken.None);
+				if (cached is not null)
+				{
+					return cached;
+				}
+
+				var formats = await _formatRepository.GetAllAsync(CancellationToken.None);
+				var dtos = formats.Select(MapToReadDto).ToList();
+				await _cacheService.SetAsync(AllFormatsCacheKey, dtos, TimeSpan.FromHours(1), CancellationToken.None);
+				return dtos;
+			}
+			finally
+			{
+				_formatsLock.Release();
+			}
 		}
 
 		public async Task<FormatDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
 		{
+			var key = GetFormatCacheKey(id);
+			var cached = await _cacheService.GetAsync<FormatDto>(key, cancellationToken);
+			if (cached is not null)
+			{
+				return cached;
+			}
+
 			var format = await _formatRepository.GetByIdAsync(id, cancellationToken);
-			return format is null ? null : MapToReadDto(format);
+			if (format is null)
+			{
+				return null;
+			}
+
+			var dto = MapToReadDto(format);
+			await _cacheService.SetAsync(key, dto, TimeSpan.FromHours(1), cancellationToken);
+			return dto;
 		}
 
 		public async Task<FormatDto> CreateAsync(FormatDto dto, CancellationToken cancellationToken = default)
@@ -43,6 +83,8 @@ namespace FamilyClub.BLL.Services
 
 			await _formatRepository.AddAsync(format, cancellationToken);
 			await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+			await InvalidateCacheAsync(cancellationToken, format.Id);
 
 			return MapToReadDto(format);
 		}
@@ -61,6 +103,8 @@ namespace FamilyClub.BLL.Services
 			_formatRepository.Update(format);
 			await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+			await InvalidateCacheAsync(cancellationToken, id);
+
 			return true;
 		}
 
@@ -75,7 +119,19 @@ namespace FamilyClub.BLL.Services
 			_formatRepository.Delete(format);
 			await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+			await InvalidateCacheAsync(cancellationToken, id);
+
 			return true;
+		}
+
+		private async Task InvalidateCacheAsync(CancellationToken cancellationToken, int? id = null)
+		{
+			await _cacheService.RemoveAsync(AllFormatsCacheKey, cancellationToken);
+			if (id.HasValue)
+			{
+				await _cacheService.RemoveAsync(GetFormatCacheKey(id.Value), cancellationToken);
+			}
+			await _cacheService.RemoveByPrefixAsync("formats_", cancellationToken);
 		}
 
 		private static FormatDto MapToReadDto(Format format)

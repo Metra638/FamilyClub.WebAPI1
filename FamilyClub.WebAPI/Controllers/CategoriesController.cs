@@ -1,4 +1,4 @@
-﻿using FamilyClub.BLL.DTOs.Category;
+using FamilyClub.BLL.DTOs.Category;
 using FamilyClub.BLL.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,8 +19,15 @@ public class CategoriesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CategoryDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var categories = await _categoryService.GetAllAsync(cancellationToken);
-        return Ok(categories);
+        try
+        {
+            var categories = await _categoryService.GetAllAsync(cancellationToken);
+            return Ok(categories);
+        }
+        catch (OperationCanceledException)
+        {
+            return Ok(Array.Empty<CategoryDto>());
+        }
     }
 
     [HttpGet("{id:int}")]

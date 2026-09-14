@@ -3,8 +3,9 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { DeliveryProvider, DeliveryType, PaymentMethod } from "./page";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+import type { DeliveryProvider, DeliveryType, PaymentMethod } from "./page";
+import NovaPoshtaFields from "./NovaPoshtaFields";
 
 export type MobileCheckoutViewProps = {
   loading: boolean;
@@ -27,6 +28,8 @@ export type MobileCheckoutViewProps = {
   setDeliveryType: (val: DeliveryType) => void;
   city: string;
   setCity: (val: string) => void;
+  cityRef?: string;
+  setCityRef?: (val: string) => void;
   branch: string;
   setBranch: (val: string) => void;
 
@@ -115,6 +118,8 @@ export default function MobileCheckoutView({
   setDeliveryType,
   city,
   setCity,
+  cityRef = "",
+  setCityRef = () => {},
   branch,
   setBranch,
   paymentMethod,
@@ -348,31 +353,16 @@ export default function MobileCheckoutView({
                   </div>
 
                   {/* City + Branch Input Boxes */}
-                  <div className="flex flex-col gap-3 mt-1">
-                    <div className="bg-[#f5f3ee] h-[65px] rounded-[9px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.25)] flex items-center justify-between px-5">
-                      <input
-                        type="text"
-                        placeholder={t("checkout.cityPlaceholder")}
-                        aria-label={t("checkout.cityAria")}
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        className="w-full bg-transparent text-[18px] sm:text-[20px] text-[#242424] placeholder:text-[#242424]/70 focus:outline-none"
-                      />
-                      <ChevronDownIcon />
-                    </div>
-
-                    <div className="bg-[#f5f3ee] h-[65px] rounded-[9px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.25)] flex items-center justify-between px-5">
-                      <input
-                        type="text"
-                        placeholder={t("checkout.branchPlaceholder")}
-                        aria-label={t("checkout.branchAria")}
-                        value={branch}
-                        onChange={(e) => setBranch(e.target.value)}
-                        className="w-full bg-transparent text-[18px] sm:text-[20px] text-[#242424] placeholder:text-[#242424]/70 focus:outline-none"
-                      />
-                      <ChevronDownIcon />
-                    </div>
-                  </div>
+                  <NovaPoshtaFields
+                    city={city}
+                    setCity={setCity}
+                    cityRef={cityRef}
+                    setCityRef={setCityRef}
+                    branch={branch}
+                    setBranch={setBranch}
+                    deliveryType={deliveryType}
+                    variant="mobile"
+                  />
                 </div>
               )}
 
@@ -457,18 +447,19 @@ export default function MobileCheckoutView({
               </div>
             </div>
 
-            {/* Card Dia */}
+            {/* Card Dia / eBook — coming soon */}
             <div
-              onClick={() => setPaymentMethod("card_dia")}
-              className="py-3.5 flex items-center justify-between gap-3 cursor-pointer border-b border-[#242424]/15"
+              aria-disabled="true"
+              title={t("checkout.payComingSoon")}
+              className="py-3.5 flex items-center justify-between gap-3 border-b border-[#242424]/15 opacity-55 cursor-not-allowed"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <RadioBtn
-                  active={paymentMethod === "card_dia"}
-                  onClick={() => setPaymentMethod("card_dia")}
-                />
+                <RadioBtn active={false} onClick={() => {}} />
                 <span className="text-[17px] sm:text-[18px] font-semibold text-[#242424] leading-snug">
-                  {t("checkout.payCardDia")}
+                  {t("checkout.payCardDia")}{" "}
+                  <span className="text-[13px] font-medium text-[#666666]">
+                    ({t("checkout.payComingSoon")})
+                  </span>
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0 self-start sm:self-center mt-1 sm:mt-0">

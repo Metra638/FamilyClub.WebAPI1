@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "cross-env NODE_EXTRA_CA_CERTS=%USERPROFILE%\\.aspnet\\https\\dev-cert.pem node ./node_modules/next/dist/bin/next dev",
+    "dev": "cross-env NODE_EXTRA_CA_CERTS=%USERPROFILE%\\.aspnet\\https\\dev-cert.pem node ./node_modules/next/dist/bin/next dev --webpack",
+    "dev:turbo": "cross-env NODE_EXTRA_CA_CERTS=%USERPROFILE%\\.aspnet\\https\\dev-cert.pem node ./node_modules/next/dist/bin/next dev",
     "build": "node ./node_modules/next/dist/bin/next build",
     "start": "node ./node_modules/next/dist/bin/next start",
     "lint": "eslint",

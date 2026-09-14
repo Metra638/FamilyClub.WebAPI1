@@ -15,6 +15,11 @@ namespace FamilyClubLibrary
 
         public string Status { get; set; } = "Pending";
 
+        /// <summary>
+        /// card_online | cash_on_delivery | card_dia (reserved)
+        /// </summary>
+        public string PaymentMethod { get; set; } = "card_online";
+
         public decimal TotalPrice { get; set; }
 
         public List<OrderItem> OrderItems { get; set; } = new();

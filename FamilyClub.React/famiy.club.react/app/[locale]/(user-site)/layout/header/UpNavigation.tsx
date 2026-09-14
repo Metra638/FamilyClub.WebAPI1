@@ -94,10 +94,6 @@ export default function UpNavigation() {
       canAccessPath("/admin/books", member.roles)
     : false;
 
-  if (loading) {
-    return null;
-  }
-
   const handleLogout = () => {
     clearAuthSession();
     setMember(null);

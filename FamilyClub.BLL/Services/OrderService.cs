@@ -39,6 +39,9 @@ namespace FamilyClub.BLL.Services
 				UserId = dto.UserId,
 				OrderDate = DateTime.UtcNow,
 				Status = dto.Status,
+				PaymentMethod = string.IsNullOrWhiteSpace(dto.PaymentMethod)
+					? "card_online"
+					: dto.PaymentMethod.Trim(),
 				TotalPrice = dto.TotalPrice,
 				OrderItems = dto.OrderItems.Select(item => new OrderItem
 				{
@@ -70,6 +73,10 @@ namespace FamilyClub.BLL.Services
 			if (!string.IsNullOrEmpty(dto.Status))
 			{
 				order.Status = dto.Status;
+			}
+			if (!string.IsNullOrWhiteSpace(dto.PaymentMethod))
+			{
+				order.PaymentMethod = dto.PaymentMethod.Trim();
 			}
 			if (dto.TotalPrice > 0)
 			{
@@ -111,6 +118,7 @@ namespace FamilyClub.BLL.Services
             : order.UserId,
                 OrderDate = order.OrderDate,
 				Status = order.Status,
+				PaymentMethod = order.PaymentMethod,
 				TotalPrice = order.TotalPrice,
 				OrderItems = order.OrderItems.Select(oi => new OrderItemDTO
 				{

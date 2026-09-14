@@ -33,6 +33,7 @@ public class ProductsController : ControllerBase
 
     [HttpGet("{productId:int}/images/{imageId:int}")]
     [AllowAnonymous]
+    [ResponseCache(Duration = 604800, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetImage(int productId, int imageId, CancellationToken cancellationToken)
     {
         var image = await _productService.GetProductImageAsync(productId, imageId, cancellationToken);
@@ -41,6 +42,7 @@ public class ProductsController : ControllerBase
             return NotFound();
         }
 
+        Response.Headers.CacheControl = "public, max-age=604800, stale-while-revalidate=86400";
         return File(image.Value.Data, image.Value.ContentType);
     }
 

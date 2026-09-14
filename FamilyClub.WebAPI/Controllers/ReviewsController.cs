@@ -21,8 +21,15 @@ public class ReviewsController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<ReviewDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var reviews = await _reviewService.GetAllAsync(cancellationToken);
-        return Ok(reviews);
+        try
+        {
+            var reviews = await _reviewService.GetAllAsync(cancellationToken);
+            return Ok(reviews);
+        }
+        catch (OperationCanceledException)
+        {
+            return Ok(Array.Empty<ReviewDto>());
+        }
     }
 
     [HttpGet("{id:int}")]

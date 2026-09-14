@@ -13,6 +13,7 @@ public class CategoryService : ICategoryService
 
     private const string AllCategoriesCacheKey = "categories_all";
     private static string GetCategoryCacheKey(int id) => $"categories_item_{id}";
+    private static readonly SemaphoreSlim _categoriesLock = new(1, 1);
 
     public CategoryService(
         ICategoryRepository categoryRepository,
@@ -32,12 +33,26 @@ public class CategoryService : ICategoryService
             return cachedCategories;
         }
 
-        var categories = await _categoryRepository.GetAllAsync(cancellationToken);
-        var dtos = categories.Select(MapToReadDto).ToList();
+        await _categoriesLock.WaitAsync(cancellationToken);
+        try
+        {
+            cachedCategories = await _cacheService.GetAsync<List<CategoryDto>>(AllCategoriesCacheKey, CancellationToken.None);
+            if (cachedCategories is not null)
+            {
+                return cachedCategories;
+            }
 
-        await _cacheService.SetAsync(AllCategoriesCacheKey, dtos, TimeSpan.FromMinutes(30), cancellationToken);
+            var categories = await _categoryRepository.GetAllAsync(CancellationToken.None);
+            var dtos = categories.Select(MapToReadDto).ToList();
 
-        return dtos;
+            await _cacheService.SetAsync(AllCategoriesCacheKey, dtos, TimeSpan.FromMinutes(30), CancellationToken.None);
+
+            return dtos;
+        }
+        finally
+        {
+            _categoriesLock.Release();
+        }
     }
 
     public async Task<CategoryDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -117,6 +132,7 @@ public class CategoryService : ICategoryService
             await _cacheService.RemoveAsync(GetCategoryCacheKey(id.Value), cancellationToken);
         }
         await _cacheService.RemoveByPrefixAsync("categories_", cancellationToken);
+        await _cacheService.RemoveAsync("products_all_v2", cancellationToken);
     }
 
     private static CategoryDto MapToReadDto(Category category)

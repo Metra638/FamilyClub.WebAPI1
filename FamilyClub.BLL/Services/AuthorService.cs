@@ -1,4 +1,4 @@
-﻿using FamilyClub.BLL.DTOs.ActionLog;
+using FamilyClub.BLL.DTOs.ActionLog;
 using FamilyClub.BLL.DTOs.Author;
 using FamilyClub.BLL.Interfaces;
 using FamilyClub.DAL.Interfaces;
@@ -11,27 +11,70 @@ namespace FamilyClub.BLL.Services
 		private readonly IAuthorRepository _authorRepository;
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IActionLogService _actionLog;
+		private readonly ICacheService _cacheService;
+
+		private const string AllAuthorsCacheKey = "authors_all";
+		private static string GetAuthorCacheKey(int id) => $"authors_item_{id}";
+		private static readonly SemaphoreSlim _authorsLock = new(1, 1);
 
 		public AuthorService(
 			IAuthorRepository authorRepository,
 			IUnitOfWork unitOfWork,
-			IActionLogService actionLog)
+			IActionLogService actionLog,
+			ICacheService cacheService)
 		{
 			_authorRepository = authorRepository;
 			_unitOfWork = unitOfWork;
 			_actionLog = actionLog;
+			_cacheService = cacheService;
 		}
 
 		public async Task<IEnumerable<AuthorDTO>> GetAllAsync(CancellationToken cancellationToken = default)
 		{
-			var authors = await _authorRepository.GetAllAsync(cancellationToken);
-			return authors.Select(MapToReadDto);
+			var cached = await _cacheService.GetAsync<List<AuthorDTO>>(AllAuthorsCacheKey, cancellationToken);
+			if (cached is not null)
+			{
+				return cached;
+			}
+
+			await _authorsLock.WaitAsync(cancellationToken);
+			try
+			{
+				cached = await _cacheService.GetAsync<List<AuthorDTO>>(AllAuthorsCacheKey, CancellationToken.None);
+				if (cached is not null)
+				{
+					return cached;
+				}
+
+				var authors = await _authorRepository.GetAllAsync(CancellationToken.None);
+				var dtos = authors.Select(MapToReadDto).ToList();
+				await _cacheService.SetAsync(AllAuthorsCacheKey, dtos, TimeSpan.FromMinutes(30), CancellationToken.None);
+				return dtos;
+			}
+			finally
+			{
+				_authorsLock.Release();
+			}
 		}
 
 		public async Task<AuthorDTO?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
 		{
+			var key = GetAuthorCacheKey(id);
+			var cached = await _cacheService.GetAsync<AuthorDTO>(key, cancellationToken);
+			if (cached is not null)
+			{
+				return cached;
+			}
+
 			var author = await _authorRepository.GetByIdAsync(id, cancellationToken);
-			return author is null ? null : MapToReadDto(author);
+			if (author is null)
+			{
+				return null;
+			}
+
+			var dto = MapToReadDto(author);
+			await _cacheService.SetAsync(key, dto, TimeSpan.FromMinutes(30), cancellationToken);
+			return dto;
 		}
 
 		public async Task<AuthorDTO> CreateAsync(AuthorDTO dto, CancellationToken cancellationToken = default)
@@ -45,6 +88,8 @@ namespace FamilyClub.BLL.Services
 
 			await _authorRepository.AddAsync(author, cancellationToken);
 			await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+			await InvalidateCacheAsync(cancellationToken, author.Id);
 
 			await SafeLogAsync(
 				ActionLogCodes.Actions.Created,
@@ -71,6 +116,8 @@ namespace FamilyClub.BLL.Services
 			_authorRepository.Update(author);
 			await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+			await InvalidateCacheAsync(cancellationToken, id);
+
 			return true;
 		}
 
@@ -86,6 +133,8 @@ namespace FamilyClub.BLL.Services
 			_authorRepository.Delete(author);
 			await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+			await InvalidateCacheAsync(cancellationToken, id);
+
 			await SafeLogAsync(
 				ActionLogCodes.Actions.Deleted,
 				ActionLogCodes.Modules.Authors,
@@ -94,6 +143,16 @@ namespace FamilyClub.BLL.Services
 				cancellationToken);
 
 			return true;
+		}
+
+		private async Task InvalidateCacheAsync(CancellationToken cancellationToken, int? id = null)
+		{
+			await _cacheService.RemoveAsync(AllAuthorsCacheKey, cancellationToken);
+			if (id.HasValue)
+			{
+				await _cacheService.RemoveAsync(GetAuthorCacheKey(id.Value), cancellationToken);
+			}
+			await _cacheService.RemoveByPrefixAsync("authors_", cancellationToken);
 		}
 
 		private async Task SafeLogAsync(

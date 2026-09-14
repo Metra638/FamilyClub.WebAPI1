@@ -44,9 +44,22 @@ export const ADMIN_ORDER_STATUS_META: Record<
 };
 
 export const PAYMENT_OPTIONS = [
-    { value: "online", label: "Онлайн оплата" },
-    { value: "cod", label: "Накладений платіж" },
+    { value: "card_online", label: "Онлайн (Stripe)" },
+    { value: "cash_on_delivery", label: "Оплата при отриманні" },
+    { value: "card_dia", label: "Дія / єКнига (в розробці)" },
 ] as const;
+
+function resolvePaymentOption(paymentMethod?: string | null) {
+    const normalized = (paymentMethod ?? "").trim();
+    const found = PAYMENT_OPTIONS.find((option) => option.value === normalized);
+    if (found) return found;
+
+    // Legacy / synthetic values from earlier admin mocks
+    if (normalized === "online") return PAYMENT_OPTIONS[0];
+    if (normalized === "cod") return PAYMENT_OPTIONS[1];
+
+    return { value: normalized || "unknown", label: normalized || "Невідомо" };
+}
 
 export const DELIVERY_OPTIONS = [
     { value: "nova", label: "Нова пошта" },
@@ -106,10 +119,10 @@ export function formatDateTime(value?: Date | string | null): string {
     );
 }
 
-/** Display-only enrichment for fields missing from OrderDTO (matches Figma). */
+/** Enrichment for fields still missing from OrderDTO (delivery/TTN remain synthetic). */
 export function getOrderExtras(order: OrderDTO) {
     const id = order.id ?? 0;
-    const payment = PAYMENT_OPTIONS[id % PAYMENT_OPTIONS.length];
+    const payment = resolvePaymentOption(order.paymentMethod);
     const delivery = DELIVERY_OPTIONS[id % DELIVERY_OPTIONS.length];
     const shipped =
         normalizeOrderStatusGroup(order.status) === "accepted"

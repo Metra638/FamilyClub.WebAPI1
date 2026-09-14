@@ -184,6 +184,12 @@ export type Dictionary = {
     emptyCart: string;
     successTitle: string;
     successText: string;
+    paidTitle: string;
+    paidText: string;
+    paidPendingNote: string;
+    cancelTitle: string;
+    cancelText: string;
+    tryAgain: string;
     myOrders: string;
     goHome: string;
     personalData: string;
@@ -211,6 +217,7 @@ export type Dictionary = {
     paymentMethod: string;
     payCardOnline: string;
     payCardDia: string;
+    payComingSoon: string;
     payOnDelivery: string;
     orderComment: string;
     commentPlaceholder: string;

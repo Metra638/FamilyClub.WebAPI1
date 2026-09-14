@@ -13,6 +13,7 @@ namespace FamilyClub.BLL.Tests.Services
         private readonly Mock<IAuthorRepository> _authorRepoMock;
         private readonly Mock<IUnitOfWork> _unitOfWorkMock;
         private readonly Mock<IActionLogService> _actionLogMock;
+        private readonly Mock<ICacheService> _cacheServiceMock;
         private readonly AuthorService _authorService;
 
         public AuthorServiceTests()
@@ -20,11 +21,13 @@ namespace FamilyClub.BLL.Tests.Services
             _authorRepoMock = new Mock<IAuthorRepository>();
             _unitOfWorkMock = new Mock<IUnitOfWork>();
             _actionLogMock = new Mock<IActionLogService>();
+            _cacheServiceMock = new Mock<ICacheService>();
 
             _authorService = new AuthorService(
                 _authorRepoMock.Object,
                 _unitOfWorkMock.Object,
-                _actionLogMock.Object);
+                _actionLogMock.Object,
+                _cacheServiceMock.Object);
         }
 
         [Fact]

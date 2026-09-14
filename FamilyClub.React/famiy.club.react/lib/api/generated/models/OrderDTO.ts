@@ -58,6 +58,12 @@ export interface OrderDTO {
      */
     status?: string | null;
     /**
+     * card_online | cash_on_delivery | card_dia
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    paymentMethod?: string | null;
+    /**
      * 
      * @type {number}
      * @memberof OrderDTO
@@ -93,6 +99,7 @@ export function OrderDTOFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'userName': json['userName'] == null ? undefined : json['userName'],
         'orderDate': json['orderDate'] == null ? undefined : (new Date(json['orderDate'])),
         'status': json['status'] == null ? undefined : json['status'],
+        'paymentMethod': json['paymentMethod'] == null ? undefined : json['paymentMethod'],
         'totalPrice': json['totalPrice'] == null ? undefined : json['totalPrice'],
         'orderItems': json['orderItems'] == null ? undefined : ((json['orderItems'] as Array<any>).map(OrderItemDTOFromJSON)),
     };
@@ -114,6 +121,7 @@ export function OrderDTOToJSONTyped(value?: OrderDTO | null, ignoreDiscriminator
         'userName': value['userName'],
         'orderDate': value['orderDate'] == null ? value['orderDate'] : value['orderDate'].toISOString(),
         'status': value['status'],
+        'paymentMethod': value['paymentMethod'],
         'totalPrice': value['totalPrice'],
         'orderItems': value['orderItems'] == null ? undefined : ((value['orderItems'] as Array<any>).map(OrderItemDTOToJSON)),
     };

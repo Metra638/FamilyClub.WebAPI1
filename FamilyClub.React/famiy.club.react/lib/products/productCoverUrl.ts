@@ -17,7 +17,7 @@ export function getProductCoverApiUrl(
   return `${base}/api/Products/${productId}/images/${imageId}`;
 }
 
-function resolveEmbeddedImageData(image: ProductImageLike): string | null {
+export function resolveEmbeddedImageData(image: ProductImageLike): string | null {
   const normalizedData = image.imageData?.trim();
   if (!normalizedData || normalizedData === "AA==" || normalizedData === "AAA=") {
     return null;
@@ -68,6 +68,17 @@ function resolveEmbeddedImageData(image: ProductImageLike): string | null {
   return `data:${mimeType};base64,${normalizedData}`;
 }
 
+/** Resolves any product image: embedded Base64 data URL, relative URL, or lazy API URL fallback. */
+export function getProductImageUrl(
+  product?: { id?: number | null } | null,
+  image?: ProductImageLike | null,
+): string | null {
+  if (!image) return null;
+  const embedded = resolveEmbeddedImageData(image);
+  if (embedded) return embedded;
+  return getProductCoverApiUrl(product?.id, image.id);
+}
+
 /** Cover for grids/lists: API URL when list has no bytes, else legacy base64/url. */
 export function getProductCoverUrl(product?: ProductDto | null): string | null {
   if (!product) return null;
@@ -75,8 +86,5 @@ export function getProductCoverUrl(product?: ProductDto | null): string | null {
   const image = product.productImages?.[0];
   if (!image) return null;
 
-  const embedded = resolveEmbeddedImageData(image);
-  if (embedded) return embedded;
-
-  return getProductCoverApiUrl(product.id, image.id);
+  return getProductImageUrl(product, image);
 }

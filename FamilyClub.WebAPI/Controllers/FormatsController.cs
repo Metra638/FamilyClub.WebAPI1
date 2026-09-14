@@ -1,4 +1,4 @@
-﻿using FamilyClub.BLL.DTOs.Format;
+using FamilyClub.BLL.DTOs.Format;
 using FamilyClub.BLL.DTOs.Review;
 using FamilyClub.BLL.Interfaces;
 using FamilyClub.BLL.Services;
@@ -23,8 +23,15 @@ namespace FamilyClub.WebAPI.Controllers
 		[HttpGet]
 		public async Task<ActionResult<IEnumerable<FormatDto>>> GetAll(CancellationToken cancellationToken)
 		{
-			var formats = await _formatService.GetAllAsync(cancellationToken);
-			return Ok(formats);
+			try
+			{
+				var formats = await _formatService.GetAllAsync(cancellationToken);
+				return Ok(formats);
+			}
+			catch (OperationCanceledException)
+			{
+				return Ok(Array.Empty<FormatDto>());
+			}
 		}
 
 		// GET: api/formats/5

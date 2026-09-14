@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
 using FamilyClub.BLL.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -14,7 +14,7 @@ public class RedisCacheService : ICacheService
     private readonly IMemoryCache _memoryCache;
     private readonly IConnectionMultiplexer? _redisConnection;
     private readonly ILogger<RedisCacheService> _logger;
-    private static readonly ConcurrentDictionary<string, byte> TrackedKeys = new();
+    private readonly string _instanceName;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -26,51 +26,53 @@ public class RedisCacheService : ICacheService
         IDistributedCache distributedCache,
         IMemoryCache memoryCache,
         ILogger<RedisCacheService> logger,
-        IConnectionMultiplexer? redisConnection = null)
+        IConnectionMultiplexer? redisConnection = null,
+        IConfiguration? configuration = null)
     {
         _distributedCache = distributedCache;
         _memoryCache = memoryCache;
         _logger = logger;
         _redisConnection = redisConnection;
+        _instanceName = configuration?["CacheSettings:InstanceName"] ?? "FamilyClubCache_";
     }
 
     private bool IsRedisAvailable => _redisConnection is { IsConnected: true };
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
-        // 1. Якщо Redis не підключено — читаємо з MemoryCache без затримок
+        // 1. L1 Local Memory Cache (миттєвий відгук із пам'яті, 0 мережевих затримок)
+        if (_memoryCache.TryGetValue(key, out T? localVal))
+        {
+            return localVal;
+        }
+
+        // 2. Якщо Redis не підключено і в пам'яті немає — промах кешу
         if (!IsRedisAvailable)
         {
-            if (_memoryCache.TryGetValue(key, out T? localVal))
-            {
-                return localVal;
-            }
             return default;
         }
 
-        // 2. Якщо Redis підключено — намагаємося прочитати з Redis
+        // 3. L2 Distributed Redis
         try
         {
             var cachedData = await _distributedCache.GetAsync(key, cancellationToken);
             if (cachedData is null || cachedData.Length == 0)
             {
-                if (_memoryCache.TryGetValue(key, out T? localVal))
-                {
-                    return localVal;
-                }
-
                 return default;
             }
 
-            return JsonSerializer.Deserialize<T>(cachedData, JsonOptions);
+            var value = JsonSerializer.Deserialize<T>(cachedData, JsonOptions);
+            if (value is not null)
+            {
+                // Заповнюємо L1 кеш на 5 хвилин для прискорення наступних звернень
+                _memoryCache.Set(key, value, TimeSpan.FromMinutes(5));
+            }
+
+            return value;
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Redis недоступний при читанні ключа {Key}. Використовується локальний IMemoryCache.", key);
-            if (_memoryCache.TryGetValue(key, out T? fallbackVal))
-            {
-                return fallbackVal;
-            }
+            _logger.LogDebug(ex, "Redis недоступний при читанні ключа {Key}.", key);
             return default;
         }
     }
@@ -83,12 +85,10 @@ public class RedisCacheService : ICacheService
         }
 
         var ttl = expiration ?? TimeSpan.FromMinutes(15);
-        
-        // Завжди зберігаємо у локальний MemoryCache для миттєвого відгуку
-        _memoryCache.Set(key, value, ttl);
-        TrackedKeys.TryAdd(key, 0);
+        // Безпечний L1 TTL (до 5 хв), щоб уникнути розсинхрону при горизонтальному масштабуванні
+        var l1Ttl = ttl < TimeSpan.FromMinutes(5) ? ttl : TimeSpan.FromMinutes(5);
+        _memoryCache.Set(key, value, l1Ttl);
 
-        // Якщо Redis сервер не підключено — пропускаємо спробу запису в мережу
         if (!IsRedisAvailable)
         {
             return;
@@ -106,14 +106,13 @@ public class RedisCacheService : ICacheService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Redis недоступний при запису ключа {Key}. Збережено в локальний IMemoryCache.", key);
+            _logger.LogDebug(ex, "Redis недоступний при запису ключа {Key}.", key);
         }
     }
 
     public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         _memoryCache.Remove(key);
-        TrackedKeys.TryRemove(key, out _);
 
         if (!IsRedisAvailable)
         {
@@ -132,12 +131,7 @@ public class RedisCacheService : ICacheService
 
     public async Task RemoveByPrefixAsync(string prefixKey, CancellationToken cancellationToken = default)
     {
-        var keysToRemove = TrackedKeys.Keys.Where(k => k.StartsWith(prefixKey, StringComparison.OrdinalIgnoreCase)).ToList();
-        foreach (var key in keysToRemove)
-        {
-            _memoryCache.Remove(key);
-            TrackedKeys.TryRemove(key, out _);
-        }
+        _memoryCache.Remove(prefixKey);
 
         if (IsRedisAvailable && _redisConnection is not null)
         {
@@ -149,7 +143,9 @@ public class RedisCacheService : ICacheService
                     var server = _redisConnection.GetServer(endpoint);
                     if (server.IsReplica) continue;
 
-                    var keys = server.Keys(pattern: $"*{prefixKey}*").ToArray();
+                    // Точний префіксний патерн із InstanceName без провідної зірочки (*)
+                    var pattern = $"{_instanceName}{prefixKey}*";
+                    var keys = server.Keys(pattern: pattern).ToArray();
                     if (keys.Length > 0)
                     {
                         var db = _redisConnection.GetDatabase();

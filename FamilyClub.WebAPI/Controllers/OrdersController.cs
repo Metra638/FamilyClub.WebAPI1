@@ -1,4 +1,4 @@
-﻿using FamilyClub.BLL.DTOs.Order;
+using FamilyClub.BLL.DTOs.Order;
 using FamilyClub.BLL.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -75,8 +75,15 @@ namespace FamilyClub.WebAPI.Controllers
         [Authorize]
         public async Task<ActionResult<IEnumerable<OrderDTO>>> GetByUserId(string userId, CancellationToken cancellationToken)
         {
-            var orders = await _orderService.GetByUserIdAsync(userId, cancellationToken);
-            return Ok(orders);
+            try
+            {
+                var orders = await _orderService.GetByUserIdAsync(userId, cancellationToken);
+                return Ok(orders);
+            }
+            catch (OperationCanceledException)
+            {
+                return Ok(Array.Empty<OrderDTO>());
+            }
         }
     }
 }

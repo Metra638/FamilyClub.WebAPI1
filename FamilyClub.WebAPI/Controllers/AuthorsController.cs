@@ -1,4 +1,4 @@
-﻿using FamilyClub.BLL.DTOs.Author;
+using FamilyClub.BLL.DTOs.Author;
 using FamilyClub.BLL.Interfaces;
 using FamilyClub.BLL.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -23,8 +23,15 @@ namespace FamilyClub.WebAPI.Controllers
 		[HttpGet]
 		public async Task<ActionResult<IEnumerable<AuthorDTO>>> GetAll(CancellationToken cancellationToken)
 		{
-			var authors = await _authorService.GetAllAsync(cancellationToken);
-			return Ok(authors);
+			try
+			{
+				var authors = await _authorService.GetAllAsync(cancellationToken);
+				return Ok(authors);
+			}
+			catch (OperationCanceledException)
+			{
+				return Ok(Array.Empty<AuthorDTO>());
+			}
 		}
 
 		// GET api/<AuthorsController>/5

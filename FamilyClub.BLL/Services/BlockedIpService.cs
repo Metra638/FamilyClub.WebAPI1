@@ -1,7 +1,6 @@
 using FamilyClub.BLL.Interfaces;
 using FamilyClub.DAL.Interfaces;
 using FamilyClubLibrary;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace FamilyClub.BLL.Services;
@@ -10,17 +9,21 @@ public class BlockedIpService : IBlockedIpService
 {
     private readonly IBlockedIpRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IMemoryCache _cache;
+    private readonly ICacheService _cacheService;
     private readonly ILogger<BlockedIpService> _logger;
 
     private const string CacheKey = "BlockedIpsList";
     private readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
 
-    public BlockedIpService(IBlockedIpRepository repository, IUnitOfWork unitOfWork, IMemoryCache cache, ILogger<BlockedIpService> logger)
+    public BlockedIpService(
+        IBlockedIpRepository repository,
+        IUnitOfWork unitOfWork,
+        ICacheService cacheService,
+        ILogger<BlockedIpService> logger)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
-        _cache = cache;
+        _cacheService = cacheService;
         _logger = logger;
     }
 
@@ -50,7 +53,7 @@ public class BlockedIpService : IBlockedIpService
             await _repository.AddAsync(blockedIp, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             
-            _cache.Remove(CacheKey);
+            await _cacheService.RemoveAsync(CacheKey, cancellationToken);
             _logger.LogInformation("IP {IpAddress} has been blocked. Reason: {Reason}", ipAddress, reason);
         }
     }
@@ -63,19 +66,21 @@ public class BlockedIpService : IBlockedIpService
             _repository.Delete(existing);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             
-            _cache.Remove(CacheKey);
+            await _cacheService.RemoveAsync(CacheKey, cancellationToken);
             _logger.LogInformation("IP {IpAddress} has been unblocked.", ipAddress);
         }
     }
 
     private async Task<IEnumerable<BlockedIp>> GetCachedBlockedIpsAsync(CancellationToken cancellationToken)
     {
-        if (!_cache.TryGetValue(CacheKey, out IEnumerable<BlockedIp>? blockedIps))
+        var blockedIps = await _cacheService.GetAsync<List<BlockedIp>>(CacheKey, cancellationToken);
+        if (blockedIps is null)
         {
-            blockedIps = await _repository.GetAllAsync(cancellationToken);
-            _cache.Set(CacheKey, blockedIps, CacheDuration);
+            var fromDb = await _repository.GetAllAsync(cancellationToken);
+            blockedIps = fromDb.ToList();
+            await _cacheService.SetAsync(CacheKey, blockedIps, CacheDuration, cancellationToken);
         }
 
-        return blockedIps ?? Array.Empty<BlockedIp>();
+        return blockedIps;
     }
 }

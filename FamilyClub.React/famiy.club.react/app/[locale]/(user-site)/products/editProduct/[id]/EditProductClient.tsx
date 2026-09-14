@@ -41,6 +41,15 @@ export default function EditProductClient({ id }: { id: string }) {
   const toImageSrc = (img: { imageData: string }) => {
     if (!img?.imageData) return "";
 
+    if (
+      img.imageData.startsWith("http://") ||
+      img.imageData.startsWith("https://") ||
+      img.imageData.startsWith("/") ||
+      img.imageData.startsWith("data:")
+    ) {
+      return img.imageData;
+    }
+
     if (img.imageData.startsWith("UklGR")) {
       return `data:image/webp;base64,${img.imageData}`;
     }

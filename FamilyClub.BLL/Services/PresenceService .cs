@@ -1,9 +1,5 @@
 using FamilyClub.BLL.Interfaces;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
-using System.Linq;
 
 namespace FamilyClub.BLL.Services
 {
@@ -11,6 +7,7 @@ namespace FamilyClub.BLL.Services
     {
         private readonly ConcurrentDictionary<string, ActiveSessionInfo> _sessions = new();
         private static readonly TimeSpan ActiveWindow = TimeSpan.FromSeconds(60);
+        private int _pingCounter;
 
         public void Ping(string sessionId, string ipAddress, string? userAgent = null, string? userName = null)
         {
@@ -34,6 +31,12 @@ namespace FamilyClub.BLL.Services
                     if (!string.IsNullOrEmpty(userName)) existing.UserName = userName;
                     return existing;
                 });
+
+            // Періодичне очищення застарілих сесій для уникнення витоку пам'яті
+            if (Interlocked.Increment(ref _pingCounter) % 100 == 0)
+            {
+                PruneExpiredSessions();
+            }
         }
 
         public int GetActiveCount()
@@ -44,11 +47,24 @@ namespace FamilyClub.BLL.Services
 
         public IEnumerable<ActiveSessionInfo> GetActiveSessions()
         {
+            PruneExpiredSessions();
             var threshold = DateTime.UtcNow - ActiveWindow;
             return _sessions.Values
                 .Where(s => s.LastSeen >= threshold)
                 .OrderByDescending(s => s.LastSeen)
                 .ToList();
+        }
+
+        private void PruneExpiredSessions()
+        {
+            var threshold = DateTime.UtcNow - ActiveWindow;
+            foreach (var kvp in _sessions)
+            {
+                if (kvp.Value.LastSeen < threshold)
+                {
+                    _sessions.TryRemove(kvp.Key, out _);
+                }
+            }
         }
     }
 }

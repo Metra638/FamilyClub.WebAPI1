@@ -21,8 +21,15 @@ public class PlatformSettingsController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<PlatformSettingsDto>> Get(CancellationToken cancellationToken)
     {
-        var settings = await _service.GetAsync(cancellationToken);
-        return Ok(settings);
+        try
+        {
+            var settings = await _service.GetAsync(cancellationToken);
+            return Ok(settings);
+        }
+        catch (OperationCanceledException)
+        {
+            return Ok(new PlatformSettingsDto());
+        }
     }
 
     [HttpPut]

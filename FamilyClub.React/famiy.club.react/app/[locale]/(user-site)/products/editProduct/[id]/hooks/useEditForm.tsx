@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { CoverType } from "@/lib/api/generated";
 import { ProductDto } from "@/app/(user-site)/products/addProduct/types";
 import { productService } from "@/lib/api/services";
+import { getProductCoverApiUrl } from "@/lib/products/productCoverUrl";
 
 const emptyDto: ProductDto = {
   productName: "",
@@ -62,7 +63,7 @@ export default function useEditForm(id: number) {
           publishingYear: year,
           weightGrams: product.weightGrams ?? undefined,
           productImages: (product.productImages ?? []).map((img) => ({
-            imageData: img.imageData ?? "",
+            imageData: img.imageData || (getProductCoverApiUrl(product.id, img.id) ?? ""),
           })),
         });
       })

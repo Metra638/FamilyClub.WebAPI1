@@ -12,21 +12,50 @@ public class ReviewService : IReviewService
     private readonly IReviewRepository _reviewRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly FamilyClubContext _context;
+    private readonly ICacheService _cacheService;
+
+    private const string AllReviewsCacheKey = "reviews_all";
+    private static string GetProductReviewsCacheKey(int productId) => $"reviews_product_{productId}";
+    private static readonly SemaphoreSlim _reviewsLock = new(1, 1);
 
     public ReviewService(
         IReviewRepository reviewRepository,
         IUnitOfWork unitOfWork,
-        FamilyClubContext context)
+        FamilyClubContext context,
+        ICacheService cacheService)
     {
         _reviewRepository = reviewRepository;
         _unitOfWork = unitOfWork;
         _context = context;
+        _cacheService = cacheService;
     }
 
     public async Task<IEnumerable<ReviewDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var rows = await QueryListRows(_context.Reviews.AsNoTracking(), cancellationToken);
-        return rows.Select(MapListRowToDto);
+        var cached = await _cacheService.GetAsync<List<ReviewDto>>(AllReviewsCacheKey, cancellationToken);
+        if (cached is not null)
+        {
+            return cached;
+        }
+
+        await _reviewsLock.WaitAsync(cancellationToken);
+        try
+        {
+            cached = await _cacheService.GetAsync<List<ReviewDto>>(AllReviewsCacheKey, cancellationToken);
+            if (cached is not null)
+            {
+                return cached;
+            }
+
+            var rows = await QueryListRows(_context.Reviews.AsNoTracking(), cancellationToken);
+            var dtos = rows.Select(MapListRowToDto).ToList();
+            await _cacheService.SetAsync(AllReviewsCacheKey, dtos, TimeSpan.FromMinutes(15), cancellationToken);
+            return dtos;
+        }
+        finally
+        {
+            _reviewsLock.Release();
+        }
     }
 
     public async Task<ReviewDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -50,6 +79,8 @@ public class ReviewService : IReviewService
         await _reviewRepository.AddAsync(review, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await InvalidateCacheAsync(cancellationToken, review.ProductId);
+
         return MapToDto(review);
     }
 
@@ -70,6 +101,8 @@ public class ReviewService : IReviewService
         _reviewRepository.Update(review);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await InvalidateCacheAsync(cancellationToken, review.ProductId);
+
         return true;
     }
 
@@ -83,6 +116,8 @@ public class ReviewService : IReviewService
 
         _reviewRepository.Delete(review);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await InvalidateCacheAsync(cancellationToken, review.ProductId);
 
         return true;
     }
@@ -101,36 +136,51 @@ public class ReviewService : IReviewService
         int productId,
         CancellationToken cancellationToken = default)
     {
+        var cacheKey = GetProductReviewsCacheKey(productId);
+        var cached = await _cacheService.GetAsync<List<ReviewDto>>(cacheKey, cancellationToken);
+        if (cached is not null)
+        {
+            return cached;
+        }
+
         var rows = await QueryListRows(
             _context.Reviews.AsNoTracking().Where(r => r.ProductId == productId),
             cancellationToken);
-        return rows.Select(MapListRowToDto);
+        var dtos = rows.Select(MapListRowToDto).ToList();
+        await _cacheService.SetAsync(cacheKey, dtos, TimeSpan.FromMinutes(15), cancellationToken);
+        return dtos;
+    }
+
+    private async Task InvalidateCacheAsync(CancellationToken cancellationToken, int? productId = null)
+    {
+        await _cacheService.RemoveAsync(AllReviewsCacheKey, cancellationToken);
+        if (productId.HasValue)
+        {
+            await _cacheService.RemoveAsync(GetProductReviewsCacheKey(productId.Value), cancellationToken);
+        }
+        await _cacheService.RemoveByPrefixAsync("reviews_", cancellationToken);
     }
 
     private static async Task<List<ReviewListRow>> QueryListRows(
         IQueryable<Review> query,
         CancellationToken cancellationToken)
     {
-        return await query
+        var rows = await query
             .AsSplitQuery()
-            .Select(r => new ReviewListRow
+            .Select(r => new
             {
-                Id = r.Id,
-                ProductId = r.ProductId,
+                r.Id,
+                r.ProductId,
                 ProductName = r.Product.ProductName,
-                UserId = r.UserId,
-                Rating = r.Rating,
-                Comment = r.Comment,
-                CreatedAt = r.CreatedAt,
-                Approved = r.Approved,
+                r.UserId,
+                r.Rating,
+                r.Comment,
+                r.CreatedAt,
+                r.Approved,
                 AuthorNames = r.Product.Authors.Select(a => a.AuthorName).ToList(),
-                CoverImageId = r.Product.ProductImages
+                CoverImage = r.Product.ProductImages
                     .OrderBy(i => i.Id)
-                    .Select(i => (int?)i.Id)
-                    .FirstOrDefault(),
-                CoverImageName = r.Product.ProductImages
-                    .OrderBy(i => i.Id)
-                    .Select(i => i.ImageName)
+                    .Select(i => new { i.Id, i.ImageName })
                     .FirstOrDefault(),
                 MemberName = r.ClubMember != null ? r.ClubMember.Name : null,
                 MemberSurname = r.ClubMember != null ? r.ClubMember.Surname : null,
@@ -139,6 +189,26 @@ public class ReviewService : IReviewService
                 MemberAvatarData = r.ClubMember != null ? r.ClubMember.AvatarData : null,
             })
             .ToListAsync(cancellationToken);
+
+        return rows.Select(r => new ReviewListRow
+        {
+            Id = r.Id,
+            ProductId = r.ProductId,
+            ProductName = r.ProductName,
+            UserId = r.UserId,
+            Rating = r.Rating,
+            Comment = r.Comment,
+            CreatedAt = r.CreatedAt,
+            Approved = r.Approved,
+            AuthorNames = r.AuthorNames,
+            CoverImageId = r.CoverImage != null ? r.CoverImage.Id : null,
+            CoverImageName = r.CoverImage != null ? r.CoverImage.ImageName : null,
+            MemberName = r.MemberName,
+            MemberSurname = r.MemberSurname,
+            MemberUserName = r.MemberUserName,
+            MemberEmail = r.MemberEmail,
+            MemberAvatarData = r.MemberAvatarData,
+        }).ToList();
     }
 
     private static ReviewDto MapListRowToDto(ReviewListRow row)
