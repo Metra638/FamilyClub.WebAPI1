@@ -259,8 +259,6 @@ push-frontend:
   needs:
     - job: build-frontend
       artifacts: true
-    - job: scan-frontend
-    - job: dast-frontend
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
@@ -471,8 +469,6 @@ push-backend:
   needs:
     - job: build-backend
       artifacts: true
-    - job: scan-backend
-    - job: dast-backend
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
