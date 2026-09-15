@@ -44,6 +44,7 @@ public class FamilyClubContext : IdentityDbContext<ClubMember>
     public DbSet<PlatformSettings> PlatformSettings { get; set; }
     public DbSet<ActionLog> ActionLogs { get; set; }
     public DbSet<ActionLogArchive> ActionLogArchives { get; set; }
+    public DbSet<BookEmbedding> BookEmbeddings { get; set; }
     protected override void OnModelCreating(ModelBuilder builder)
     {
         // Mandatory for Identity
@@ -214,6 +215,15 @@ public class FamilyClubContext : IdentityDbContext<ClubMember>
             .WithMany()  // or WithMany(cm => cm.Complaints) if you add navigation property in ClubMember
             .HasForeignKey(c => c.ClubMemberId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<BookEmbedding>(e =>
+        {
+            e.HasKey(x => x.ProductId);
+            e.HasOne(x => x.Product)
+                .WithOne()
+                .HasForeignKey<BookEmbedding>(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
 }

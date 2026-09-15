@@ -32,18 +32,7 @@ const TOP_CITIES: NovaPoshtaCity[] = [
 const cache = new Map<string, { data: NovaPoshtaCity[]; expiry: number }>();
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
 
-import { getClientIp, novaPoshtaRateLimiter } from "@/lib/api/rateLimiter";
-
 export async function GET(request: Request) {
-  const ip = getClientIp(request);
-  const rateLimit = novaPoshtaRateLimiter.check(ip);
-  if (!rateLimit.success) {
-    return Response.json(
-      { error: "Забагато запитів, спробуйте пізніше" },
-      { status: 429 }
-    );
-  }
-
   const { searchParams } = new URL(request.url);
   const rawQuery = (searchParams.get("q") || "").trim();
 

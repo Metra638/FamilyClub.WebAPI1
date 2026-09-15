@@ -12,18 +12,7 @@ const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
 
 const POSTBOX_TYPE_REF = "f9316480-5f2d-425d-bc2c-ac7cd29decf0";
 
-import { getClientIp, novaPoshtaRateLimiter } from "@/lib/api/rateLimiter";
-
 export async function GET(request: Request) {
-  const ip = getClientIp(request);
-  const rateLimit = novaPoshtaRateLimiter.check(ip);
-  if (!rateLimit.success) {
-    return Response.json(
-      { error: "Забагато запитів, спробуйте пізніше" },
-      { status: 429 }
-    );
-  }
-
   const { searchParams } = new URL(request.url);
   const cityRef = (searchParams.get("cityRef") || "").trim();
   const type = (searchParams.get("type") || "branch").trim().toLowerCase();

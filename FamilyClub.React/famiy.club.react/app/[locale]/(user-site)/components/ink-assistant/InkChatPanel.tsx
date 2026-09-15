@@ -5,12 +5,15 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   useLocalizedPath,
   useTranslations,
+  useLocale,
 } from "@/lib/i18n/LocaleProvider";
+import { apiBasePath } from "@/lib/api/services";
 
 type ChatMessage = {
   id: string;
   from: "ink" | "user";
   text: string;
+  books?: { id: number; title: string }[];
 };
 
 type QuickReply = {
@@ -26,9 +29,21 @@ type InkChatPanelProps = {
   onPlayGame?: () => void;
 };
 
-function matchReply(input: string, t: (key: string) => string): string {
+function matchReply(input: string, t: (key: string) => string): string | null {
   const q = input.toLowerCase().trim();
   if (!q) return t("ink.match.empty");
+  if (/(повернення|обмін|return|exchange|refund)/i.test(q)){
+    return t("ink.match.returns");
+  }
+  if (/(замовлення|order|статус|мої замовлення|my orders|tracking)/i.test(q)){
+    return t("ink.match.order");
+  }
+  if(/(аккаунт|профіль|login|account|profile|увійти|sign in|акаунт)/i.test(q)){
+    return t("ink.match.account");
+  }
+  if(/(розробник|developer|developers|розробники)/i.test(q)){
+    return t("ink.match.developer");
+  }
   if (/(гра|пограт|полюван|лазер|мишк|play|game|laser|mouse)/i.test(q)) {
     return t("ink.match.play");
   }
@@ -38,7 +53,8 @@ function matchReply(input: string, t: (key: string) => string): string {
   if (/(рекоменд|порекоменд|що почита|recommend|suggest)/i.test(q)) {
     return t("ink.match.recommend");
   }
-  if (/(книг|підібр|read|book|find)/i.test(q)) {
+  // «книга» сама по собі йде в LLM/пошук; FAQ лише для підбору
+  if (/(підібр|що почита)/i.test(q)) {
     return t("ink.match.book");
   }
   if (/(підтримк|скарг|допомог|support|контакт|зв.?язат|help|contact)/i.test(q)) {
@@ -59,14 +75,15 @@ function matchReply(input: string, t: (key: string) => string): string {
   if (/(дякую|thanks|спасиб|thank)/i.test(q)) {
     return t("ink.match.thanks");
   }
-  return t("ink.match.fallback");
+  // return t("ink.match.fallback");
+  return null; // Йдемо в LLM
 }
 
 export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps) {
   const t = useTranslations();
   const lp = useLocalizedPath();
   const welcome = t("ink.welcome");
-
+  const { locale } = useLocale();
   const quickReplies = useMemo<QuickReply[]>(
     () => [
       {
@@ -124,6 +141,7 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
     { id: "welcome", from: "ink", text: welcome },
   ]);
   const [draft, setDraft] = useState("");
+  const [thinking, setThinking] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -134,12 +152,17 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
     const el = listRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, thinking]);
 
-  const pushInk = (text: string) => {
+  const pushInk = (text: string, books?: { id: number; title: string }[]) => {
     setMessages((prev) => [
       ...prev,
-      { id: `ink-${Date.now()}-${prev.length}`, from: "ink", text },
+      {
+        id: `ink-${Date.now()}-${prev.length}`,
+        from: "ink",
+        text,
+        books: books && books.length > 0 ? books : undefined,
+      },
     ]);
   };
 
@@ -151,6 +174,7 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
   };
 
   const handleQuick = (item: QuickReply) => {
+    if (thinking) return;
     pushUser(item.label);
     window.setTimeout(() => {
       pushInk(item.reply);
@@ -160,13 +184,41 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
     }, 280);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (thinking) return;
     const text = draft.trim();
     if (!text) return;
     pushUser(text);
     setDraft("");
-    window.setTimeout(() => pushInk(matchReply(text, t)), 320);
+    const faq = matchReply(text, t);
+    if (faq) {
+      window.setTimeout(() => pushInk(faq), 320);
+      return;
+    }
+
+    setThinking(true);
+    try {
+      const res = await fetch(`${apiBasePath}/api/InkAssistant/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, locale }),
+      });
+      if (!res.ok) throw new Error("bad status");
+      const data = (await res.json()) as {
+        reply: string;
+        needsSupport: boolean;
+        books?: { id: number; title: string }[] | null;
+      };
+      pushInk(
+        data.reply || t("ink.match.fallback"),
+        data.books ?? undefined,
+      );
+    } catch {
+      pushInk(t("ink.match.fallback"));
+    } finally {
+      setThinking(false);
+    }
   };
 
   return (
@@ -203,9 +255,36 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
                 : "self-end bg-[#E8F5EF] text-[#005B33]"
             }`}
           >
-            {m.text}
+            <p className="whitespace-pre-wrap">{m.text}</p>
+            {m.from === "ink" && m.books && m.books.length > 0 ? (
+              <div className="mt-2 border-t border-[#005B33]/15 pt-1.5">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#005B33]/70">
+                  {t("ink.bookLinksLabel")}
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {m.books.map((book) => (
+                    <li key={book.id}>
+                      <Link
+                        href={lp(`/products/${book.id}`)}
+                        className="text-[12px] font-medium text-[#005B33] underline decoration-[#005B33]/35 underline-offset-2 transition-colors hover:decoration-[#005B33]"
+                      >
+                        {book.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         ))}
+        {thinking ? (
+          <div
+            className="ink-thinking self-start max-w-[90%] rounded-[10px] bg-white px-2.5 py-1.5 text-[13px] leading-snug text-[#005B33]/80 shadow-sm"
+            aria-live="polite"
+          >
+            {t("ink.thinking")}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-1.5 border-t border-[#005B33]/15 px-3 py-2">
@@ -214,8 +293,17 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
             <Link
               key={item.id}
               href={item.href}
-              onClick={() => handleQuick(item)}
-              className="rounded-full border border-[#005B33]/35 bg-white px-2.5 py-1 text-[11px] font-medium text-[#005B33] transition-colors hover:border-[#005B33] hover:bg-[#E8F5EF]"
+              onClick={(e) => {
+                if (thinking) {
+                  e.preventDefault();
+                  return;
+                }
+                handleQuick(item);
+              }}
+              aria-disabled={thinking}
+              className={`rounded-full border border-[#005B33]/35 bg-white px-2.5 py-1 text-[11px] font-medium text-[#005B33] transition-colors hover:border-[#005B33] hover:bg-[#E8F5EF] ${
+                thinking ? "pointer-events-none opacity-50" : ""
+              }`}
             >
               {item.label}
             </Link>
@@ -224,7 +312,8 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
               key={item.id}
               type="button"
               onClick={() => handleQuick(item)}
-              className="rounded-full border border-[#005B33]/35 bg-white px-2.5 py-1 text-[11px] font-medium text-[#005B33] transition-colors hover:border-[#005B33] hover:bg-[#E8F5EF]"
+              disabled={thinking}
+              className="rounded-full border border-[#005B33]/35 bg-white px-2.5 py-1 text-[11px] font-medium text-[#005B33] transition-colors hover:border-[#005B33] hover:bg-[#E8F5EF] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {item.label}
             </button>
@@ -241,11 +330,13 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t("ink.placeholder")}
           aria-label={t("ink.messageAria")}
-          className="min-w-0 flex-1 rounded-[8px] border border-gray-300 bg-white px-2.5 py-1.5 text-[13px] text-[#242424] outline-none focus:border-[#005B33]"
+          disabled={thinking}
+          className="min-w-0 flex-1 rounded-[8px] border border-gray-300 bg-white px-2.5 py-1.5 text-[13px] text-[#242424] outline-none focus:border-[#005B33] disabled:cursor-not-allowed disabled:opacity-60"
         />
         <button
           type="submit"
-          className="rounded-[8px] bg-[#005B33] px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#004d2b]"
+          disabled={thinking || !draft.trim()}
+          className="rounded-[8px] bg-[#005B33] px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#004d2b] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("ink.send")}
         </button>

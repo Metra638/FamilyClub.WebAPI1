@@ -82,12 +82,27 @@
   animation: ink-cat-prepare 0.28s ease-in-out infinite;
 }
 
+@keyframes ink-thinking-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.ink-thinking {
+  animation: ink-thinking-pulse 1.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ink-glow-pulse,
   .ink-bell-shake,
   .ink-cat-in,
   .ink-panel-in,
-  .ink-cat-prepare {
+  .ink-cat-prepare,
+  .ink-thinking {
     animation: none;
   }
 }

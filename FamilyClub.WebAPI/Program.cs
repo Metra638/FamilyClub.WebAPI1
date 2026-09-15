@@ -325,6 +325,9 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<FamilyClub.WebAPI.Services.IInkBookEmbeddingService, FamilyClub.WebAPI.Services.InkBookEmbeddingService>();
+
 var app = builder.Build();
 
 

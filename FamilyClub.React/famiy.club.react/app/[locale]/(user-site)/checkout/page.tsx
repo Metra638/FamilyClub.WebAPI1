@@ -11,10 +11,11 @@ import type { ProductDto } from "@/lib/api/generated";
 import { getAuthToken, getAuthUserId } from "@/lib/auth/tokenStorage";
 import { alertError, alertWarning } from "@/lib/ui/sweetAlert";
 import { useCurrentUser } from "@/app/(user-site)/userProfile/hooks/useCurrentUser";
-import { useLocale, useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+//import { useLocale, useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 import styles from "./checkout.module.css";
 import MobileCheckoutView from "./MobileCheckoutView";
 import NovaPoshtaFields from "./NovaPoshtaFields";
+import { useLocale, useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 
 // ─── Types ───
 export type DeliveryProvider = "nova_poshta" | "ukr_poshta" | "meest";

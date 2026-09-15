@@ -922,6 +922,8 @@
     "placeholder": "Write to Ink…",
     "messageAria": "Message for Ink",
     "send": "Send",
+    "thinking": "Purr… thinking…",
+    "bookLinksLabel": "Open in catalog:",
     "welcome": "Purr… You rang — I’m here. How can I help?",
     "quick": {
       "playLabel": "Play",
@@ -953,7 +955,11 @@
       "catalog": "The catalog opens with the button below. Filter by genre, language, and price.",
       "who": "I’m Ink. I live in the house on the right and appear when the bell rings.",
       "thanks": "Always happy to help. If you need me again — ring the bell.",
-      "fallback": "I’m still learning complex questions. Try the quick actions below — support, book recommendation, deals…"
+      "returns": "Returns and exchanges go through support or the returns section in your orders. Tap “Support” below — people will help.",
+      "order": "Check order status in “My orders” in your profile. If something’s wrong — use “Support” below.",
+      "account": "Sign-in, profile, and settings are under the account icon in the header. Forgot your password? Recovery is there too.",
+      "developer": "I’m only a helper. For questions for the developers, tap “Support” — your message will reach the team.",
+      "fallback": "Purr… I’m not sure how to help with that. Tap “Support” below and write to the developers or support — they’ll sort it out."
     },
     "game": {
       "aria": "Game with Ink",

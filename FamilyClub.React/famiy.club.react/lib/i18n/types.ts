@@ -887,6 +887,8 @@ export type Dictionary = {
     placeholder: string;
     messageAria: string;
     send: string;
+    thinking: string;
+    bookLinksLabel: string;
     welcome: string;
     quick: {
       playLabel: string;
@@ -918,6 +920,10 @@ export type Dictionary = {
       catalog: string;
       who: string;
       thanks: string;
+      returns: string;
+      order: string;
+      account: string;
+      developer: string;
       fallback: string;
     };
     game: {
