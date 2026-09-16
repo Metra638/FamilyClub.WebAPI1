@@ -1,13 +1,13 @@
 export interface RateLimitOptions {
-  windowMs: number; // Window size in milliseconds
-  maxRequests: number; // Max requests allowed per window
+  windowMs: number;
+  maxRequests: number;
 }
 
 export interface RateLimitResult {
   success: boolean;
   limit: number;
   remaining: number;
-  reset: number; // Timestamp in milliseconds when the window resets
+  reset: number;
 }
 
 export class SlidingWindowRateLimiter {
@@ -25,7 +25,6 @@ export class SlidingWindowRateLimiter {
     const windowStart = now - this.windowMs;
 
     const timestamps = this.hits.get(identifier) || [];
-    // Keep only timestamps within the sliding window
     const validTimestamps = timestamps.filter((t) => t > windowStart);
 
     if (validTimestamps.length >= this.maxRequests) {
@@ -43,7 +42,6 @@ export class SlidingWindowRateLimiter {
     validTimestamps.push(now);
     this.hits.set(identifier, validTimestamps);
 
-    // Garbage collect stale keys if map grows large
     if (this.hits.size > 2000) {
       this.prune();
     }
@@ -70,7 +68,6 @@ export class SlidingWindowRateLimiter {
   }
 }
 
-/** Extract client IP from Next.js request headers. */
 export function getClientIp(request: Request): string {
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
@@ -83,9 +80,8 @@ export function getClientIp(request: Request): string {
   return "127.0.0.1";
 }
 
-/** Pre-configured rate limiter instance for Nova Poshta endpoints (max 30 requests per 10s per IP). */
 export const novaPoshtaRateLimiter = new SlidingWindowRateLimiter({
-  windowMs: 10_000, // 10 seconds
-  maxRequests: 30, // 30 requests per 10s per IP
+  windowMs: 10_000,
+  maxRequests: 30,
 });
 

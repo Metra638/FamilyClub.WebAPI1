@@ -66,10 +66,88 @@ export interface Order {
     status?: string | null;
     /**
      * 
+     * @type {string}
+     * @memberof Order
+     */
+    paymentMethod?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof Order
      */
     totalPrice?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    firstName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    lastName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    email?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    phone?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    deliveryProvider?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    deliveryType?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    city?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    cityRef?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    branch?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    branchRef?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof Order
+     */
+    deliveryCost?: number | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Order
+     */
+    comment?: string | null;
     /**
      * 
      * @type {Array<OrderItem>}
@@ -100,7 +178,20 @@ export function OrderFromJSONTyped(json: any, ignoreDiscriminator: boolean): Ord
         'clubMember': json['clubMember'] == null ? undefined : ClubMemberFromJSON(json['clubMember']),
         'orderDate': json['orderDate'] == null ? undefined : (new Date(json['orderDate'])),
         'status': json['status'] == null ? undefined : json['status'],
+        'paymentMethod': json['paymentMethod'] == null ? undefined : json['paymentMethod'],
         'totalPrice': json['totalPrice'] == null ? undefined : json['totalPrice'],
+        'firstName': json['firstName'] == null ? undefined : json['firstName'],
+        'lastName': json['lastName'] == null ? undefined : json['lastName'],
+        'email': json['email'] == null ? undefined : json['email'],
+        'phone': json['phone'] == null ? undefined : json['phone'],
+        'deliveryProvider': json['deliveryProvider'] == null ? undefined : json['deliveryProvider'],
+        'deliveryType': json['deliveryType'] == null ? undefined : json['deliveryType'],
+        'city': json['city'] == null ? undefined : json['city'],
+        'cityRef': json['cityRef'] == null ? undefined : json['cityRef'],
+        'branch': json['branch'] == null ? undefined : json['branch'],
+        'branchRef': json['branchRef'] == null ? undefined : json['branchRef'],
+        'deliveryCost': json['deliveryCost'] == null ? undefined : json['deliveryCost'],
+        'comment': json['comment'] == null ? undefined : json['comment'],
         'orderItems': json['orderItems'] == null ? undefined : ((json['orderItems'] as Array<any>).map(OrderItemFromJSON)),
     };
 }
@@ -121,7 +212,20 @@ export function OrderToJSONTyped(value?: Order | null, ignoreDiscriminator: bool
         'clubMember': ClubMemberToJSON(value['clubMember']),
         'orderDate': value['orderDate'] == null ? value['orderDate'] : value['orderDate'].toISOString(),
         'status': value['status'],
+        'paymentMethod': value['paymentMethod'],
         'totalPrice': value['totalPrice'],
+        'firstName': value['firstName'],
+        'lastName': value['lastName'],
+        'email': value['email'],
+        'phone': value['phone'],
+        'deliveryProvider': value['deliveryProvider'],
+        'deliveryType': value['deliveryType'],
+        'city': value['city'],
+        'cityRef': value['cityRef'],
+        'branch': value['branch'],
+        'branchRef': value['branchRef'],
+        'deliveryCost': value['deliveryCost'],
+        'comment': value['comment'],
         'orderItems': value['orderItems'] == null ? undefined : ((value['orderItems'] as Array<any>).map(OrderItemToJSON)),
     };
 }

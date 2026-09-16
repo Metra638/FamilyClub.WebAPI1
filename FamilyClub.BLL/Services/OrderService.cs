@@ -43,7 +43,21 @@ namespace FamilyClub.BLL.Services
 					? "card_online"
 					: dto.PaymentMethod.Trim(),
 				TotalPrice = dto.TotalPrice,
-				OrderItems = dto.OrderItems.Select(item => new OrderItem
+                FirstName = dto.FirstName,
+                LastName = dto.LastName,
+                Email = dto.Email,
+                Phone = dto.Phone,
+                DeliveryProvider = dto.DeliveryProvider,
+                DeliveryType = dto.DeliveryType,
+                City = dto.City,
+                CityRef = dto.CityRef,
+                Branch = dto.Branch,
+                BranchRef = dto.BranchRef,
+                DeliveryCost = dto.DeliveryCost,
+
+                Comment = dto.Comment,
+
+                OrderItems = dto.OrderItems.Select(item => new OrderItem
 				{
 					ProductId = item.ProductId, // FK
 					Quantity = item.Quantity,
@@ -82,8 +96,21 @@ namespace FamilyClub.BLL.Services
 			{
 				order.TotalPrice = dto.TotalPrice;
 			}
+            if (dto.FirstName != null) order.FirstName = dto.FirstName;
+            if (dto.LastName != null) order.LastName = dto.LastName;
+            if (dto.Email != null) order.Email = dto.Email;
+            if (dto.Phone != null) order.Phone = dto.Phone;
+            if (dto.DeliveryProvider != null) order.DeliveryProvider = dto.DeliveryProvider;
+            if (dto.DeliveryType != null) order.DeliveryType = dto.DeliveryType;
+            if (dto.City != null) order.City = dto.City;
+            if (dto.CityRef != null) order.CityRef = dto.CityRef;
+            if (dto.Branch != null) order.Branch = dto.Branch;
+            if (dto.BranchRef != null) order.BranchRef = dto.BranchRef;
+            if (dto.DeliveryCost.HasValue) order.DeliveryCost = dto.DeliveryCost;
 
-			_orderRepository.Update(order);
+            if (dto.Comment != null) order.Comment = dto.Comment;
+
+            _orderRepository.Update(order);
 			await _unitOfWork.SaveChangesAsync(cancellationToken);
 
 			return true;
@@ -120,7 +147,21 @@ namespace FamilyClub.BLL.Services
 				Status = order.Status,
 				PaymentMethod = order.PaymentMethod,
 				TotalPrice = order.TotalPrice,
-				OrderItems = order.OrderItems.Select(oi => new OrderItemDTO
+
+                FirstName = order.FirstName,
+                LastName = order.LastName,
+                Email = order.Email,
+                Phone = order.Phone,
+                DeliveryProvider = order.DeliveryProvider,
+                DeliveryType = order.DeliveryType,
+                City = order.City,
+                CityRef = order.CityRef,
+                Branch = order.Branch,
+                BranchRef = order.BranchRef,
+                DeliveryCost = order.DeliveryCost,
+
+                Comment = order.Comment,
+                OrderItems = order.OrderItems.Select(oi => new OrderItemDTO
 				{
 					Id = oi.Id,
 					Quantity = oi.Quantity,

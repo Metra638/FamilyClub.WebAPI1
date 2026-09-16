@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 import styles from "../checkout.module.css";
 
-export default function CheckoutCancelPage() {
+function CheckoutCancelContent() {
   const t = useTranslations();
   const lp = useLocalizedPath();
   const router = useRouter();
@@ -46,5 +47,13 @@ export default function CheckoutCancelPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutCancelPage() {
+  return (
+    <Suspense fallback={null}>
+      <CheckoutCancelContent />
+    </Suspense>
   );
 }

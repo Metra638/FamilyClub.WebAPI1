@@ -9,6 +9,7 @@ All URIs are relative to *http://localhost*
 | [**apiProductsIdGet**](ProductsApi.md#apiproductsidget) | **GET** /api/Products/{id} |  |
 | [**apiProductsIdPut**](ProductsApi.md#apiproductsidput) | **PUT** /api/Products/{id} |  |
 | [**apiProductsPost**](ProductsApi.md#apiproductspost) | **POST** /api/Products |  |
+| [**apiProductsProductIdImagesImageIdGet**](ProductsApi.md#apiproductsproductidimagesimageidget) | **GET** /api/Products/{productId}/images/{imageId} |  |
 
 
 
@@ -489,6 +490,74 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `multipart/form-data`
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## apiProductsProductIdImagesImageIdGet
+
+> apiProductsProductIdImagesImageIdGet(productId, imageId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ProductsApi,
+} from '';
+import type { ApiProductsProductIdImagesImageIdGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ProductsApi();
+
+  const body = {
+    // number
+    productId: 56,
+    // number
+    imageId: 56,
+  } satisfies ApiProductsProductIdImagesImageIdGetRequest;
+
+  try {
+    const data = await api.apiProductsProductIdImagesImageIdGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **productId** | `number` |  | [Defaults to `undefined`] |
+| **imageId** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: Not defined
 
 

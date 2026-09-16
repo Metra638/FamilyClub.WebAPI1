@@ -5,6 +5,8 @@ export interface NovaPoshtaWarehouse {
   description: string;
   number: string;
   shortAddress: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 const cache = new Map<string, { data: NovaPoshtaWarehouse[]; expiry: number }>();
@@ -75,12 +77,18 @@ export async function GET(request: Request) {
       });
     }
 
-    const warehouses: NovaPoshtaWarehouse[] = rawList.map((w) => ({
-      ref: w.Ref,
-      description: w.Description,
-      number: w.Number,
-      shortAddress: w.ShortAddress || w.Description,
-    }));
+    const warehouses: NovaPoshtaWarehouse[] = rawList.map((w) => {
+      const lat = w.Latitude ? parseFloat(w.Latitude) : undefined;
+      const lon = w.Longitude ? parseFloat(w.Longitude) : undefined;
+      return {
+        ref: w.Ref,
+        description: w.Description,
+        number: w.Number,
+        shortAddress: w.ShortAddress || w.Description,
+        latitude: Number.isFinite(lat) ? lat : undefined,
+        longitude: Number.isFinite(lon) ? lon : undefined,
+      };
+    });
 
     cache.set(cacheKey, { data: warehouses, expiry: Date.now() + CACHE_TTL_MS });
 

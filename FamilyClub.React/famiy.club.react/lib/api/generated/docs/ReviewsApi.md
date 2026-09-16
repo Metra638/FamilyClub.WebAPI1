@@ -4,6 +4,7 @@ All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
+| [**apiReviewsByProductProductIdGet**](ReviewsApi.md#apireviewsbyproductproductidget) | **GET** /api/Reviews/by-product/{productId} |  |
 | [**apiReviewsByUserUserIdGet**](ReviewsApi.md#apireviewsbyuseruseridget) | **GET** /api/Reviews/by-user/{userId} |  |
 | [**apiReviewsGet**](ReviewsApi.md#apireviewsget) | **GET** /api/Reviews |  |
 | [**apiReviewsIdDelete**](ReviewsApi.md#apireviewsiddelete) | **DELETE** /api/Reviews/{id} |  |
@@ -11,6 +12,71 @@ All URIs are relative to *http://localhost*
 | [**apiReviewsIdPut**](ReviewsApi.md#apireviewsidput) | **PUT** /api/Reviews/{id} |  |
 | [**apiReviewsPost**](ReviewsApi.md#apireviewspost) | **POST** /api/Reviews |  |
 
+
+
+## apiReviewsByProductProductIdGet
+
+> Array&lt;ReviewDto&gt; apiReviewsByProductProductIdGet(productId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReviewsApi,
+} from '';
+import type { ApiReviewsByProductProductIdGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ReviewsApi();
+
+  const body = {
+    // number
+    productId: 56,
+  } satisfies ApiReviewsByProductProductIdGetRequest;
+
+  try {
+    const data = await api.apiReviewsByProductProductIdGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **productId** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**Array&lt;ReviewDto&gt;**](ReviewDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
 ## apiReviewsByUserUserIdGet

@@ -17,19 +17,45 @@ import * as runtime from '../runtime';
 import type {
   AuthResponseClubMemberDTO,
   ClubMemberReadDto,
+  ExternalLoginRequestDto,
+  ForgotPasswordDto,
   LoginClubMemberDto,
   RegisterClubMemberDto,
+  ResetPasswordDto,
 } from '../models/index';
 import {
     AuthResponseClubMemberDTOFromJSON,
     AuthResponseClubMemberDTOToJSON,
     ClubMemberReadDtoFromJSON,
     ClubMemberReadDtoToJSON,
+    ExternalLoginRequestDtoFromJSON,
+    ExternalLoginRequestDtoToJSON,
+    ForgotPasswordDtoFromJSON,
+    ForgotPasswordDtoToJSON,
     LoginClubMemberDtoFromJSON,
     LoginClubMemberDtoToJSON,
     RegisterClubMemberDtoFromJSON,
     RegisterClubMemberDtoToJSON,
+    ResetPasswordDtoFromJSON,
+    ResetPasswordDtoToJSON,
 } from '../models/index';
+
+export interface ApiAuthClubMemberExternalLoginCallbackGetRequest {
+    returnUrl?: string;
+}
+
+export interface ApiAuthClubMemberExternalLoginGetRequest {
+    provider?: string;
+    returnUrl?: string;
+}
+
+export interface ApiAuthClubMemberExternalLoginTokenPostRequest {
+    externalLoginRequestDto?: ExternalLoginRequestDto;
+}
+
+export interface ApiAuthClubMemberForgotPasswordPostRequest {
+    forgotPasswordDto?: ForgotPasswordDto;
+}
 
 export interface ApiAuthClubMemberLoginPostRequest {
     loginClubMemberDto?: LoginClubMemberDto;
@@ -39,10 +65,169 @@ export interface ApiAuthClubMemberRegisterPostRequest {
     registerClubMemberDto?: RegisterClubMemberDto;
 }
 
+export interface ApiAuthClubMemberResetPasswordPostRequest {
+    resetPasswordDto?: ResetPasswordDto;
+}
+
 /**
  * 
  */
 export class AuthClubMemberApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for apiAuthClubMemberExternalLoginCallbackGet without sending the request
+     */
+    async apiAuthClubMemberExternalLoginCallbackGetRequestOpts(requestParameters: ApiAuthClubMemberExternalLoginCallbackGetRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['returnUrl'] != null) {
+            queryParameters['returnUrl'] = requestParameters['returnUrl'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/AuthClubMember/external-login-callback`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async apiAuthClubMemberExternalLoginCallbackGetRaw(requestParameters: ApiAuthClubMemberExternalLoginCallbackGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.apiAuthClubMemberExternalLoginCallbackGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async apiAuthClubMemberExternalLoginCallbackGet(requestParameters: ApiAuthClubMemberExternalLoginCallbackGetRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiAuthClubMemberExternalLoginCallbackGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for apiAuthClubMemberExternalLoginGet without sending the request
+     */
+    async apiAuthClubMemberExternalLoginGetRequestOpts(requestParameters: ApiAuthClubMemberExternalLoginGetRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['provider'] != null) {
+            queryParameters['provider'] = requestParameters['provider'];
+        }
+
+        if (requestParameters['returnUrl'] != null) {
+            queryParameters['returnUrl'] = requestParameters['returnUrl'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/AuthClubMember/external-login`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async apiAuthClubMemberExternalLoginGetRaw(requestParameters: ApiAuthClubMemberExternalLoginGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.apiAuthClubMemberExternalLoginGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async apiAuthClubMemberExternalLoginGet(requestParameters: ApiAuthClubMemberExternalLoginGetRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiAuthClubMemberExternalLoginGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for apiAuthClubMemberExternalLoginTokenPost without sending the request
+     */
+    async apiAuthClubMemberExternalLoginTokenPostRequestOpts(requestParameters: ApiAuthClubMemberExternalLoginTokenPostRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/AuthClubMember/external-login-token`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ExternalLoginRequestDtoToJSON(requestParameters['externalLoginRequestDto']),
+        };
+    }
+
+    /**
+     */
+    async apiAuthClubMemberExternalLoginTokenPostRaw(requestParameters: ApiAuthClubMemberExternalLoginTokenPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthResponseClubMemberDTO>> {
+        const requestOptions = await this.apiAuthClubMemberExternalLoginTokenPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseClubMemberDTOFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async apiAuthClubMemberExternalLoginTokenPost(requestParameters: ApiAuthClubMemberExternalLoginTokenPostRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthResponseClubMemberDTO> {
+        const response = await this.apiAuthClubMemberExternalLoginTokenPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for apiAuthClubMemberForgotPasswordPost without sending the request
+     */
+    async apiAuthClubMemberForgotPasswordPostRequestOpts(requestParameters: ApiAuthClubMemberForgotPasswordPostRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/AuthClubMember/forgot-password`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ForgotPasswordDtoToJSON(requestParameters['forgotPasswordDto']),
+        };
+    }
+
+    /**
+     */
+    async apiAuthClubMemberForgotPasswordPostRaw(requestParameters: ApiAuthClubMemberForgotPasswordPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.apiAuthClubMemberForgotPasswordPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async apiAuthClubMemberForgotPasswordPost(requestParameters: ApiAuthClubMemberForgotPasswordPostRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiAuthClubMemberForgotPasswordPostRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for apiAuthClubMemberLoginPost without sending the request
@@ -187,6 +372,43 @@ export class AuthClubMemberApi extends runtime.BaseAPI {
     async apiAuthClubMemberRegisterPost(requestParameters: ApiAuthClubMemberRegisterPostRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClubMemberReadDto> {
         const response = await this.apiAuthClubMemberRegisterPostRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for apiAuthClubMemberResetPasswordPost without sending the request
+     */
+    async apiAuthClubMemberResetPasswordPostRequestOpts(requestParameters: ApiAuthClubMemberResetPasswordPostRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/AuthClubMember/reset-password`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ResetPasswordDtoToJSON(requestParameters['resetPasswordDto']),
+        };
+    }
+
+    /**
+     */
+    async apiAuthClubMemberResetPasswordPostRaw(requestParameters: ApiAuthClubMemberResetPasswordPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.apiAuthClubMemberResetPasswordPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async apiAuthClubMemberResetPasswordPost(requestParameters: ApiAuthClubMemberResetPasswordPostRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiAuthClubMemberResetPasswordPostRaw(requestParameters, initOverrides);
     }
 
 }

@@ -104,6 +104,11 @@ export interface ApiProductsPostRequest {
     productImageFiles?: Array<Blob>;
 }
 
+export interface ApiProductsProductIdImagesImageIdGetRequest {
+    productId: number;
+    imageId: number;
+}
+
 /**
  * 
  */
@@ -609,6 +614,56 @@ export class ProductsApi extends runtime.BaseAPI {
      */
     async apiProductsPost(requestParameters: ApiProductsPostRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.apiProductsPostRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for apiProductsProductIdImagesImageIdGet without sending the request
+     */
+    async apiProductsProductIdImagesImageIdGetRequestOpts(requestParameters: ApiProductsProductIdImagesImageIdGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['productId'] == null) {
+            throw new runtime.RequiredError(
+                'productId',
+                'Required parameter "productId" was null or undefined when calling apiProductsProductIdImagesImageIdGet().'
+            );
+        }
+
+        if (requestParameters['imageId'] == null) {
+            throw new runtime.RequiredError(
+                'imageId',
+                'Required parameter "imageId" was null or undefined when calling apiProductsProductIdImagesImageIdGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/Products/{productId}/images/{imageId}`;
+        urlPath = urlPath.replace(`{${"productId"}}`, encodeURIComponent(String(requestParameters['productId'])));
+        urlPath = urlPath.replace(`{${"imageId"}}`, encodeURIComponent(String(requestParameters['imageId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async apiProductsProductIdImagesImageIdGetRaw(requestParameters: ApiProductsProductIdImagesImageIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.apiProductsProductIdImagesImageIdGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async apiProductsProductIdImagesImageIdGet(requestParameters: ApiProductsProductIdImagesImageIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.apiProductsProductIdImagesImageIdGetRaw(requestParameters, initOverrides);
     }
 
 }

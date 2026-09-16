@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/lib/hooks/useCart";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 import styles from "../checkout.module.css";
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const t = useTranslations();
   const lp = useLocalizedPath();
   const router = useRouter();
@@ -51,5 +51,13 @@ export default function CheckoutSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }

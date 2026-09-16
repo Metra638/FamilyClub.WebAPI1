@@ -11,7 +11,20 @@ Name | Type
 `clubMember` | [ClubMember](ClubMember.md)
 `orderDate` | Date
 `status` | string
+`paymentMethod` | string
 `totalPrice` | number
+`firstName` | string
+`lastName` | string
+`email` | string
+`phone` | string
+`deliveryProvider` | string
+`deliveryType` | string
+`city` | string
+`cityRef` | string
+`branch` | string
+`branchRef` | string
+`deliveryCost` | number
+`comment` | string
 `orderItems` | [Array&lt;OrderItem&gt;](OrderItem.md)
 
 ## Example
@@ -26,7 +39,20 @@ const example = {
   "clubMember": null,
   "orderDate": null,
   "status": null,
+  "paymentMethod": null,
   "totalPrice": null,
+  "firstName": null,
+  "lastName": null,
+  "email": null,
+  "phone": null,
+  "deliveryProvider": null,
+  "deliveryType": null,
+  "city": null,
+  "cityRef": null,
+  "branch": null,
+  "branchRef": null,
+  "deliveryCost": null,
+  "comment": null,
   "orderItems": null,
 } satisfies Order
 

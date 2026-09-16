@@ -3,9 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 import type { DeliveryProvider, DeliveryType, PaymentMethod } from "./page";
 import NovaPoshtaFields from "./NovaPoshtaFields";
+import UkrposhtaFields from "./UkrposhtaFields";
+import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 
 export type MobileCheckoutViewProps = {
   loading: boolean;
@@ -32,6 +33,8 @@ export type MobileCheckoutViewProps = {
   setCityRef?: (val: string) => void;
   branch: string;
   setBranch: (val: string) => void;
+  branchRef?: string;
+  setBranchRef?: (val: string) => void;
 
   paymentMethod: PaymentMethod;
   setPaymentMethod: (val: PaymentMethod) => void;
@@ -53,7 +56,6 @@ export type MobileCheckoutViewProps = {
   formatPrice: (value: number) => string;
 };
 
-// SVG Chevron Down
 function ChevronDownIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[#242424] shrink-0">
@@ -62,7 +64,6 @@ function ChevronDownIcon() {
   );
 }
 
-// SVG Radio Button component matching Figma
 function RadioBtn({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
     <div
@@ -82,7 +83,6 @@ function RadioBtn({ active, onClick }: { active: boolean; onClick: () => void })
   );
 }
 
-// Sub Radio Button (slightly smaller for branch/postbox)
 function SubRadioBtn({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
     <div
@@ -122,6 +122,8 @@ export default function MobileCheckoutView({
   setCityRef = () => {},
   branch,
   setBranch,
+  branchRef = "",
+  setBranchRef = () => {},
   paymentMethod,
   setPaymentMethod,
   comment,
@@ -360,6 +362,8 @@ export default function MobileCheckoutView({
                     setCityRef={setCityRef}
                     branch={branch}
                     setBranch={setBranch}
+                    branchRef={branchRef}
+                    setBranchRef={setBranchRef}
                     deliveryType={deliveryType}
                     variant="mobile"
                   />
@@ -370,24 +374,50 @@ export default function MobileCheckoutView({
 
               {/* Ukr Poshta Option */}
               <div
-                onClick={() => setDeliveryProvider("ukr_poshta")}
-                className="py-3 flex items-center justify-between gap-3 cursor-pointer"
+                onClick={() => {
+                  if (deliveryProvider !== "ukr_poshta") {
+                    setDeliveryProvider("ukr_poshta");
+                    setBranch("");
+                  }
+                }}
+                className="py-3 flex flex-col gap-2 cursor-pointer"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <RadioBtn
-                    active={deliveryProvider === "ukr_poshta"}
-                    onClick={() => setDeliveryProvider("ukr_poshta")}
-                  />
-                  <div className="flex flex-col leading-snug">
-                    <span className="text-[20px] font-semibold text-[#242424]">{t("checkout.ukrPoshta")}</span>
-                    <span className="text-[14px] text-[#242424]">
-                      <span className="text-[#242424]/50">{t("checkout.termLabel")}</span>{t("checkout.termUkr")}
-                    </span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <RadioBtn
+                      active={deliveryProvider === "ukr_poshta"}
+                      onClick={() => {
+                        setDeliveryProvider("ukr_poshta");
+                        setBranch("");
+                      }}
+                    />
+                    <div className="flex flex-col leading-snug">
+                      <span className="text-[20px] font-semibold text-[#242424]">{t("checkout.ukrPoshta")}</span>
+                      <span className="text-[14px] text-[#242424]">
+                        <span className="text-[#242424]/50">{t("checkout.termLabel")}</span>{t("checkout.termUkr")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#ffcc00] text-[#242424] font-bold px-2.5 py-1 rounded text-[13px] tracking-wide shadow-sm shrink-0">
+                    <span className="text-[#00529b]">📍</span> УКРПОШТА
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 bg-[#ffcc00] text-[#242424] font-bold px-2.5 py-1 rounded text-[13px] tracking-wide shadow-sm shrink-0">
-                  <span className="text-[#00529b]">📍</span> УКРПОШТА
-                </div>
+
+                {deliveryProvider === "ukr_poshta" && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <UkrposhtaFields
+                      city={city}
+                      setCity={setCity}
+                      cityRef={cityRef}
+                      setCityRef={setCityRef}
+                      branch={branch}
+                      setBranch={setBranch}
+                      branchRef={branchRef}
+                      setBranchRef={setBranchRef}
+                      variant="mobile"
+                    />
+                  </div>
+                )}
               </div>
 
               <hr className="border-t border-[#242424]/15 my-2" />

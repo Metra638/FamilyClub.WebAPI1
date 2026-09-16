@@ -58,7 +58,7 @@ export interface OrderDTO {
      */
     status?: string | null;
     /**
-     * card_online | cash_on_delivery | card_dia
+     * 
      * @type {string}
      * @memberof OrderDTO
      */
@@ -69,6 +69,78 @@ export interface OrderDTO {
      * @memberof OrderDTO
      */
     totalPrice?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    firstName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    lastName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    email?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    phone?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    deliveryProvider?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    deliveryType?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    city?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    cityRef?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    branch?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    branchRef?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof OrderDTO
+     */
+    deliveryCost?: number | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof OrderDTO
+     */
+    comment?: string | null;
     /**
      * 
      * @type {Array<OrderItemDTO>}
@@ -101,6 +173,18 @@ export function OrderDTOFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'status': json['status'] == null ? undefined : json['status'],
         'paymentMethod': json['paymentMethod'] == null ? undefined : json['paymentMethod'],
         'totalPrice': json['totalPrice'] == null ? undefined : json['totalPrice'],
+        'firstName': json['firstName'] == null ? undefined : json['firstName'],
+        'lastName': json['lastName'] == null ? undefined : json['lastName'],
+        'email': json['email'] == null ? undefined : json['email'],
+        'phone': json['phone'] == null ? undefined : json['phone'],
+        'deliveryProvider': json['deliveryProvider'] == null ? undefined : json['deliveryProvider'],
+        'deliveryType': json['deliveryType'] == null ? undefined : json['deliveryType'],
+        'city': json['city'] == null ? undefined : json['city'],
+        'cityRef': json['cityRef'] == null ? undefined : json['cityRef'],
+        'branch': json['branch'] == null ? undefined : json['branch'],
+        'branchRef': json['branchRef'] == null ? undefined : json['branchRef'],
+        'deliveryCost': json['deliveryCost'] == null ? undefined : json['deliveryCost'],
+        'comment': json['comment'] == null ? undefined : json['comment'],
         'orderItems': json['orderItems'] == null ? undefined : ((json['orderItems'] as Array<any>).map(OrderItemDTOFromJSON)),
     };
 }
@@ -123,6 +207,18 @@ export function OrderDTOToJSONTyped(value?: OrderDTO | null, ignoreDiscriminator
         'status': value['status'],
         'paymentMethod': value['paymentMethod'],
         'totalPrice': value['totalPrice'],
+        'firstName': value['firstName'],
+        'lastName': value['lastName'],
+        'email': value['email'],
+        'phone': value['phone'],
+        'deliveryProvider': value['deliveryProvider'],
+        'deliveryType': value['deliveryType'],
+        'city': value['city'],
+        'cityRef': value['cityRef'],
+        'branch': value['branch'],
+        'branchRef': value['branchRef'],
+        'deliveryCost': value['deliveryCost'],
+        'comment': value['comment'],
         'orderItems': value['orderItems'] == null ? undefined : ((value['orderItems'] as Array<any>).map(OrderItemDTOToJSON)),
     };
 }

@@ -1,20 +1,19 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import type { NovaPoshtaCity } from "@/app/api/novaposhta/cities/route";
-import type { NovaPoshtaWarehouse } from "@/app/api/novaposhta/warehouses/route";
+import type { UkrposhtaCity } from "@/app/api/ukrposhta/cities/route";
+import type { UkrposhtaWarehouse } from "@/app/api/ukrposhta/warehouses/route";
 import styles from "./checkout.module.css";
 
-interface NovaPoshtaFieldsProps {
+interface UkrposhtaFieldsProps {
   city: string;
   setCity: (val: string) => void;
-  cityRef: string;
-  setCityRef: (val: string) => void;
+  cityRef?: string;
+  setCityRef?: (val: string) => void;
   branch: string;
   setBranch: (val: string) => void;
   branchRef?: string;
   setBranchRef?: (val: string) => void;
-  deliveryType: "branch" | "postbox";
   variant?: "desktop" | "mobile";
 }
 
@@ -51,7 +50,7 @@ function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): 
   return R * c;
 }
 
-export default function NovaPoshtaFields({
+export default function UkrposhtaFields({
   city,
   setCity,
   cityRef,
@@ -60,14 +59,13 @@ export default function NovaPoshtaFields({
   setBranch,
   branchRef,
   setBranchRef,
-  deliveryType,
   variant = "desktop",
-}: NovaPoshtaFieldsProps) {
+}: UkrposhtaFieldsProps) {
   const [isCityOpen, setIsCityOpen] = useState(false);
   const [isBranchOpen, setIsBranchOpen] = useState(false);
 
-  const [cities, setCities] = useState<NovaPoshtaCity[]>([]);
-  const [warehouses, setWarehouses] = useState<NovaPoshtaWarehouse[]>([]);
+  const [cities, setCities] = useState<UkrposhtaCity[]>([]);
+  const [warehouses, setWarehouses] = useState<UkrposhtaWarehouse[]>([]);
 
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingWarehouses, setLoadingWarehouses] = useState(false);
@@ -75,21 +73,26 @@ export default function NovaPoshtaFields({
   const [cityQuery, setCityQuery] = useState(city);
   const [branchQuery, setBranchQuery] = useState(branch);
 
-  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [sortByDistance, setSortByDistance] = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const cityDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const branchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    setCityQuery(city);
+    if (city !== cityQuery) {
+      setCityQuery(city);
+    }
   }, [city]);
 
   useEffect(() => {
-    setBranchQuery(branch);
+    if (branch !== branchQuery) {
+      setBranchQuery(branch);
+    }
   }, [branch]);
 
   useEffect(() => {
@@ -110,20 +113,23 @@ export default function NovaPoshtaFields({
   const fetchCities = (q: string) => {
     if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
 
-    cityDebounceRef.current = setTimeout(async () => {
-      setLoadingCities(true);
-      try {
-        const res = await fetch(`/api/novaposhta/cities?q=${encodeURIComponent(q.trim())}`);
-        if (res.ok) {
-          const data: NovaPoshtaCity[] = await res.json();
-          setCities(data);
+    cityDebounceRef.current = setTimeout(
+      async () => {
+        setLoadingCities(true);
+        try {
+          const res = await fetch(`/api/ukrposhta/cities?q=${encodeURIComponent(q.trim())}`);
+          if (res.ok) {
+            const data: UkrposhtaCity[] = await res.json();
+            setCities(data);
+          }
+        } catch (err) {
+          console.warn("Ukrposhta: error loading cities", err);
+        } finally {
+          setLoadingCities(false);
         }
-      } catch (err) {
-        console.warn("NovaPoshta: error loading cities", err);
-      } finally {
-        setLoadingCities(false);
-      }
-    }, q.length < 2 ? 0 : 350);
+      },
+      q.length < 2 ? 0 : 350
+    );
   };
 
   const handleCityFocus = () => {
@@ -138,65 +144,74 @@ export default function NovaPoshtaFields({
     const val = e.target.value;
     setCityQuery(val);
     setCity(val);
+    setCityRef?.("");
     setIsCityOpen(true);
-    setCityRef("");
-    setBranch("");
-    setBranchQuery("");
-    setBranchRef?.("");
-    setSortByDistance(false);
+
+    const cleanDigits = val.replace(/\D/g, "");
+    if (cleanDigits.length === 5) {
+      fetchWarehouses("", val);
+    } else {
+      setBranch("");
+      setBranchQuery("");
+      setBranchRef?.("");
+    }
     fetchCities(val);
   };
 
-  const handleSelectCity = (selected: NovaPoshtaCity) => {
+  const handleSelectCity = (selected: UkrposhtaCity) => {
     setCity(selected.name);
     setCityQuery(selected.name);
-    setCityRef(selected.ref);
+    setCityRef?.(selected.ref);
     setBranch("");
     setBranchQuery("");
     setBranchRef?.("");
     setIsCityOpen(false);
-    setSortByDistance(false);
     setIsBranchOpen(true);
-    fetchWarehouses(selected.ref, deliveryType, "");
+    if (/^\d{5}$/.test(selected.ref)) {
+      fetchWarehouses(selected.name, selected.ref);
+    } else {
+      fetchWarehouses(selected.name, "");
+    }
   };
 
-  const fetchWarehouses = (ref: string, type: "branch" | "postbox", search: string) => {
-    if (!ref) return;
+  const fetchWarehouses = (targetCity: string, searchVal: string) => {
+    const cleanDigits = (searchVal || targetCity).replace(/\D/g, "");
+    if (!targetCity && !searchVal && cleanDigits.length < 3) return;
 
     if (branchDebounceRef.current) clearTimeout(branchDebounceRef.current);
 
-    branchDebounceRef.current = setTimeout(async () => {
-      setLoadingWarehouses(true);
-      try {
-        const url = `/api/novaposhta/warehouses?cityRef=${encodeURIComponent(ref)}&type=${type}&search=${encodeURIComponent(search.trim())}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data: NovaPoshtaWarehouse[] = await res.json();
-          setWarehouses(data);
-        }
-      } catch (err) {
-        console.warn("NovaPoshta: error loading warehouses", err);
-      } finally {
-        setLoadingWarehouses(false);
-      }
-    }, search ? 300 : 0);
-  };
+    branchDebounceRef.current = setTimeout(
+      async () => {
+        setLoadingWarehouses(true);
+        try {
+          const params = new URLSearchParams();
+          if (targetCity) params.set("city", targetCity);
+          if (searchVal) params.set("search", searchVal);
+          if (userCoords) {
+            params.set("lat", String(userCoords.lat));
+            params.set("lon", String(userCoords.lon));
+          }
 
-  useEffect(() => {
-    if (cityRef) {
-      setBranch("");
-      setBranchQuery("");
-      setBranchRef?.("");
-      setSortByDistance(false);
-      fetchWarehouses(cityRef, deliveryType, "");
-    }
-  }, [deliveryType, cityRef]);
+          const res = await fetch(`/api/ukrposhta/warehouses?${params.toString()}`);
+          if (res.ok) {
+            const data: UkrposhtaWarehouse[] = await res.json();
+            setWarehouses(data);
+          }
+        } catch (err) {
+          console.warn("Ukrposhta: error loading post offices", err);
+        } finally {
+          setLoadingWarehouses(false);
+        }
+      },
+      searchVal ? 200 : 0
+    );
+  };
 
   const handleBranchFocus = () => {
     setIsBranchOpen(true);
     setIsCityOpen(false);
-    if (cityRef && warehouses.length === 0) {
-      fetchWarehouses(cityRef, deliveryType, "");
+    if (city && warehouses.length === 0) {
+      fetchWarehouses(city, "");
     }
   };
 
@@ -208,23 +223,34 @@ export default function NovaPoshtaFields({
     setIsBranchOpen(true);
     setSortByDistance(false);
 
-    if (cityRef) {
-      const localMatches = warehouses.filter((w) =>
-        w.description.toLowerCase().includes(val.toLowerCase()) ||
-        w.number.toLowerCase() === val.toLowerCase()
-      );
+    const cleanDigits = val.replace(/\D/g, "");
 
-      if (localMatches.length === 0 && val.trim().length > 1) {
-        fetchWarehouses(cityRef, deliveryType, val);
+    if (city) {
+      const localMatches = warehouses.filter((w) => {
+        const descMatch = w.description.toLowerCase().includes(val.toLowerCase());
+        const postMatch = w.postcode.includes(val) || (cleanDigits.length >= 3 && w.postcode.includes(cleanDigits));
+        const numMatch = w.number.toLowerCase() === val.toLowerCase() || (cleanDigits.length >= 3 && w.number.includes(cleanDigits));
+        return descMatch || postMatch || numMatch;
+      });
+
+      if (localMatches.length === 0 && (val.trim().length > 1 || cleanDigits.length >= 3)) {
+        fetchWarehouses(city, val);
       }
+    } else if (cleanDigits.length >= 3) {
+      fetchWarehouses("", val);
     }
   };
 
-  const handleSelectBranch = (selected: NovaPoshtaWarehouse) => {
+  const handleSelectBranch = (selected: UkrposhtaWarehouse) => {
     setBranch(selected.description);
     setBranchQuery(selected.description);
-    setBranchRef?.(selected.ref);
+    setBranchRef?.(selected.ref || selected.postcode);
     setIsBranchOpen(false);
+
+    if (!city && selected.shortAddress) {
+      setCity(selected.shortAddress);
+      setCityQuery(selected.shortAddress);
+    }
   };
 
   const handleFindNearest = () => {
@@ -259,10 +285,10 @@ export default function NovaPoshtaFields({
             return;
           }
 
-          let bestMatch: NovaPoshtaCity | null = null;
+          let bestMatch: UkrposhtaCity | null = null;
           for (const cand of candidates) {
-            const cityRes = await fetch(`/api/novaposhta/cities?q=${encodeURIComponent(cand)}`);
-            const cityData: NovaPoshtaCity[] = cityRes.ok ? await cityRes.json() : [];
+            const cityRes = await fetch(`/api/ukrposhta/cities?q=${encodeURIComponent(cand)}`);
+            const cityData: UkrposhtaCity[] = cityRes.ok ? await cityRes.json() : [];
             if (cityData.length > 0) {
               bestMatch = cityData[0];
               break;
@@ -270,22 +296,24 @@ export default function NovaPoshtaFields({
           }
 
           if (!bestMatch) {
-            setGeoError(`Населений пункт "${candidates[0]}" не знайдено у Новій пошті.`);
-            setGeoLoading(false);
-            return;
+            bestMatch = {
+              name: candidates[0],
+              short: candidates[0],
+              ref: candidates[0],
+            };
           }
 
           setCity(bestMatch.name);
           setCityQuery(bestMatch.name);
-          setCityRef(bestMatch.ref);
           setBranch("");
           setBranchQuery("");
           setSortByDistance(true);
           setIsBranchOpen(true);
-          fetchWarehouses(bestMatch.ref, deliveryType, "");
+
+          fetchWarehouses(bestMatch.name, "");
         } catch (err) {
-          console.warn("Nearest search error", err);
-          setGeoError("Не вдалося знайти найближче відділення. Спробуйте обрати місто вручну.");
+          console.warn("Ukrposhta nearest search error", err);
+          setGeoError("Не вдалося знайти найближче відділення. Спробуйте обрати місто або індекс вручну.");
         } finally {
           setGeoLoading(false);
         }
@@ -304,15 +332,23 @@ export default function NovaPoshtaFields({
 
   const filteredWarehouses = useMemo(() => {
     const q = branchQuery.trim().toLowerCase();
+    const cleanDigits = branchQuery.replace(/\D/g, "");
     let result = warehouses;
 
     if (q && !sortByDistance) {
-      result = result.filter(
-        (w) =>
-          w.description.toLowerCase().includes(q) ||
-          w.number.toLowerCase() === q ||
-          w.shortAddress.toLowerCase().includes(q)
-      );
+      result = result.filter((w) => {
+        const desc = w.description.toLowerCase();
+        const post = w.postcode.toLowerCase();
+        const num = w.number.toLowerCase();
+        const addr = w.shortAddress.toLowerCase();
+
+        const textMatch = desc.includes(q) || post.includes(q) || num === q || addr.includes(q);
+        const digitsMatch =
+          cleanDigits.length >= 3 &&
+          (post.includes(cleanDigits) || desc.includes(cleanDigits) || num.includes(cleanDigits));
+
+        return textMatch || digitsMatch;
+      });
     }
 
     if (sortByDistance && userCoords) {
@@ -331,10 +367,9 @@ export default function NovaPoshtaFields({
     return result;
   }, [warehouses, branchQuery, sortByDistance, userCoords]);
 
-  const branchPlaceholder =
-    deliveryType === "postbox" ? "Поштомат Нової пошти *" : "Відділення Нової пошти *";
+  const branchPlaceholder = "Відділення або індекс Укрпошти *";
 
-  const renderWarehouseItem = (w: NovaPoshtaWarehouse, mobile = false) => {
+  const renderWarehouseItem = (w: UkrposhtaWarehouse, mobile = false) => {
     const dist =
       sortByDistance && userCoords && w.latitude != null && w.longitude != null
         ? getDistanceKm(userCoords.lat, userCoords.lon, w.latitude, w.longitude)
@@ -342,9 +377,11 @@ export default function NovaPoshtaFields({
 
     return (
       <div
-        key={w.ref}
+        key={w.ref + w.description}
         onClick={() => handleSelectBranch(w)}
-        className={`px-4 ${mobile ? "py-3" : "py-2.5"} hover:bg-[#E5E0D5] active:bg-[#DCD7CC] cursor-pointer text-[#242424] transition-colors flex items-start justify-between gap-2 border-b border-[#242424]/5 last:border-0`}
+        className={`px-4 ${
+          mobile ? "py-3" : "py-2.5"
+        } hover:bg-[#E5E0D5] active:bg-[#DCD7CC] cursor-pointer text-[#242424] transition-colors flex items-start justify-between gap-2 border-b border-[#242424]/5 last:border-0`}
       >
         <div className="flex flex-col">
           <span className={`font-semibold ${mobile ? "text-[15px]" : "text-sm"}`}>{w.description}</span>
@@ -366,21 +403,28 @@ export default function NovaPoshtaFields({
       type="button"
       onClick={handleFindNearest}
       disabled={geoLoading}
-      className={`flex items-center gap-1.5 text-xs font-medium ${sortByDistance ? "text-[#005b33]" : "text-[#666666]"
-        } hover:text-[#005b33] transition-colors disabled:opacity-50 ${mobile ? "px-4 py-2" : "px-2 py-1.5"}`}
+      className={`flex items-center gap-1.5 text-xs font-medium ${
+        sortByDistance ? "text-[#005b33]" : "text-[#666666]"
+      } hover:text-[#005b33] transition-colors disabled:opacity-50 ${
+        mobile ? "px-4 py-2" : "px-2 py-1.5"
+      }`}
     >
       {geoLoading ? (
         <span className="inline-block size-3 border-2 border-[#005b33] border-t-transparent rounded-full animate-spin" />
       ) : (
         <LocationIcon />
       )}
-      {geoLoading ? "Визначення місця..." : sortByDistance ? "Сортовано за відстанню" : "Знайти найближче"}
+      {geoLoading
+        ? "Визначення місця..."
+        : sortByDistance
+        ? "Сортовано за відстанню"
+        : "Знайти найближче відділення"}
     </button>
   );
 
   if (variant === "desktop") {
     return (
-      <div ref={containerRef} className={styles.deliverySelectors}>
+      <div ref={containerRef} className={`${styles.deliverySelectors} mt-3`}>
         <div className={styles.deliverySelect}>
           <input
             className={styles.deliverySelectInput}
@@ -389,7 +433,7 @@ export default function NovaPoshtaFields({
             value={cityQuery}
             onChange={handleCityChange}
             onFocus={handleCityFocus}
-            id="delivery-city"
+            id="ukr-delivery-city"
             aria-label="Населений пункт"
             autoComplete="off"
           />
@@ -417,7 +461,7 @@ export default function NovaPoshtaFields({
                 ))
               ) : (
                 <div className="px-4 py-3 text-sm text-[#666666]">
-                  Населений пункт не знайдено. Спробуйте уточнити назву.
+                  Населений пункт не знайдено. Спробуйте ввести індекс або іншу назву.
                 </div>
               )}
             </div>
@@ -433,8 +477,8 @@ export default function NovaPoshtaFields({
               value={branchQuery}
               onChange={handleBranchChange}
               onFocus={handleBranchFocus}
-              id="delivery-branch"
-              aria-label="Відділення"
+              id="ukr-delivery-branch"
+              aria-label="Відділення Укрпошти"
               autoComplete="off"
             />
             <div className={styles.deliverySelectIcon} onClick={() => setIsBranchOpen((prev) => !prev)}>
@@ -449,20 +493,20 @@ export default function NovaPoshtaFields({
 
           {isBranchOpen && (
             <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-64 overflow-y-auto rounded-xl bg-[#F5F3EE] shadow-2xl border border-[#B7895E]/40 py-1.5 animate-fade-in">
-              {!cityRef && !city ? (
-                <div className="px-4 py-3 text-sm text-amber-800 bg-amber-50 rounded-lg m-2">
-                  Будь ласка, спочатку оберіть населений пункт зі списку вище.
-                </div>
-              ) : loadingWarehouses ? (
+              {loadingWarehouses ? (
                 <div className="px-4 py-3 text-sm text-[#666666] flex items-center gap-2">
                   <span className="inline-block size-3.5 border-2 border-[#005b33] border-t-transparent rounded-full animate-spin" />
-                  Завантаження {deliveryType === "postbox" ? "поштоматів" : "відділень"}...
+                  Завантаження відділень Укрпошти...
                 </div>
               ) : filteredWarehouses.length > 0 ? (
                 filteredWarehouses.map((w) => renderWarehouseItem(w))
+              ) : !city ? (
+                <div className="px-4 py-3 text-sm text-amber-800 bg-amber-50 rounded-lg m-2">
+                  Будь ласка, спочатку оберіть населений пункт або введіть 5-значний індекс (наприклад 70-450).
+                </div>
               ) : (
                 <div className="px-4 py-3 text-sm text-[#666666]">
-                  {deliveryType === "postbox" ? "Поштомати не знайдені в цьому місті." : "Відділення не знайдені."}
+                  Відділення не знайдені. Спробуйте ввести точний індекс (наприклад 70-450).
                 </div>
               )}
             </div>
@@ -473,7 +517,7 @@ export default function NovaPoshtaFields({
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-3 mt-1">
+    <div ref={containerRef} className="flex flex-col gap-3 mt-2">
       <div className="relative">
         <div className="bg-[#f5f3ee] h-[65px] rounded-[9px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.25)] flex items-center justify-between px-5">
           <input
@@ -538,20 +582,20 @@ export default function NovaPoshtaFields({
 
         {isBranchOpen && (
           <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-xl bg-[#F5F3EE] shadow-2xl border border-[#B7895E]/40 py-1.5">
-            {!cityRef && !city ? (
-              <div className="px-4 py-3 text-xs text-amber-800 bg-amber-50 rounded-lg m-2">
-                Будь ласка, спочатку оберіть населений пункт зі списку.
-              </div>
-            ) : loadingWarehouses ? (
+            {loadingWarehouses ? (
               <div className="px-4 py-3 text-sm text-[#666666] flex items-center gap-2">
                 <span className="inline-block size-3.5 border-2 border-[#005b33] border-t-transparent rounded-full animate-spin" />
-                Завантаження {deliveryType === "postbox" ? "поштоматів" : "відділень"}...
+                Завантаження відділень Укрпошти...
               </div>
             ) : filteredWarehouses.length > 0 ? (
               filteredWarehouses.map((w) => renderWarehouseItem(w, true))
+            ) : !city ? (
+              <div className="px-4 py-3 text-xs text-amber-800 bg-amber-50 rounded-lg m-2">
+                Будь ласка, спочатку оберіть населений пункт або введіть 5-значний індекс (наприклад 70-450).
+              </div>
             ) : (
               <div className="px-4 py-3 text-sm text-[#666666]">
-                {deliveryType === "postbox" ? "Поштомати не знайдені." : "Відділення не знайдені."}
+                Відділення не знайдені. Введіть точний індекс (наприклад 70-450).
               </div>
             )}
           </div>
@@ -560,3 +604,4 @@ export default function NovaPoshtaFields({
     </div>
   );
 }
+

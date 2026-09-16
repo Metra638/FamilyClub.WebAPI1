@@ -14,10 +14,12 @@ apis/ComplaintsApi.ts
 apis/FavoritesApi.ts
 apis/FormatsApi.ts
 apis/HomeApi.ts
+apis/InkAssistantApi.ts
 apis/LanguagesApi.ts
 apis/NotificationsApi.ts
 apis/OrderItemsApi.ts
 apis/OrdersApi.ts
+apis/PaymentsApi.ts
 apis/PlatformSettingsApi.ts
 apis/PresenceApi.ts
 apis/ProductsApi.ts
@@ -51,6 +53,7 @@ docs/BlockReasonDto.md
 docs/BlockReasonsApi.md
 docs/BlockedIp.md
 docs/BlockedIpsApi.md
+docs/BookHitDto.md
 docs/BookSize.md
 docs/BookSizeDto.md
 docs/BookSizesApi.md
@@ -61,6 +64,9 @@ docs/CategoriesApi.md
 docs/Category.md
 docs/CategoryDto.md
 docs/ChangePasswordClubMemberDto.md
+docs/ChatRequest.md
+docs/ChatResponse.md
+docs/CheckoutSessionRequest.md
 docs/ClaimWithMemberDto.md
 docs/ClaimsClubMemberApi.md
 docs/ClaimsClubMemberDto.md
@@ -74,12 +80,15 @@ docs/ComplaintsCreateDto.md
 docs/ComplaintsReadDto.md
 docs/CoverType.md
 docs/CreateNotificationDTO.md
+docs/ExternalLoginRequestDto.md
 docs/FavoritesApi.md
+docs/ForgotPasswordDto.md
 docs/Format.md
 docs/FormatDto.md
 docs/FormatsApi.md
 docs/HeartbeatRequest.md
 docs/HomeApi.md
+docs/InkAssistantApi.md
 docs/Language.md
 docs/LanguageDto.md
 docs/LanguagesApi.md
@@ -94,6 +103,7 @@ docs/OrderItem.md
 docs/OrderItemDTO.md
 docs/OrderItemsApi.md
 docs/OrdersApi.md
+docs/PaymentsApi.md
 docs/PlatformSettingsApi.md
 docs/PlatformSettingsDto.md
 docs/PresenceApi.md
@@ -109,6 +119,8 @@ docs/Publisher.md
 docs/PublisherDto.md
 docs/PublishersApi.md
 docs/RegisterClubMemberDto.md
+docs/ReindexResponse.md
+docs/ResetPasswordDto.md
 docs/Review.md
 docs/ReviewDto.md
 docs/ReviewsApi.md
@@ -139,6 +151,7 @@ models/Availability.ts
 models/BlockReason.ts
 models/BlockReasonDto.ts
 models/BlockedIp.ts
+models/BookHitDto.ts
 models/BookSize.ts
 models/BookSizeDto.ts
 models/CartDTO.ts
@@ -146,6 +159,9 @@ models/CartItemDTO.ts
 models/Category.ts
 models/CategoryDto.ts
 models/ChangePasswordClubMemberDto.ts
+models/ChatRequest.ts
+models/ChatResponse.ts
+models/CheckoutSessionRequest.ts
 models/ClaimWithMemberDto.ts
 models/ClaimsClubMemberDto.ts
 models/ClubMember.ts
@@ -156,6 +172,8 @@ models/ComplaintsCreateDto.ts
 models/ComplaintsReadDto.ts
 models/CoverType.ts
 models/CreateNotificationDTO.ts
+models/ExternalLoginRequestDto.ts
+models/ForgotPasswordDto.ts
 models/Format.ts
 models/FormatDto.ts
 models/HeartbeatRequest.ts
@@ -179,6 +197,8 @@ models/PromotionDto.ts
 models/Publisher.ts
 models/PublisherDto.ts
 models/RegisterClubMemberDto.ts
+models/ReindexResponse.ts
+models/ResetPasswordDto.ts
 models/Review.ts
 models/ReviewDto.ts
 models/SeedCatalogResult.ts
