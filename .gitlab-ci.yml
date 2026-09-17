@@ -114,6 +114,7 @@ build-frontend:
         echo "Сборка для $ARCH"
         docker buildx build \
           --platform linux/$ARCH \
+          --no-cache \
           -f dockerfile.frontend \
           -o type=docker,dest=frontend-$ARCH.tar \
           --build-arg BUILD_DATE=$(date -Iseconds) \
@@ -305,6 +306,7 @@ build-backend:
         echo "Сборка для $ARCH"
         docker buildx build \
           --platform linux/$ARCH \
+          --no-cache \
           -f dockerfile.backend \
           -o type=docker,dest=backend-$ARCH.tar \
           --build-arg BUILD_DATE=$(date -Iseconds) \
