@@ -353,6 +353,11 @@ dast-backend:
       echo "Starting DAST scan for backend"
       IMAGE="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64"
 
+      echo "=== Cleaning up old containers and networks ==="
+      docker stop backend-test db-test 2>/dev/null || true
+      docker rm -f backend-test db-test 2>/dev/null || true
+      docker network rm dast-backend-net 2>/dev/null || true
+
       if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
         echo "ERROR: Image not found locally"
         echo "Backend image not found locally" > zap_report_backend.html
