@@ -15,7 +15,7 @@ stages:
   # - scan-backend
   - dast-backend
   - push-backend
-  - update-frontend-manifests
+  # - update-frontend-manifests
   - update-backend-manifests
   - sync2
 
@@ -518,99 +518,99 @@ push-backend:
       when: always
     - when: never
 
-update-frontend-manifests:
-  stage: update-frontend-manifests
-  script:
-    - |
-      set -e
-      if [ -f frontend.env ]; then
-        export $(cat frontend.env | xargs)
-      else
-        echo "WARNING: frontend.env not found"
-      fi
+# update-frontend-manifests:
+#   stage: update-frontend-manifests
+#   script:
+#     - |
+#       set -e
+#       if [ -f frontend.env ]; then
+#         export $(cat frontend.env | xargs)
+#       else
+#         echo "WARNING: frontend.env not found"
+#       fi
 
-      echo "=== DIAGNOSTIC START ==="
-      echo "frontendArm64Digest: $frontendArm64Digest"
-      echo "=== DIAGNOSTIC END ==="
+#       echo "=== DIAGNOSTIC START ==="
+#       echo "frontendArm64Digest: $frontendArm64Digest"
+#       echo "=== DIAGNOSTIC END ==="
 
-      git config user.email "apofeoz638@gmail.com"
-      git config user.name "Artem Malashevskyi"
-      git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
+#       git config user.email "apofeoz638@gmail.com"
+#       git config user.name "Artem Malashevskyi"
+#       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
 
-      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
+#       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
 
-      git fetch origin $CI_COMMIT_BRANCH
-      git reset --hard origin/$CI_COMMIT_BRANCH
+#       git fetch origin $CI_COMMIT_BRANCH
+#       git reset --hard origin/$CI_COMMIT_BRANCH
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
 
-      git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
-      git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
-  needs:
-    - job: push-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+#       git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+#       git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
+#       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
+#   needs:
+#     - job: push-frontend
+#       artifacts: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
-update-backend-manifests:
-  stage: update-backend-manifests
-  script:
-    - |
-      set -e
-      if [ -f backend.env ]; then
-        export $(cat backend.env | xargs)
-      else
-        echo "WARNING: backend.env not found"
-      fi
+# update-backend-manifests:
+#   stage: update-backend-manifests
+#   script:
+#     - |
+#       set -e
+#       if [ -f backend.env ]; then
+#         export $(cat backend.env | xargs)
+#       else
+#         echo "WARNING: backend.env not found"
+#       fi
 
-      echo "=== DIAGNOSTIC START ==="
-      echo "BackendArm64Digest: $BackendArm64Digest"
-      echo "=== DIAGNOSTIC END ==="
+#       echo "=== DIAGNOSTIC START ==="
+#       echo "BackendArm64Digest: $BackendArm64Digest"
+#       echo "=== DIAGNOSTIC END ==="
 
-      git config user.email "apofeoz638@gmail.com"
-      git config user.name "Artem Malashevskyi"
-      git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
+#       git config user.email "apofeoz638@gmail.com"
+#       git config user.name "Artem Malashevskyi"
+#       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
 
-      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
+#       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
 
-      git fetch origin $CI_COMMIT_BRANCH
-      git reset --hard origin/$CI_COMMIT_BRANCH
+#       git fetch origin $CI_COMMIT_BRANCH
+#       git reset --hard origin/$CI_COMMIT_BRANCH
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Backend/backend-deployment.yaml
+#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES/Backend/backend-deployment.yaml
+#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES/Backend/backend-deployment.yaml
+#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Backend/backend-deployment.yaml
+#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Backend/backend-deployment.yaml
+#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Backend/backend-deployment.yaml
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+#       sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+#       sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+#       sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+#       sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+#       sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
 
-      git add KUBERNETES/Backend/backend-deployment.yaml KUBERNETES-TEST/Backend/backend-deployment.yaml
-      git commit -m "Update backend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
-      git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
-  needs:
-    - job: push-backend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+#       git add KUBERNETES/Backend/backend-deployment.yaml KUBERNETES-TEST/Backend/backend-deployment.yaml
+#       git commit -m "Update backend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
+#       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
+#   needs:
+#     - job: push-backend
+#       artifacts: true
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "web"
+#       when: always
+#     - when: never
 
 sync-repo2:
   stage: sync2
