@@ -417,7 +417,7 @@ dast-backend:
       SUCCESS=0
       for i in $(seq 1 $MAX_RETRIES); do
         echo "Attempt $i/$MAX_RETRIES..."
-        if curl -s -L -f --max-time 10 http://backend-test:8080/swagger/v1/swagger.json -o swagger.json && [ -s swagger.json ] && head -c 1 swagger.json | grep -q "{"; then
+        if docker exec backend-test wget -qO- http://localhost:8080/swagger/v1/swagger.json > swagger.json 2>/dev/null && [ -s swagger.json ] && head -c 1 swagger.json | grep -q "{"; then
           echo "OpenAPI spec downloaded on attempt $i:"
           ls -lh swagger.json
           head -c 200 swagger.json
@@ -435,7 +435,7 @@ dast-backend:
       echo "=== Generating Redoc HTML documentation ==="
       docker run --rm \
         -v $(pwd):/spec \
-        redocly/cli build-docs /spec/swagger.json -o /spec/api-docs.html || echo "Redoc generation failed, but continuing"
+        redocly/cli:1.34.5 build-docs /spec/swagger.json -o /spec/api-docs.html || echo "Redoc generation failed, but continuing"
 
       if [ -f api-docs.html ]; then
         echo "Redoc HTML generated:"
