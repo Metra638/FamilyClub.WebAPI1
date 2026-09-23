@@ -1,0 +1,8 @@
+ingress:
+  className: nginx-stag
+  host: staging.familyclubqwerqwer12.pp.ua
+  tlsSecretName: librellis-tls-staging
+  clusterIssuer: letsencrypt-staging
+  controller:
+    serviceAccountName: ingress-nginx
+    namespace: ingress-nginx-stag

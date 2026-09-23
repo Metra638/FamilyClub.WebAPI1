@@ -1,0 +1,9 @@
+ingress:
+  className: nginx-prod
+  host: familyclubqwerqwer12.pp.ua
+  tlsSecretName: librellis-tls
+  clusterIssuer: letsencrypt-prod
+  controller:
+    serviceAccountName: ingress-nginx
+    namespace: ingress-nginx-prod
+

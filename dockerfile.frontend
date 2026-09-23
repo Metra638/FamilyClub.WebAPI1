@@ -1,0 +1,70 @@
+# syntax=docker/dockerfile:1
+
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS base
+
+RUN apk update && \
+    apk upgrade && \
+    rm -rf /var/cache/apk/*
+
+FROM base AS builder
+
+WORKDIR /app
+
+ARG VERSION
+ARG BUILD_DATE
+ARG VCS_REF
+
+COPY FamilyClub.React/famiy.club.react/package*.json ./
+
+RUN npm ci
+
+COPY FamilyClub.React/famiy.club.react/ .
+
+RUN npm run build
+
+RUN npm prune --omit=dev && \
+    npm cache clean --force && \
+    rm -rf .next/cache \
+           .next/types \
+           /tmp/* \
+           /var/tmp/* && \
+    find /app/node_modules -type f \
+        \( -name "*.md" \
+        -o -name "*.ts" \
+        -o -name "*.map" \
+        -o -name "*.test.js" \
+        -o -name "*.d.ts" \) \
+        -delete && \
+    find /app/node_modules -type d -name "@types" \
+        -exec rm -rf {} + 2>/dev/null || true
+
+FROM dhi.io/node:22-alpine@sha256:8d43ec389b67ae549651c66b3ee53a0204e691493faecd5bc4293e6a62bc420b AS runner
+
+ARG VERSION
+ARG BUILD_DATE
+ARG VCS_REF
+
+LABEL org.opencontainers.image.title="FamilyClub" \
+      org.opencontainers.image.description="Frontend FamilyClub" \
+      org.opencontainers.image.source="https://github.com/Metra638/FamilyClub.WebAPI1" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      maintainer="apofeoz638@gmail.com" \
+      environment="production"
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+COPY --chown=node:node --from=builder /app/node_modules ./node_modules
+COPY --chown=node:node --from=builder /app/public ./public
+COPY --chown=node:node --from=builder /app/.next ./.next
+COPY --chown=node:node --from=builder /app/package.json ./package.json
+
+USER node
+
+EXPOSE 3000
+
+CMD ["node", "node_modules/.bin/next", "start"]

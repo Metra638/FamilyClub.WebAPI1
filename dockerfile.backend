@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+
+ARG VERSION
+ARG BUILD_DATE
+ARG VCS_REF
+
+WORKDIR /src
+COPY --link FamilyClub.WebAPI/*.csproj ./FamilyClub.WebAPI/
+COPY --link FamilyClubLibrary/*.csproj ./FamilyClubLibrary/
+COPY --link FamilyClub.BLL/*.csproj ./FamilyClub.BLL/
+COPY --link FamilyClub.DAL/*.csproj ./FamilyClub.DAL/
+
+RUN dotnet restore "./FamilyClub.WebAPI/FamilyClub.WebAPI.csproj"
+
+COPY --link FamilyClub.WebAPI/ ./FamilyClub.WebAPI/
+COPY --link FamilyClubLibrary/ ./FamilyClubLibrary/
+COPY --link FamilyClub.BLL/ ./FamilyClub.BLL/
+COPY --link FamilyClub.DAL/ ./FamilyClub.DAL/
+
+RUN dotnet publish "./FamilyClub.WebAPI/FamilyClub.WebAPI.csproj" \
+    -c Release -o /app/publish \
+    -p:DebugType=None \
+    -p:DebugSymbols=false \
+    --self-contained false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview-alpine AS final
+
+LABEL org.opencontainers.image.title="FamilyClub" \
+      org.opencontainers.image.description="FamilyClub Backend" \
+      org.opencontainers.image.source="https://github.com/Metra638/FamilyClub.WebAPI1" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      maintainer="apofeoz638@gmail.com" \
+      environment="production"
+
+RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
+
+WORKDIR /app
+COPY --link --from=build /app/publish .
+
+USER $APP_UID
+
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "FamilyClub.WebAPI.dll"]

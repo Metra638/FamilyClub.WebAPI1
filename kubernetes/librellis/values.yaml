@@ -1,0 +1,34 @@
+backend:
+  replicaCount: 1
+  tag: ""
+  image:
+    repository: metra638/test1
+    digest: ""
+    buildDate: ""
+    commitHast: ""
+    branch: ""
+    repository: ""
+  ollama:
+    model: qwen2.5:1.5b
+    embeddingModel: nomic-embed-text
+  
+frontend:
+  replicaCount: 1
+  tag: ""
+  image:
+    repository: metra638/test1
+    digest: ""
+    buildDate: ""
+    commitHast: ""
+    branch: ""
+    repository: ""
+    
+ingress:
+  enabled: true
+  className: nginx
+  host: familyclubqwerqwer12.pp.ua
+  tlsSecretName: librellis-tls
+  clusterIssuer: letsencrypt-prod
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"

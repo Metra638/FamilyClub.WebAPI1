@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: test
+  labels:
+    app.kubernetes.io/name: postgres-backup
+    app.kubernetes.io/part-of: familyclub
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/environment: test
+  annotations:
+    description: "Daily PostgreSQL backup"
+    schedule-note: "Runs daily at 01:00 UTC"
+spec:
+  schedule: "0 1 * * *"
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-backup-job
+        app.kubernetes.io/part-of: familyclub
+        app.kubernetes.io/component: backup-job
+        app.kubernetes.io/environment: test
+      annotations:
+        description: "Job for PostgreSQL backup"
+        created-by: "CronJob postgres-backup"
+    spec:
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: postgres-backup-pod
+            app.kubernetes.io/part-of: familyclub
+            app.kubernetes.io/component: backup-pod
+            app.kubernetes.io/environment: test
+        spec:
+          securityContext:
+            fsGroup: 999
+          containers:
+          - name: backup
+            image: postgres:15-alpine
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - |
+              PGPASSWORD=$POSTGRES_PASSWORD pg_dump -U postgres -h postgres-svc familyclub_db > /backup/backup-$(date +%Y%m%d-%H%M%S).sql
+              find /backup -name "*.sql" -mtime +7 -delete
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 999
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+              seccompProfile:
+                type: RuntimeDefault
+            env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: postgres-backup-pvc
+          restartPolicy: OnFailure

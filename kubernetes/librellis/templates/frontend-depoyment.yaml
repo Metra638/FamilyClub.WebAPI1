@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-frontend
+    app.kubernetes.io/part-of: librellis
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/environment: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  revisionHistoryLimit: 6
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Release.Name }}-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Release.Name }}-frontend
+        app.kubernetes.io/version: "{{ .Values.frontend.image.tag }}"
+      annotations:
+        image-digest: "{{ .Values.frontend.image.digest }}"
+        build-date: "{{ .Values.frontend.image.buildDate }}"
+        commit-hash: "{{ .Values.frontend.image.commitHash }}"
+        branch: "{{ .Values.frontend.image.branch }}"
+        repository: "{{ .Values.frontend.image.repository }}"
+        tag: "{{ .Values.frontend.tag }}"
+    spec:
+      serviceAccountName: {{ .Release.Name }}-frontend
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      imagePullSecrets:
+      - name: dockerhub-secret
+      terminationGracePeriodSeconds: 60
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}@{{ .Values.frontend.image.digest }}"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+          protocol: TCP
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 90
+          timeoutSeconds: 5
+          periodSeconds: 5
+          failureThreshold: 30
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          timeoutSeconds: 5
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          timeoutSeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]

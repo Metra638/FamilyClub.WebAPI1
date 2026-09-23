@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend
+  namespace: production
+  labels:
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/part-of: familyclub
+    app.kubernetes.io/component: frontend
+  annotations:
+    description: "ServiceAccount for frontend pods to access secrets"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: frontend-secret-reader
+  namespace: production
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["dockerhub-secret"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: frontend-secret-access
+  namespace: production
+subjects:
+- kind: ServiceAccount
+  name: frontend
+  namespace: production
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: frontend-secret-reader

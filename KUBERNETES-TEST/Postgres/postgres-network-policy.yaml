@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-network-policy
+  namespace: test
+  labels:
+    app.kubernetes.io/name: familyclub-postgres
+    app.kubernetes.io/part-of: familyclub
+    app.kubernetes.io/component: postgres
+    app.kubernetes.io/environment: test
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: familyclub-postgres
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels: 
+          app.kubernetes.io/name: familyclub-backend
+      namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/environment: test
+    ports:
+    - protocol: TCP
+      port: 5432
+  egress: []

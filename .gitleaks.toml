@@ -1,0 +1,10 @@
+title = "Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  '''^KUBERNETES/.*''',
+  '''^KUBERNETES-TEST/.*'''
+]
