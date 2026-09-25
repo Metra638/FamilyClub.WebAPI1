@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-postgres-network-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-postgres
+    app.kubernetes.io/part-of: familyclub
+    app.kubernetes.io/component: postgres
+    app.kubernetes.io/environment: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Release.Name }}-postgres
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ .Release.Name }}-backend
+          namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/environment: {{ .Release.Namespace }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.postgres.service.port }}
+  egress: []

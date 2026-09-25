@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-ollama
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/app: {{ .Release.Name }}-ollama
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/app: {{ .Release.Name }}-ollama
+  ports:
+    - name: http
+      port: {{ .Values.ollama.env.port }}
+      targetPort: http
+      protocol: TCP

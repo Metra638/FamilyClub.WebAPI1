@@ -1,0 +1,7 @@
+apiVersion: v2
+name: librellis
+description: Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+icon: https://helm.sh/img/helm.svg

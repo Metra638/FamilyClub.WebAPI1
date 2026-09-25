@@ -36,7 +36,7 @@ spec:
         operator: "Exists"
         effect: "NoSchedule"
       imagePullSecrets:
-        - name: dockerhub-secret
+        - name: dockerhub-secrets
       terminationGracePeriodSeconds: 60
       containers:
         - name: backend
@@ -83,13 +83,13 @@ spec:
             - name: AllowedOrigins__0
               value: "*"
             - name: Redis__Host
-              value: "redis-0.{{ .Release.Namespace }}.svc.cluster.local"
+              value: "redis-0.{{ .Release.Name }}-redis.{{ .Release.Namespace }}.svc.cluster.local"
             - name: Redis__Port
               value: "6379"
             - name: Redis__Password
               valueFrom:
                 secretKeyRef:
-                  name: redis-secret
+                  name: redis-secrets
                   key: password
             - name: Redis__Database
               value: "0"
@@ -106,25 +106,25 @@ spec:
             - name: AzureCommunicationServices__ConnectionString
               valueFrom:
                 secretKeyRef:
-                  name: azure-communication-secret
+                  name: azure-communication-secrets
                   key: AzureCommunicationServices__ConnectionString
             - name: AzureCommunicationServices__FromEmail
               valueFrom:
                 secretKeyRef:
-                  name: azure-communication-secret
+                  name: azure-communication-secrets
                   key: AzureCommunicationServices__FromEmail
             - name: AzureCommunicationServices__FromName
               valueFrom:
                 secretKeyRef:
-                  name: azure-communication-secret
+                  name: azure-communication-secrets
                   key: AzureCommunicationServices__FromName
 
             - name: InkAssistant__OllamaBaseUrl
-              value: "http://ollama:11434" # поменять, возможно
+              value: "http://{{ .Release.Name }}-ollama:{{ .Values.ollama.env.port }}"
             - name: InkAssistant__Model
-              value: "{{ .Values.backend.ollama.model }}"
+              value: "{{ .Values.ollama.model }}"
             - name: InkAssistant__EmbeddingModel
-              value: "{{ .Values.backend.ollama.embeddingModel }}"
+              value: "{{ .Values.ollama.embeddingModel }}"
               
           securityContext:
             runAsNonRoot: true

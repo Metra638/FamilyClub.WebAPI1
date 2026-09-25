@@ -6,7 +6,7 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
-  resourceNames: ["{{ .Values.ingress.tlsSecretName }}"]
+  resourceNames: ["librellis-tls"]
   verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

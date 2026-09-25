@@ -5,13 +5,9 @@ backend:
     repository: metra638/test1
     digest: ""
     buildDate: ""
-    commitHast: ""
+    commitHash: ""
     branch: ""
-    repository: ""
-  ollama:
-    model: qwen2.5:1.5b
-    embeddingModel: nomic-embed-text
-  
+
 frontend:
   replicaCount: 1
   tag: ""
@@ -19,16 +15,51 @@ frontend:
     repository: metra638/test1
     digest: ""
     buildDate: ""
-    commitHast: ""
+    commitHash: ""
     branch: ""
-    repository: ""
-    
+
 ingress:
   enabled: true
   className: nginx
   host: familyclubqwerqwer12.pp.ua
-  tlsSecretName: librellis-tls
   clusterIssuer: letsencrypt-prod
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+
+ollama:
+  replicaCount: 1
+  model: qwen2.5:1.5b
+  embeddingModel: nomic-embed-text
+  image:
+    digest: "sha256:7ab595e4ead391f6818c7215297781282babe0701f6d9a9f8862ac591360a58b"
+  env:
+    ip: "0.0.0.0"
+    port: 11434
+
+postgres:
+  replicaCount: 1
+  storage: 5Gi
+  image:
+    repository: postgres
+    digest: "sha256:74e110c41804365e3915fcc09d5e7a1eff50161aaa94d5da0e58e0cd75ae509c"
+  service:
+    port: 5432
+  backup:
+    schedule: "0 1 * * *"
+    retentionDays: 7
+    storage: 5Gi
+    storageClassName: ""
+    image:
+      repository: postgres
+      tag: 15-alpine
+
+redis:
+  replicaCount: 1
+  maxmemory: 256mb
+  secretName: redis-secret
+  image:
+    repository: redis
+    tag: 7.0-alpine
+  service:
+    port: 6379

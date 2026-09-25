@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ollama
-  namespace: production
+  name: {{ .Release.Name }}-ollama
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: ollama
+    app.kubernetes.io/app: {{ .Release.Name }}-ollama
 spec:
-  replicas: 1
+  replicas: {{ .Values.ollama.replicaCount }}
   selector:
     matchLabels:
-      app: ollama
+      app.kubernetes.io/app: {{ .Release.Name }}-ollama
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: ollama
+        app.kubernetes.io/app: {{ .Release.Name }}-ollama
     spec:
       initContainers:
         - name: pull-models
-          image: ollama/ollama:latest
+          image: "ollama/ollama@{{ .Values.ollama.image.digest }}"
           command:
             - /bin/sh
             - -c
@@ -27,28 +27,25 @@ spec:
               set -e
               ollama serve &
               PID=$!
-              echo "Waiting for Ollama to be ready..."
               until ollama list >/dev/null 2>&1; do
                 sleep 2
               done
-              echo "Ollama is ready. Pulling models..."
-              ollama pull qwen2.5:1.5b
-              ollama pull nomic-embed-text
-              echo "Models pulled successfully."
+              ollama pull {{ .Values.ollama.model }}
+              ollama pull {{ .Values.ollama.embeddingModel }}
               kill $PID
           volumeMounts:
             - name: ollama-models
               mountPath: /root/.ollama
       containers:
         - name: ollama
-          image: ollama/ollama:latest
+          image: "ollama/ollama@{{ .Values.ollama.image.digest }}"
           ports:
             - name: http
-              containerPort: 11434
+              containerPort: {{ .Values.ollama.env.port }}
               protocol: TCP
           env:
             - name: OLLAMA_HOST
-              value: "0.0.0.0:11434"
+              value: "{{ .Values.ollama.env.ip }}:{{ .Values.ollama.env.port }}"
           resources:
             requests:
               cpu: "2"
@@ -76,4 +73,4 @@ spec:
       volumes:
         - name: ollama-models
           persistentVolumeClaim:
-            claimName: ollama-models-pvc
+            claimName: {{ .Release.Name }}-ollama

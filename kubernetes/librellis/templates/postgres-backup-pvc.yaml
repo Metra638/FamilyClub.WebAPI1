@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-postgres-backup-pvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-postgres-backup-pvc
+    app.kubernetes.io/part-of: familyclub
+    app.kubernetes.io/component: backup-storage
+    app.kubernetes.io/environment: {{ .Release.Namespace }}
+  annotations:
+    description: "Persistent storage for PostgreSQL daily backups"
+    backup-retention: "{{ .Values.postgres.backup.retentionDays }} days (managed by CronJob)"
+    storage-purpose: "PostgreSQL database dumps"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.postgres.backup.storage }}
+  storageClassName: {{ .Values.postgres.backup.storageClassName | quote }}

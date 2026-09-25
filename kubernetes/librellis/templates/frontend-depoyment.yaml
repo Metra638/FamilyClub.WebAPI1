@@ -35,7 +35,7 @@ spec:
         operator: "Exists"
         effect: "NoSchedule"
       imagePullSecrets:
-      - name: dockerhub-secret
+      - name: dockerhub-secrets
       terminationGracePeriodSeconds: 60
       containers:
       - name: frontend
