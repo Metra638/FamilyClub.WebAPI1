@@ -23,9 +23,9 @@ spec:
         app.kubernetes.io/name: familyclub-frontend
         app.kubernetes.io/version: "1.0"
       annotations:
-        image-digest: ""
-        build-date: "2026-09-25T17:21:32+01:00"
-        commit-hash: "8f8882766575970ded09aaf1eb64d8a07410879d"
+        image-digest: "sha256:abf75c3d644359dcba345241e21fcbaabb36cf0cec4daae1d6868dcfe0eb02ba"
+        build-date: "2026-09-25T18:05:57+01:00"
+        commit-hash: "7a9f9793e56ac4bd3f5b565e364356039f514ea1"
         branch: "Final"
         repository: "https://github.com/Metra638/FamilyClub.WebAPI1"
     spec:
@@ -35,7 +35,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
       - name: frontend
-        image: metra638/test1@
+        image: metra638/test1@sha256:abf75c3d644359dcba345241e21fcbaabb36cf0cec4daae1d6868dcfe0eb02ba
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
