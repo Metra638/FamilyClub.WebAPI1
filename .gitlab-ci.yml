@@ -126,13 +126,9 @@ frontend-checks:
   stage: frontend-checks
   script:
     - cd FamilyClub.React/famiy.club.react
-    - echo "Установка зависимостей"
     - npm ci || npm install
-    - echo "Запуск линтера (ESLint)"
     - npm run lint || true
-    - echo "Проверка типов TypeScript"
     - npx tsc --noEmit || true
-    - echo "Проверка сборки проекта"
     - npm run build || true
   allow_failure: false
   rules:
@@ -400,7 +396,6 @@ dast-backend:
       echo "Starting DAST scan for backend"
       IMAGE="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64"
 
-      echo "=== Cleaning up old containers and networks ==="
       docker stop backend-test db-test 2>/dev/null || true
       docker rm -f backend-test db-test 2>/dev/null || true
       docker network rm dast-backend-net 2>/dev/null || true
@@ -409,7 +404,7 @@ dast-backend:
         echo "ERROR: Image not found locally"
         echo "Backend image not found locally" > zap_report_backend.html
         echo '{"error": "Backend image not found locally"}' > zap_report_backend.json
-        echo '{"error": "Backend image not found locally"}' > swagger.json
+        echo '{"error": "Backend image not found locally"}' > openapi.json
         exit 0
       fi
 
@@ -437,7 +432,7 @@ dast-backend:
         echo "ERROR: Container failed to start"
         echo "Backend startup failed" > zap_report_backend.html
         echo '{"error": "Startup failed"}' > zap_report_backend.json
-        echo '{"error": "Startup failed"}' > swagger.json
+        echo '{"error": "Startup failed"}' > openapi.json
         docker stop db-test && docker rm db-test || true
         docker network rm dast-backend-net || true
         exit 0
@@ -454,40 +449,35 @@ dast-backend:
         docker network rm dast-backend-net || true
         echo "Backend container crashed" > zap_report_backend.html
         echo '{"error": "Container crashed"}' > zap_report_backend.json
-        echo '{"error": "Container crashed"}' > swagger.json
+        echo '{"error": "Container crashed"}' > openapi.json
         exit 0
       fi
 
-      echo "=== Downloading OpenAPI specification ==="
+      echo "Downloading OpenAPI specification"
       MAX_RETRIES=30
       RETRY_DELAY=10
       SUCCESS=0
       for i in $(seq 1 $MAX_RETRIES); do
         echo "Attempt $i/$MAX_RETRIES..."
-        if docker exec backend-test wget -qO- http://localhost:8080/swagger/v1/swagger.json > swagger.json 2>/dev/null && [ -s swagger.json ] && head -c 1 swagger.json | grep -q "{"; then
+        if docker exec backend-test wget -qO- http://localhost:8080/swagger/v1/swagger.json > openapi.json 2>/dev/null && [ -s openapi.json ] && head -c 1 openapi.json | grep -q "{"; then
           echo "OpenAPI spec downloaded on attempt $i:"
-          ls -lh swagger.json
-          head -c 200 swagger.json
+          ls -lh openapi.json
+          head -c 200 openapi.json
           SUCCESS=1
           break
         fi
-        echo "Not ready yet, waiting ${RETRY_DELAY}s..."
+        echo "Not ready yet, waiting ${RETRY_DELAY}s"
         sleep $RETRY_DELAY
       done
       if [ "$SUCCESS" -eq 0 ]; then
-        echo "ERROR: Failed to download swagger.json after $MAX_RETRIES attempts"
-        echo '{"error": "Failed to download swagger.json"}' > swagger.json
+        echo "ERROR: Failed to download openapi.json after $MAX_RETRIES attempts"
+        echo '{"error": "Failed to download openapi.json"}' > openapi.json
       fi
 
-      echo "=== Generating Redoc HTML documentation ==="
+      echo "Generating Redoc HTML documentation"
       docker run --rm \
         -v $(pwd):/spec \
-        redocly/cli:1.34.5 build-docs /spec/swagger.json -o /spec/api-docs.html || echo "Redoc generation failed, but continuing"
-
-      if [ -f api-docs.html ]; then
-        echo "Redoc HTML generated:"
-        ls -lh api-docs.html
-      fi
+        redocly/cli:1.34.5 build-docs /spec/openapi.json -o /spec/index.html || echo "Redoc generation failed, but continuing"
 
       mkdir -p zap_reports_backend
       chmod 777 zap_reports_backend
@@ -525,8 +515,8 @@ dast-backend:
     paths:
       - zap_report_backend.html
       - zap_report_backend.json
-      - swagger.json
-      - api-docs.html
+      - openapi.json
+      - index.html
     expire_in: 1 week
   allow_failure: true
   needs:
@@ -576,10 +566,6 @@ update-frontend-manifests:
         echo "WARNING: frontend.env not found"
       fi
 
-      echo "=== DIAGNOSTIC START ==="
-      echo "frontendArm64Digest: $frontendArm64Digest"
-      echo "=== DIAGNOSTIC END ==="
-
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
@@ -623,10 +609,6 @@ update-backend-manifests:
         echo "WARNING: backend.env not found"
       fi
 
-      echo "=== DIAGNOSTIC START ==="
-      echo "BackendArm64Digest: $BackendArm64Digest"
-      echo "=== DIAGNOSTIC END ==="
-
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
@@ -662,20 +644,16 @@ update-backend-manifests:
 convert-sarif-to-codequality:
   stage: convert-sarif-to-codequality
   script:
-    - echo "=== Установка sarif-converter как .NET global tool ==="
     - export PATH="$PATH:$HOME/.dotnet/tools"
     - |
       if ! command -v sarif-converter >/dev/null 2>&1; then
         dotnet tool install --global sarif-converter --version 2.* || true
       fi
       if command -v sarif-converter >/dev/null 2>&1; then
-        echo "sarif-converter доступен: $(sarif-converter --version 2>&1 | head -1)"
-      else
-        echo "sarif-converter НЕ доступен — будем использовать jq-fallback"
+        echo "sarif-converter доступен: $(sarif-converter --version 2>&1 | head -1)"  
       fi
 
     - |
-      echo "=== Сбор SARIF-файлов ==="
       SARIF_FILES=""
       for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif npm-audit.sarif eslint-security.sarif trivy-frontend-arm64.sarif trivy-frontend-amd64.sarif trivy-backend-arm64.sarif trivy-backend-amd64.sarif; do
         if [ -f "$f" ]; then
@@ -690,7 +668,6 @@ convert-sarif-to-codequality:
         exit 0
       fi
 
-      echo "=== Конвертация SARIF -> GitLab Code Quality ==="
       if command -v sarif-converter >/dev/null 2>&1; then
         sarif-converter --type codequality $SARIF_FILES gl-code-quality-report.json \
           || echo "[]" > gl-code-quality-report.json
@@ -732,7 +709,6 @@ convert-sarif-to-codequality:
     
     - |
       if [ -f gl-code-quality-report.json ]; then
-        echo "=== Готово ==="
         ls -lh gl-code-quality-report.json
         echo "Количество проблем: $(jq 'length' gl-code-quality-report.json 2>/dev/null || echo '?')"
         head -c 1000 gl-code-quality-report.json

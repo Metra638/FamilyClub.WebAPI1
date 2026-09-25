@@ -5,6 +5,5 @@ useDefault = true
 
 [allowlist]
 paths = [
-  '''^KUBERNETES/.*''',
-  '''^KUBERNETES-TEST/.*'''
+  '''^kubernetes/librellis/templates/secrets.*''',
 ]
