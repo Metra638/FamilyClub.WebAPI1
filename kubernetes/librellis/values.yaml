@@ -7,17 +7,15 @@ backend:
     buildDate: ""
     commitHash: ""
     branch: ""
-
 frontend:
   replicaCount: 1
-  tag: ""
+  tag: "156"
   image:
     repository: metra638/test1
-    digest: ""
-    buildDate: ""
-    commitHash: ""
-    branch: ""
-
+    digest: "sha256:5a37332527dbdfa40e2b4956fbfe8f4d2e42c5213f07672cad4601ca34ae249f"
+    buildDate: "2026-09-27T13:33:49+01:00"
+    commitHash: "3c6b9b9266ea441f631951237d09f0b7ee3b90ad"
+    branch: "Final"
 ingress:
   enabled: true
   className: nginx
@@ -26,7 +24,6 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
-
 ollama:
   replicaCount: 1
   model: qwen2.5:1.5b
@@ -36,7 +33,6 @@ ollama:
   env:
     ip: "0.0.0.0"
     port: 11434
-
 postgres:
   replicaCount: 1
   storage: 5Gi
@@ -53,7 +49,6 @@ postgres:
     image:
       repository: postgres
       tag: 15-alpine
-
 redis:
   replicaCount: 1
   maxmemory: 256mb
