@@ -174,13 +174,12 @@ scan-frontend:
   stage: scan-frontend
   script:
     - |
-      for ARCH in arm64 amd64; do
-        trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress --format sarif --output trivy-frontend-$ARCH.sarif "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" || true
-      done
+      trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress \
+        --format sarif --output trivy-frontend.sarif \
+        "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64" || true
   artifacts:
     paths:
-      - trivy-frontend-arm64.sarif
-      - trivy-frontend-amd64.sarif
+      - trivy-frontend.sarif
     expire_in: 1 week
   allow_failure: true
   needs:
@@ -292,6 +291,21 @@ push-frontend:
       MANIFEST_DIGEST=$(echo "$MANIFEST_PUSH_OUTPUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
       echo "Frontend multi-arch digest: $MANIFEST_DIGEST"
       echo "frontendArm64Digest=$MANIFEST_DIGEST" > frontend.env
+
+      TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
+        -H "Content-Type: application/json" \
+        -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_PASSWORD}\"}" \
+        | jq -r '.token')
+      if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+        for SUFFIX in arm64 amd64; do
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "https://hub.docker.com/v2/repositories/${dockerId}/${repoName}/tags/frontend-${CI_PIPELINE_ID}-${SUFFIX}/")
+          echo "Delete frontend-${CI_PIPELINE_ID}-${SUFFIX}: HTTP ${HTTP_CODE}"
+        done
+      else
+        echo "ERROR: failed to get DockerHub JWT token, arch tags not deleted"
+      fi
   artifacts:
     reports:
       dotenv: frontend.env
@@ -371,13 +385,12 @@ scan-backend:
   stage: scan-backend
   script:
     - |
-      for ARCH in arm64 amd64; do
-        trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress --format sarif --output trivy-backend-$ARCH.sarif "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-$ARCH" || true
-      done
+      trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress \
+        --format sarif --output trivy-backend.sarif \
+        "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64" || true
   artifacts:
     paths:
-      - trivy-backend-arm64.sarif
-      - trivy-backend-amd64.sarif
+      - trivy-backend.sarif
     expire_in: 1 week
   allow_failure: true
   needs:
@@ -544,6 +557,21 @@ push-backend:
       MANIFEST_DIGEST=$(echo "$MANIFEST_PUSH_OUTPUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
       echo "Backend multi-arch digest: $MANIFEST_DIGEST"
       echo "BackendArm64Digest=$MANIFEST_DIGEST" > backend.env
+
+      TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
+        -H "Content-Type: application/json" \
+        -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_PASSWORD}\"}" \
+        | jq -r '.token')
+      if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+        for SUFFIX in arm64 amd64; do
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "https://hub.docker.com/v2/repositories/${dockerId}/${repoName}/tags/backend-${CI_PIPELINE_ID}-${SUFFIX}/")
+          echo "Delete backend-${CI_PIPELINE_ID}-${SUFFIX}: HTTP ${HTTP_CODE}"
+        done
+      else
+        echo "ERROR: failed to get DockerHub JWT token, arch tags not deleted"
+      fi
   artifacts:
     reports:
       dotenv: backend.env
@@ -566,29 +594,28 @@ update-frontend-manifests:
         echo "WARNING: frontend.env not found"
       fi
 
+      mkdir -p .bin
+      curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o .bin/yq
+      chmod +x .bin/yq
+      export PATH="$PWD/.bin:$PATH"
+
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-
       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-
       git fetch origin $CI_COMMIT_BRANCH
       git reset --hard origin/$CI_COMMIT_BRANCH
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Frontend/frontend-deployment.yaml
+      export BUILD_DATE=$(date -Iseconds)
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${frontendArm64Digest}|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${frontendArm64Digest}\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Frontend/frontend-deployment.yaml
+      yq -i '.frontend.image.digest     = strenv(frontendArm64Digest)' kubernetes/librellis/values.yaml
+      yq -i '.frontend.image.buildDate  = strenv(BUILD_DATE)'          kubernetes/librellis/values.yaml
+      yq -i '.frontend.image.commitHash = strenv(CI_COMMIT_SHA)'       kubernetes/librellis/values.yaml
+      yq -i '.frontend.image.branch     = strenv(CI_COMMIT_BRANCH)'    kubernetes/librellis/values.yaml
+      yq -i '.frontend.tag              = strenv(CI_PIPELINE_ID)'      kubernetes/librellis/values.yaml
 
-      git add KUBERNETES/Frontend/frontend-deployment.yaml KUBERNETES-TEST/Frontend/frontend-deployment.yaml
-      git commit -m "Update frontend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
+      git add kubernetes/librellis/values.yaml
+      git commit -m "Update frontend values: $CI_COMMIT_BRANCH" || echo "No changes to commit"
       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
   needs:
     - job: push-frontend
@@ -609,33 +636,33 @@ update-backend-manifests:
         echo "WARNING: backend.env not found"
       fi
 
+      mkdir -p .bin
+      curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o .bin/yq
+      chmod +x .bin/yq
+      export PATH="$PWD/.bin:$PATH"
+
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-
       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-
       git fetch origin $CI_COMMIT_BRANCH
       git reset --hard origin/$CI_COMMIT_BRANCH
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES/Backend/backend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES/Backend/backend-deployment.yaml
+      export BUILD_DATE=$(date -Iseconds)
 
-      sed -i "s|image: metra638/test1@.*|image: metra638/test1@${BackendArm64Digest}|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|image-digest: \"[^\"]*\"|image-digest: \"${BackendArm64Digest}\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|build-date: \".*\"|build-date: \"$(date -Iseconds)\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|commit-hash: \".*\"|commit-hash: \"$CI_COMMIT_SHA\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
-      sed -i "s|branch: \".*\"|branch: \"$CI_COMMIT_BRANCH\"|g" KUBERNETES-TEST/Backend/backend-deployment.yaml
+      yq -i '.backend.image.digest     = strenv(BackendArm64Digest)' kubernetes/librellis/values.yaml
+      yq -i '.backend.image.buildDate  = strenv(BUILD_DATE)'         kubernetes/librellis/values.yaml
+      yq -i '.backend.image.commitHash = strenv(CI_COMMIT_SHA)'      kubernetes/librellis/values.yaml
+      yq -i '.backend.image.branch     = strenv(CI_COMMIT_BRANCH)'   kubernetes/librellis/values.yaml
+      yq -i '.backend.tag              = strenv(CI_PIPELINE_ID)'     kubernetes/librellis/values.yaml
 
-      git add KUBERNETES/Backend/backend-deployment.yaml KUBERNETES-TEST/Backend/backend-deployment.yaml
-      git commit -m "Update backend manifest with arm64 digest, build-date, commit, branch: $CI_COMMIT_BRANCH" || echo "No changes to commit"
+      git add kubernetes/librellis/values.yaml
+      git commit -m "Update backend values: $CI_COMMIT_BRANCH" || echo "No changes to commit"
       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
   needs:
     - job: push-backend
       artifacts: true
+    - job: update-frontend-manifests
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
@@ -655,7 +682,7 @@ convert-sarif-to-codequality:
 
     - |
       SARIF_FILES=""
-      for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif npm-audit.sarif eslint-security.sarif trivy-frontend-arm64.sarif trivy-frontend-amd64.sarif trivy-backend-arm64.sarif trivy-backend-amd64.sarif; do
+      for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif npm-audit.sarif eslint-security.sarif trivy-frontend.sarif trivy-backend.sarif; do
         if [ -f "$f" ]; then
           echo "  Найден: $f"
           SARIF_FILES="$SARIF_FILES $f"
@@ -742,6 +769,31 @@ convert-sarif-to-codequality:
     - job: scan-backend
       artifacts: true
       optional: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+update-docs:
+  stage: sync2
+  script:
+    - git config user.email "apofeoz638@gmail.com"
+    - git config user.name "Artem Malashevskyi"
+    - git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
+    - git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
+    - git fetch origin $CI_COMMIT_BRANCH
+    - git reset --hard origin/$CI_COMMIT_BRANCH
+    - mkdir -p docs
+    - ls -la index.html openapi.json || true
+    - cp index.html docs/ || echo "index.html not found"
+    - cp openapi.json docs/ || echo "openapi.json not found"
+    - touch docs/.nojekyll
+    - git add docs/
+    - git commit -m "Update API documentation [skip ci]" || echo "No changes to commit"
+    - git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
+  needs:
+    - job: dast-backend
+      artifacts: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
