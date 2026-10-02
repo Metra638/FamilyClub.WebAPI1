@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: librellis
     app.kubernetes.io/component: backend
     app.kubernetes.io/environment: {{ .Release.Namespace }}
-    app.kubernetes.io/tag: {{ .Values.backend.tag }}
+    app.kubernetes.io/tag: {{ .Values.backend.tag | quote }}
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   revisionHistoryLimit: 6
