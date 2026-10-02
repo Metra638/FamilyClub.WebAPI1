@@ -36,6 +36,7 @@ ollama:
 postgres:
   replicaCount: 1
   storage: 5Gi
+  secretName: postgres-secrets
   image:
     repository: postgres
     digest: "sha256:74e110c41804365e3915fcc09d5e7a1eff50161aaa94d5da0e58e0cd75ae509c"
