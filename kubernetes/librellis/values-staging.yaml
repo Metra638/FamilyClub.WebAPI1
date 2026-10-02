@@ -3,6 +3,11 @@ ingress:
   host: staging.familyclubqwerqwer12.pp.ua
   tlsSecretName: librellis-tls-staging
   clusterIssuer: letsencrypt-staging
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
   controller:
     serviceAccountName: ingress-nginx
     namespace: ingress-nginx-stag
