@@ -46,7 +46,7 @@ postgres:
     schedule: "0 1 * * *"
     retentionDays: 7
     storage: 5Gi
-    storageClassName: ""
+    storageClassName: local-path
     image:
       repository: postgres
       tag: 15-alpine
