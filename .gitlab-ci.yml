@@ -7,12 +7,14 @@ stages:
   - frontend-checks
   - build-frontend
   - scan-frontend
+  - sbom-frontend          # [ADDED] новый этап для генерации SBOM frontend
   - dast-frontend
   - push-frontend
   - backend-checks
   - test-backend
   - build-backend
   - scan-backend
+  - sbom-backend           # [ADDED] новый этап для генерации SBOM backend
   - dast-backend
   - push-backend
   - update-frontend-manifests
@@ -182,6 +184,31 @@ scan-frontend:
       - trivy-frontend.sarif
     expire_in: 1 week
   allow_failure: true
+  needs:
+    - job: build-frontend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# [ADDED] Новый джоб для генерации SBOM frontend
+sbom-frontend:
+  stage: sbom-frontend
+  image: anchore/syft:latest   # [ADDED] используем готовый образ Syft
+  script:
+    - |
+      echo "Генерация SBOM для frontend образа"
+      IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
+      syft "$IMAGE" -o spdx-json=sbom-frontend.spdx.json
+      syft "$IMAGE" -o cyclonedx-json=sbom-frontend.cdx.json
+      echo "SBOM файлы созданы:"
+      ls -lh sbom-frontend.*
+  artifacts:
+    paths:
+      - sbom-frontend.spdx.json
+      - sbom-frontend.cdx.json
+    expire_in: 1 week
   needs:
     - job: build-frontend
       artifacts: true
@@ -393,6 +420,31 @@ scan-backend:
       - trivy-backend.sarif
     expire_in: 1 week
   allow_failure: true
+  needs:
+    - job: build-backend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# [ADDED] Новый джоб для генерации SBOM backend
+sbom-backend:
+  stage: sbom-backend
+  image: anchore/syft:latest   # [ADDED] используем готовый образ Syft
+  script:
+    - |
+      echo "Генерация SBOM для backend образа"
+      IMAGE="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64"
+      syft "$IMAGE" -o spdx-json=sbom-backend.spdx.json
+      syft "$IMAGE" -o cyclonedx-json=sbom-backend.cdx.json
+      echo "SBOM файлы созданы:"
+      ls -lh sbom-backend.*
+  artifacts:
+    paths:
+      - sbom-backend.spdx.json
+      - sbom-backend.cdx.json
+    expire_in: 1 week
   needs:
     - job: build-backend
       artifacts: true
