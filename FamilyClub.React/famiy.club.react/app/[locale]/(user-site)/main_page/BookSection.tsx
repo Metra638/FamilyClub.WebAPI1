@@ -6,6 +6,7 @@ import BookCard from "./BookCard";
 import ShelfCat from "./ShelfCat";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 import { useMascotShelf } from "@/lib/mascot/MascotShelfContext";
+import MoreShelfButton from "./MoreShelfButton";
 
 type Book = {
     title: string;
@@ -95,14 +96,8 @@ export default function BookSection({
                             {title}
                         </h2>
                     </div>
-                    {showMore && (
-                        <Link
-                            href={moreHref}
-                            className="pointer-events-auto h-[55px] w-[150px] rounded-t-none rounded-b-[25px] bg-[var(--background-elevated)] text-[24px] font-medium text-[var(--foreground-primary)] shadow-[0px_6px_8px_0px_rgba(0,0,0,0.3)] transition-transform hover:scale-105 flex items-center justify-center"
-                        >
-                            {t("home.sections.more")}
-                        </Link>
-                    )}
+                    {/* `More` button */}
+                    {showMore ? <MoreShelfButton href={moreHref} /> : null}
                 </div>
 
                 <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[60px] pb-12 -mt-[50px]">

@@ -369,9 +369,11 @@ export default function Home() {
                     avatar: getAvatarSrc(review.userAvatarData),
                     bookImage: product ? getProductImageSrc(product) : null,
                     rating: review.rating,
+                    productId: review.productId ?? null,
+                    href: review.productId ? lp(`/products/${review.productId}`) : undefined,
                 };
             });
-    }, [reviews, productById]);
+    }, [reviews, productById, lp]);
 
     const desktopReviewCards = useMemo(
         () =>
@@ -420,6 +422,7 @@ export default function Home() {
                         title={recommendationTitle}
                         books={desktopRecommendationBooks}
                         showMore
+                        showMoreHref={lp("/pick-book")}
                         pillWidth={631}
                         isFav={isFav}
                         onToggleFavorite={toggleFavorite}
@@ -441,6 +444,12 @@ export default function Home() {
                     <BookSection
                         title={t("home.sections.romance")}
                         books={romanceBooks}
+                        showMore
+                        showMoreHref={
+                        romanceCategoryId
+                            ? lp(`/products?categoryId=${romanceCategoryId}`)
+                            : lp("/products")
+                        }
                         pillWidth={206}
                         isFav={isFav}
                         onToggleFavorite={toggleFavorite}
@@ -461,6 +470,12 @@ export default function Home() {
                     <BookSection
                         title={t("home.sections.science")}
                         books={scienceBooks}
+                        showMore
+                        showMoreHref={
+                        fantasyCategoryId
+                            ? lp(`/products?categoryId=${scienceCategoryId}`)
+                            : lp("/products")
+                        }
                         pillWidth={211}
                         isFav={isFav}
                         onToggleFavorite={toggleFavorite}
@@ -471,6 +486,12 @@ export default function Home() {
                     <BookSection
                         title={t("home.sections.fantasy")}
                         books={fantasyBooks}
+                        showMore
+                        showMoreHref={
+                        fantasyCategoryId
+                            ? lp(`/products?categoryId=${fantasyCategoryId}`)
+                            : lp("/products")
+                        }
                         pillWidth={292}
                         isFav={isFav}
                         onToggleFavorite={toggleFavorite}
@@ -484,6 +505,8 @@ export default function Home() {
                     <BookSection
                         title={t("home.sections.bestsellers")}
                         books={desktopHitsBooks}
+                        showMore
+                        showMoreHref={lp("/products?sort=newest")}  // поки каталог це ще не обробляє
                         pillWidth={355}
                         isFav={isFav}
                         onToggleFavorite={toggleFavorite}

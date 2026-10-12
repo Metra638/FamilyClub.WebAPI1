@@ -211,6 +211,51 @@
     drop-shadow(0 16px 28px rgba(0, 0, 0, 0.75));
 }
 
+@keyframes reviews-drift {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-28px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes reviews-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reviews-marquee-animate {
+  animation: reviews-drift 28s ease-in-out infinite;
+}
+
+.group\/reviews:hover .reviews-marquee-animate {
+  animation-play-state: paused;
+}
+
+.reviews-card-enter {
+  animation: reviews-card-enter 0.65s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reviews-marquee-animate {
+    animation: none;
+  }
+
+  .reviews-card-enter {
+    animation: none;
+  }
+}
+
 .ink-cat-photo {
   filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.45));
 }
