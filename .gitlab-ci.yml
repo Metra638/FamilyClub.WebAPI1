@@ -10,7 +10,6 @@ stages:
   - sbom-frontend          # [ADDED] новый этап для генерации SBOM frontend
   - dast-frontend
   - push-frontend
-  - attest-frontend        # [ADDED] этап для подписи образа и аттестации SBOM frontend через Cosign
   - backend-checks
   - test-backend
   - build-backend
@@ -18,7 +17,6 @@ stages:
   - sbom-backend           # [ADDED] новый этап для генерации SBOM backend
   - dast-backend
   - push-backend
-  - attest-backend         # [ADDED] этап для подписи образа и аттестации SBOM backend через Cosign
   - update-frontend-manifests
   - update-backend-manifests
   - convert-sarif-to-codequality
@@ -28,8 +26,6 @@ variables:
   UPSTREAM_URL: "https://github.com/Metra638/FamilyClub.WebAPI1.git"
   dockerId: "metra638"
   repoName: "test1"
-  # [ADDED] версия Cosign зафиксирована для воспроизводимости
-  COSIGN_VERSION: "v2.2.4"
 
 sync-repo:
   stage: sync
@@ -199,7 +195,7 @@ scan-frontend:
 # [ADDED] Новый джоб для генерации SBOM frontend
 sbom-frontend:
   stage: sbom-frontend
-  image: anchore/syft:latest
+  image: anchore/syft:latest   # [ADDED] используем готовый образ Syft
   script:
     - |
       echo "Генерация SBOM для frontend образа"
@@ -348,65 +344,6 @@ push-frontend:
       when: always
     - when: never
 
-# [ADDED] Джоб для подписи образа frontend и аттестации SBOM через Cosign (keyless / GitLab OIDC)
-attest-frontend:
-  stage: attest-frontend
-  image:
-    name: gcr.io/projectsigstore/cosign:${COSIGN_VERSION}
-    entrypoint: [""]
-  id_tokens:                              # [ADDED] OIDC-токен GitLab для keyless-подписи
-    SIGSTORE_ID_TOKEN:
-      aud: sigstore
-  script:
-    - |
-      set -e
-      # [ADDED] читаем дайджест из артефакта предыдущего джоба (push-frontend)
-      if [ -f frontend.env ]; then
-        source frontend.env
-      else
-        echo "ERROR: frontend.env not found"; exit 1
-      fi
-      IMAGE_DIGEST="${frontendArm64Digest}"
-      if [ -z "$IMAGE_DIGEST" ]; then
-        echo "ERROR: frontendArm64Digest is empty"; exit 1
-      fi
-
-      # [ADDED] аттестуем и подписываем ИМЕННО дайджест, а не тег
-      TARGET="${dockerId}/${repoName}@${IMAGE_DIGEST}"
-      echo "Cosign target: $TARGET"
-
-      # [ADDED] 1) Подпись самого образа (keyless)
-      cosign sign --yes "$TARGET"
-
-      # [ADDED] 2) Аттестация SBOM (CycloneDX) — привязка SBOM к дайджесту образа
-      cosign attest --yes \
-        --predicate sbom-frontend.cdx.json \
-        --type cyclonedx \
-        "$TARGET"
-
-      # [ADDED] 3) (опционально) подпись SBOM как отдельного блоба
-      cosign sign-blob --yes \
-        --output-signature sbom-frontend.cdx.json.sig \
-        sbom-frontend.cdx.json
-
-      echo "Frontend image signed and SBOM attested successfully"
-  artifacts:
-    paths:
-      - sbom-frontend.cdx.json.sig      # [ADDED] сохраняем подпись блоба SBOM
-    expire_in: 1 week
-  needs:
-    - job: push-frontend
-      artifacts: true
-    - job: sbom-frontend
-      artifacts: true
-    - job: dast-frontend
-      artifacts: true
-      optional: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
 backend-checks:
   stage: backend-checks
   script:
@@ -494,7 +431,7 @@ scan-backend:
 # [ADDED] Новый джоб для генерации SBOM backend
 sbom-backend:
   stage: sbom-backend
-  image: anchore/syft:latest
+  image: anchore/syft:latest   # [ADDED] используем готовый образ Syft
   script:
     - |
       echo "Генерация SBOM для backend образа"
@@ -698,65 +635,6 @@ push-backend:
       when: always
     - when: never
 
-# [ADDED] Джоб для подписи образа backend и аттестации SBOM через Cosign (keyless / GitLab OIDC)
-attest-backend:
-  stage: attest-backend
-  image:
-    name: gcr.io/projectsigstore/cosign:${COSIGN_VERSION}
-    entrypoint: [""]
-  id_tokens:                              # [ADDED] OIDC-токен GitLab для keyless-подписи
-    SIGSTORE_ID_TOKEN:
-      aud: sigstore
-  script:
-    - |
-      set -e
-      # [ADDED] читаем дайджест из артефакта предыдущего джоба (push-backend)
-      if [ -f backend.env ]; then
-        source backend.env
-      else
-        echo "ERROR: backend.env not found"; exit 1
-      fi
-      IMAGE_DIGEST="${BackendArm64Digest}"
-      if [ -z "$IMAGE_DIGEST" ]; then
-        echo "ERROR: BackendArm64Digest is empty"; exit 1
-      fi
-
-      # [ADDED] аттестуем и подписываем ИМЕННО дайджест, а не тег
-      TARGET="${dockerId}/${repoName}@${IMAGE_DIGEST}"
-      echo "Cosign target: $TARGET"
-
-      # [ADDED] 1) Подпись самого образа (keyless)
-      cosign sign --yes "$TARGET"
-
-      # [ADDED] 2) Аттестация SBOM (CycloneDX) — привязка SBOM к дайджесту образа
-      cosign attest --yes \
-        --predicate sbom-backend.cdx.json \
-        --type cyclonedx \
-        "$TARGET"
-
-      # [ADDED] 3) (опционально) подпись SBOM как отдельного блоба
-      cosign sign-blob --yes \
-        --output-signature sbom-backend.cdx.json.sig \
-        sbom-backend.cdx.json
-
-      echo "Backend image signed and SBOM attested successfully"
-  artifacts:
-    paths:
-      - sbom-backend.cdx.json.sig       # [ADDED] сохраняем подпись блоба SBOM
-    expire_in: 1 week
-  needs:
-    - job: push-backend
-      artifacts: true
-    - job: sbom-backend
-      artifacts: true
-    - job: dast-backend
-      artifacts: true
-      optional: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
 update-frontend-manifests:
   stage: update-frontend-manifests
   script:
@@ -794,11 +672,6 @@ update-frontend-manifests:
   needs:
     - job: push-frontend
       artifacts: true
-    # [ADDED] ждём завершения аттестации, чтобы values.yaml обновлялся только
-    # после успешной подписи/аттестации образа
-    - job: attest-frontend
-      artifacts: true
-      optional: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
@@ -842,11 +715,6 @@ update-backend-manifests:
     - job: push-backend
       artifacts: true
     - job: update-frontend-manifests
-    # [ADDED] ждём завершения аттестации backend, чтобы values.yaml обновлялся
-    # только после успешной подписи/аттестации образа
-    - job: attest-backend
-      artifacts: true
-      optional: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
