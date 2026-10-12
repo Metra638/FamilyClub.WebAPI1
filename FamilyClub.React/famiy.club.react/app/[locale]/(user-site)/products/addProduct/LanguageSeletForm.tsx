@@ -22,7 +22,7 @@ export default function LanguageSelectForm({ languages, value, onChange }: Props
         onChange={(e) =>
           onChange(e.target.value ? Number(e.target.value) : undefined)
         }
-        className="input text[15px] rounded-[9px] bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040] h-[40px]"
+        className="input text[15px] rounded-[9px] bg-[var(--background-elevated)] text-[var(--foreground-primary)] shadow-[var(--shadow-input)] h-[40px]"
       >
         <option value="">{t("sellerProduct.selectLanguage")}</option>
 

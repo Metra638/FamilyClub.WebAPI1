@@ -13,17 +13,16 @@ export default function InkSection() {
     const catSrc = CAT_IMAGES[locale];
 
     return (
-        <section className="py-16">
+        <section className="relative z-[5] py-16 pb-6">
             <div className="mx-auto max-w-[1504px] px-4 lg:px-0">
                 <div className="grid items-center gap-10 lg:grid-cols-[832px_590px] lg:gap-[82px]">
-                    <div className="flex justify-center lg:justify-start">
-                        <div className="rotate-[-2deg] border-[20px] border-[var(--background-elevated)] shadow-[0px_0px_15px_rgba(0,0,0,0.6)]">
-                            <img
-                                alt={ink.imageAlt}
-                                className="h-[571px] w-[832px] object-cover"
-                                src={catSrc}
-                            />
-                        </div>
+                    <div className="relative z-[1] flex justify-center overflow-visible lg:justify-start">
+                        
+                        <img
+                            alt={ink.imageAlt}
+                            className="ink-cat-photo h-auto w-full max-w-[832px] rotate-[-2.5deg] object-contain"
+                            src={catSrc}
+                        />
                     </div>
 
                     <div className="max-w-[590px] text-[var(--foreground-primary)] font-serif">

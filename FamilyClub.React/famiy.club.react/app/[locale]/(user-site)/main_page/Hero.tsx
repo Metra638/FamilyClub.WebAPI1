@@ -144,11 +144,11 @@ export default function Hero() {
 
   // z-20 so vines paint over the shelf below (same as daytime composition)
   return (
-    <section className="relative z-20 overflow-visible bg-[var(--background-main)]">
-      <div className="relative mx-auto hidden h-[700px] max-w-[1920px] overflow-visible min-[1600px]:block">
+    <section className="relative z-20 -mt-[62px] overflow-visible bg-[var(--background-main)]">
+      <div className="relative mx-auto hidden h-[580px] max-w-[1920px] overflow-visible min-[1600px]:block">
         <img
           alt=""
-          className="absolute left-[-20px] top-[74px] h-[510px] w-[1960px] object-cover blur-[2.5px]"
+          className="absolute inset-0 h-full w-full object-cover blur-[2.5px]"
           src={bannerSrc}
         />
         <div className="absolute left-[350px] top-0 h-[659px] w-[1220px] bg-[rgba(36,36,36,0.5)] blur-[50px]" />

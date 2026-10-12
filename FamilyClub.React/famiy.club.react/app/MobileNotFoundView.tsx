@@ -24,7 +24,7 @@ export default function MobileNotFoundView() {
   const lp = (path: string) => localizedPath(path, locale);
 
   return (
-    <div className="relative w-full min-h-screen bg-[#F5F3EE] flex flex-col justify-between pt-[75px] pb-[90px] px-4 overflow-x-hidden font-sans text-[#242424]">
+    <div className="relative w-full min-h-screen bg-[var(--background-main)] flex flex-col justify-between pt-[75px] pb-[90px] px-4 overflow-x-hidden font-sans text-[var(--foreground-primary)]">
       {/* ── Decorative Background Ellipses ── */}
       <div className="absolute -top-[60px] -left-[120px] w-[320px] h-[320px] pointer-events-none opacity-45 z-0">
         <img alt="" src={imgEllipseDeco} className="w-full h-full object-contain" />
@@ -38,10 +38,10 @@ export default function MobileNotFoundView() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/70 hover:bg-white text-[#242424] text-[15px] font-medium border border-black/5 shadow-sm transition-all duration-200 active:scale-95"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[var(--background-elevated)] hover:bg-[var(--color-menu-hover)] text-[var(--foreground-primary)] text-[15px] font-medium border border-[var(--color-menu-separator)] shadow-sm transition-all duration-200 active:scale-95"
           aria-label={t("notFound.backAria")}
         >
-          <svg className="w-4 h-4 text-[#242424]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+          <svg className="w-4 h-4 text-[var(--foreground-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           <span>{t("notFound.back")}</span>
@@ -51,7 +51,7 @@ export default function MobileNotFoundView() {
       {/* ── Main Content Area ── */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-4 w-full max-w-[440px] mx-auto">
         {/* Title "Помилка" */}
-        <h1 className="font-mono font-bold text-[40px] sm:text-[48px] text-[#242424] tracking-tight leading-none mb-6 select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.06)] text-center">
+        <h1 className="font-mono font-bold text-[40px] sm:text-[48px] text-[var(--foreground-primary)] tracking-tight leading-none mb-6 select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.06)] text-center">
           {t("notFound.error")}
         </h1>
 
@@ -120,10 +120,10 @@ export default function MobileNotFoundView() {
         {/* ═══ Text description & CTA buttons ═══ */}
         <div className="flex flex-col items-center text-center mt-7 sm:mt-9 w-full max-w-[360px] gap-6">
           <div className="flex flex-col gap-2 px-2">
-            <h2 className="text-[#242424] font-semibold text-[26px] sm:text-[28px] leading-tight tracking-tight font-sans">
+            <h2 className="text-[var(--foreground-primary)] font-semibold text-[26px] sm:text-[28px] leading-tight tracking-tight font-sans">
               {t("notFound.title")}
             </h2>
-            <p className="text-[#242424]/75 text-[15px] sm:text-[16px] leading-normal font-sans">
+            <p className="text-[var(--color-muted-fg)] text-[15px] sm:text-[16px] leading-normal font-sans">
               {t("notFound.description")}
             </p>
           </div>
@@ -132,13 +132,13 @@ export default function MobileNotFoundView() {
           <div className="flex flex-col sm:flex-row items-center justify-center w-full gap-3 pt-1">
             <Link
               href={lp("/")}
-              className="w-full inline-flex items-center justify-center text-[#F5F3EE] bg-[#005B33] hover:bg-[#00452a] active:scale-[0.98] transition-all duration-200 rounded-full py-3.5 px-6 font-medium text-[17px] shadow-[0_6px_16px_rgba(0,91,51,0.28)] font-sans"
+              className="w-full inline-flex items-center justify-center text-[var(--color-cream)] bg-[var(--color-green)] hover:brightness-110 active:scale-[0.98] transition-all duration-200 rounded-full py-3.5 px-6 font-medium text-[17px] shadow-[0_6px_16px_rgba(0,91,51,0.28)] font-sans"
             >
               {t("notFound.goHome")}
             </Link>
             <Link
               href={lp("/categories")}
-              className="w-full inline-flex items-center justify-center text-[#005B33] bg-white/60 hover:bg-white active:scale-[0.98] border border-[#005B33]/40 transition-all duration-200 rounded-full py-3.5 px-6 font-medium text-[16px] shadow-sm font-sans"
+              className="w-full inline-flex items-center justify-center text-[var(--color-green)] bg-[var(--background-elevated)] hover:bg-[var(--color-menu-hover)] active:scale-[0.98] border border-[var(--color-green)]/40 transition-all duration-200 rounded-full py-3.5 px-6 font-medium text-[16px] shadow-sm font-sans"
             >
               {t("notFound.catalog")}
             </Link>

@@ -45,7 +45,7 @@ export function BasicInfoSection({
             placeholder={t("sellerProduct.bookNamePlaceholder")}
             value={form.productName}
             onChange={(e) => setField("productName", e.target.value)}
-            className="input rounded-[9px] px-3 bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040] h-[40px]"
+            className="input rounded-[9px] px-3 bg-[var(--background-elevated)] text-[var(--foreground-primary)] shadow-[var(--shadow-input)] h-[40px]"
           />
 
           <AuthorSelectForm
@@ -68,7 +68,7 @@ export function BasicInfoSection({
               placeholder={t("sellerProduct.descriptionPlaceholder")}
               value={form.description ?? ""}
               onChange={(e) => setField("description", e.target.value)}
-              className="px-2 h-[68px] resize-none input rounded-[9px] bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040]"
+              className="px-2 h-[68px] resize-none input rounded-[9px] bg-[var(--background-elevated)] text-[var(--foreground-primary)] shadow-[var(--shadow-input)]"
             />
           </div>
 

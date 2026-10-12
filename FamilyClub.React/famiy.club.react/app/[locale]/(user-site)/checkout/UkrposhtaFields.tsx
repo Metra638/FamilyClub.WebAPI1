@@ -174,9 +174,9 @@ export default function UkrposhtaFields({
     }
   };
 
-  const fetchWarehouses = (targetCity: string, searchVal: string) => {
+  const fetchWarehouses = (targetCity: string, searchVal: string, coords?: { lat: number; lon: number }) => {
     const cleanDigits = (searchVal || targetCity).replace(/\D/g, "");
-    if (!targetCity && !searchVal && cleanDigits.length < 3) return;
+    if (!targetCity && !searchVal && cleanDigits.length < 3 && !coords) return;
 
     if (branchDebounceRef.current) clearTimeout(branchDebounceRef.current);
 
@@ -187,9 +187,10 @@ export default function UkrposhtaFields({
           const params = new URLSearchParams();
           if (targetCity) params.set("city", targetCity);
           if (searchVal) params.set("search", searchVal);
-          if (userCoords) {
-            params.set("lat", String(userCoords.lat));
-            params.set("lon", String(userCoords.lon));
+          const c = coords || userCoords;
+          if (c) {
+            params.set("lat", String(c.lat));
+            params.set("lon", String(c.lon));
           }
 
           const res = await fetch(`/api/ukrposhta/warehouses?${params.toString()}`);
@@ -247,9 +248,15 @@ export default function UkrposhtaFields({
     setBranchRef?.(selected.ref || selected.postcode);
     setIsBranchOpen(false);
 
-    if (!city && selected.shortAddress) {
+    if (selected.shortAddress && selected.shortAddress !== city) {
+      const match = selected.description.match(/\(([^)]+)\)/);
+      if (match && match[1] && !city.toLowerCase().includes(match[1].toLowerCase())) {
+        setCity(match[1]);
+        setCityQuery(match[1]);
+      } else if (!city) {
       setCity(selected.shortAddress);
       setCityQuery(selected.shortAddress);
+    }
     }
   };
 
@@ -269,7 +276,7 @@ export default function UkrposhtaFields({
         setUserCoords({ lat, lon });
 
         try {
-          const geoRes = await fetch(`/api/novaposhta/geocode?lat=${lat}&lon=${lon}`);
+          const geoRes = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`);
           if (!geoRes.ok) throw new Error("geocode failed");
           const geoData = await geoRes.json();
           const candidates: string[] =
@@ -310,7 +317,15 @@ export default function UkrposhtaFields({
           setSortByDistance(true);
           setIsBranchOpen(true);
 
-          fetchWarehouses(bestMatch.name, "");
+          const nearby = Array.isArray(geoData?.nearbySettlements) ? geoData.nearbySettlements : [];
+          const allCityNames = [bestMatch.name];
+          for (const s of nearby.slice(0, 3)) {
+            if (!allCityNames.some((n) => n.toLowerCase().includes(s.name.toLowerCase()))) {
+              allCityNames.push(s.name);
+            }
+          }
+
+          fetchWarehouses(allCityNames.join(","), "", { lat, lon });
         } catch (err) {
           console.warn("Ukrposhta nearest search error", err);
           setGeoError("Не вдалося знайти найближче відділення. Спробуйте обрати місто або індекс вручну.");
@@ -501,7 +516,7 @@ export default function UkrposhtaFields({
               ) : filteredWarehouses.length > 0 ? (
                 filteredWarehouses.map((w) => renderWarehouseItem(w))
               ) : !city ? (
-                <div className="px-4 py-3 text-sm text-amber-800 bg-amber-50 rounded-lg m-2">
+                <div className="px-4 py-3 text-sm text-amber-800 bg-amber-50 dark:text-amber-200 dark:bg-amber-950/40 dark:border dark:border-amber-800/40 rounded-lg m-2">
                   Будь ласка, спочатку оберіть населений пункт або введіть 5-значний індекс (наприклад 70-450).
                 </div>
               ) : (
@@ -590,7 +605,7 @@ export default function UkrposhtaFields({
             ) : filteredWarehouses.length > 0 ? (
               filteredWarehouses.map((w) => renderWarehouseItem(w, true))
             ) : !city ? (
-              <div className="px-4 py-3 text-xs text-amber-800 bg-amber-50 rounded-lg m-2">
+              <div className="px-4 py-3 text-xs text-amber-800 bg-amber-50 dark:text-amber-200 dark:bg-amber-950/40 dark:border dark:border-amber-800/40 rounded-lg m-2">
                 Будь ласка, спочатку оберіть населений пункт або введіть 5-значний індекс (наприклад 70-450).
               </div>
             ) : (

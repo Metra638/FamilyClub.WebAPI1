@@ -74,7 +74,7 @@ function ReviewCard({
                 {rating != null ? (
                     <div className="flex items-center gap-2">
                         <span className="text-[16px] text-[var(--foreground-primary)]">{formatRating(rating)}</span>
-                        <img alt="" className="h-[30px] w-[30px]" src="/images/main_page/icons/reviews-heart.svg" />
+                        <img alt="" className="h-[22px] w-[22px]" src="/images/main_page/icons/reviews-heart.svg" />
                     </div>
                 ) : null}
             </div>
@@ -105,23 +105,28 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
 
     return (
         <section className="relative w-full overflow-hidden pb-4 pt-8">
-            <div className="relative mx-auto hidden h-[450px] w-[1920px] max-w-full min-[1600px]:block">
-                <div className="absolute inset-0 border-[20px] border-[var(--background-elevated)] shadow-[0px_0px_40px_0px_rgba(0,0,0,0.7)]">
-                    <img
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover opacity-20"
-                        src="/images/body/Rectangle%20287.webp"
-                    />
+            {/* Desktop only */}
+            <div className="relative mx-auto hidden h-[550px] w-full min-[1600px]:block">
+            <img
+                alt=""
+                aria-hidden
+                className="reviews-papyrus-sheet pointer-events-none absolute inset-0 z-0 h-full w-full object-fill"
+                src="/images/body/Rectangle2871.png"
+            />
+
+                <div className="relative z-10 flex h-full w-full items-center justify-center">
+                    <div className="relative h-[450px] w-[1920px] max-w-full">
+                        {desktopLayout.map((layout, index) => (
+                            <ReviewCard
+                                key={`${expandedReviews[index]?.id}-${index}`}
+                                className="absolute w-[507px]"
+                                style={{ left: layout.left, top: layout.top, height: layout.height }}
+                                {...expandedReviews[index]}
+                                fallbackBookSrc={reviewsBookSrc}
+                            />
+                        ))}
+                    </div>
                 </div>
-                {desktopLayout.map((layout, index) => (
-                    <ReviewCard
-                        key={`${expandedReviews[index]?.id}-${index}`}
-                        className="absolute w-[507px]"
-                        style={{ left: layout.left, top: layout.top, height: layout.height }}
-                        {...expandedReviews[index]}
-                        fallbackBookSrc={reviewsBookSrc}
-                    />
-                ))}
             </div>
 
             <div className="relative mx-auto max-w-[1920px] px-4 min-[1600px]:hidden">

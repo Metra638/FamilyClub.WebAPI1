@@ -17,6 +17,7 @@ import styles from "./checkout.module.css";
 import MobileCheckoutView from "./MobileCheckoutView";
 import NovaPoshtaFields from "./NovaPoshtaFields";
 import UkrposhtaFields from "./UkrposhtaFields";
+import MeestFields from "./MeestFields";
 import { useLocale, useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 
 export type DeliveryProvider = "nova_poshta" | "ukr_poshta" | "meest";
@@ -621,24 +622,50 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Meest */}
-                <div
-                  className={styles.deliveryOption}
-                  onClick={() => setDeliveryProvider("meest")}
-                  id="delivery-meest"
-                >
-                  <div className={styles.deliveryOptionLeft}>
-                    <RadioBtn
-                      active={deliveryProvider === "meest"}
-                      onClick={() => setDeliveryProvider("meest")}
+                <div>
+                  <div
+                    className={styles.deliveryOption}
+                    onClick={() => {
+                      if (deliveryProvider !== "meest") {
+                        setDeliveryProvider("meest");
+                        setBranch("");
+                        setBranchRef("");
+                      }
+                    }}
+                    id="delivery-meest"
+                  >
+                    <div className={styles.deliveryOptionLeft}>
+                      <RadioBtn
+                        active={deliveryProvider === "meest"}
+                        onClick={() => {
+                          setDeliveryProvider("meest");
+                          setBranch("");
+                          setBranchRef("");
+                        }}
+                      />
+                      <span className={styles.deliveryOptionName}>Meest</span>
+                    </div>
+                    <div className={styles.deliveryOptionRight}>
+                      <span className={styles.deliveryTerm}>
+                        <span className={styles.deliveryTermLabel}>{t("checkout.termLabel")}</span>
+                        {t("checkout.termMeest")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {deliveryProvider === "meest" && (
+                    <MeestFields
+                      city={city}
+                      setCity={setCity}
+                      cityRef={cityRef}
+                      setCityRef={setCityRef}
+                      branch={branch}
+                      setBranch={setBranch}
+                      branchRef={branchRef}
+                      setBranchRef={setBranchRef}
+                      variant="desktop"
                     />
-                    <span className={styles.deliveryOptionName}>Meest</span>
-                  </div>
-                  <div className={styles.deliveryOptionRight}>
-                    <span className={styles.deliveryTerm}>
-                      <span className={styles.deliveryTermLabel}>{t("checkout.termLabel")}</span>
-                      {t("checkout.termMeest")}
-                    </span>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

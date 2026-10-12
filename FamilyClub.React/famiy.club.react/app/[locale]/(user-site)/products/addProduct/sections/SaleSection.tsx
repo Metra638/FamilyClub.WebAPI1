@@ -35,7 +35,7 @@ export function SaleSection({
           src="/images/addProducts/Rectangle 315.png"
           alt=""
           aria-hidden
-          className="absolute inset-0 w-full h-[600px] pointer-events-none"
+          className="absolute inset-0 w-full h-[600px] pointer-events-none admin-parchment-bg"
           style={{ objectFit: "fill" }}
         />
         <div className="relative z-10 w-full h-full flex flex-col items-center -ml-[2px] mt-[38px]">

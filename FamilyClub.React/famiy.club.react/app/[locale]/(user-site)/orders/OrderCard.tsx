@@ -8,6 +8,7 @@ import audioIcon from "@/public/images/userProfile/volume-solid-full 1.png";
 import printIcon from "@/public/images/userProfile/Паперова.svg";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 import { translateListStatus } from "./orderStatusI18n";
+import { useTheme } from "@/lib/theme/ThemeProvider";
 
 interface OrderCardProps {
   item: MockOrderItem;
@@ -19,6 +20,8 @@ export default function OrderCard({ item, activeTab, onAction }: OrderCardProps)
   const router = useRouter();
   const t = useTranslations();
   const lp = useLocalizedPath();
+  const { theme } = useTheme();
+  const isNight = theme === "ink-night";
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -139,7 +142,7 @@ export default function OrderCard({ item, activeTab, onAction }: OrderCardProps)
               title={t("orders.copyOrderNumber")}
             >
               {copied ? (
-                <span className="text-xs text-green-700 font-bold">{t("orders.copied")}</span>
+                <span className="text-xs text-[var(--color-green)] font-bold">{t("orders.copied")}</span>
               ) : (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -162,13 +165,13 @@ export default function OrderCard({ item, activeTab, onAction }: OrderCardProps)
           {/* Format Bookmark Badge */}
           <div className="flex flex-col gap-2 items-center justify-center bg-[var(--color-menu-separator)] px-2 py-2.5 rounded-r-lg -ml-4 self-stretch min-w-[32px]">
             {item.formats.includes("print") && (
-              <img src={printIconSrc} alt="print" className="w-4 h-auto object-contain" style={{ width: "auto", height: "auto", maxHeight: "18px" }} />
+              <img src={printIconSrc} alt="print" className="w-4 h-auto object-contain" style={{ width: "auto", height: "auto", maxHeight: "18px", filter: isNight ? "brightness(0) invert(0.88)" : undefined }} />
             )}
             {item.formats.includes("ebook") && (
-              <img src={ebookIconSrc} alt="ebook" className="w-3.5 h-auto object-contain" style={{ width: "auto", height: "auto", maxHeight: "16px" }} />
+              <img src={ebookIconSrc} alt="ebook" className="w-3.5 h-auto object-contain" style={{ width: "auto", height: "auto", maxHeight: "16px", filter: isNight ? "brightness(0) invert(0.88)" : undefined }} />
             )}
             {item.formats.includes("audio") && (
-              <img src={audioIconSrc} alt="audio" className="w-3.5 h-auto object-contain" style={{ width: "auto", height: "auto", maxHeight: "16px" }} />
+              <img src={audioIconSrc} alt="audio" className="w-3.5 h-auto object-contain" style={{ width: "auto", height: "auto", maxHeight: "16px", filter: isNight ? "brightness(0) invert(0.88)" : undefined }} />
             )}
           </div>
 

@@ -9,6 +9,7 @@ import InkHouse from "./InkHouse";
 import InkPlayGame from "./game/InkPlayGame";
 import { playBellSound } from "./playBellSound";
 import { useSpriteAnimation } from "./useSpriteAnimation";
+import { useMascotShelf } from "@/lib/mascot/MascotShelfContext";
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -27,18 +28,22 @@ function usePrefersReducedMotion() {
 export default function InkAssistant() {
   const t = useTranslations();
   const reducedMotion = usePrefersReducedMotion();
+  const { isCatOnShelf, toggleCatOnShelf, returnCatToHouse } = useMascotShelf();
   const [phase, setPhase] = useState<InkPhase>("idle");
   const [gameKey, setGameKey] = useState(0);
 
   const handleActivate = useCallback(() => {
     if (phase !== "idle") return;
+    if (isCatOnShelf) {
+      returnCatToHouse();
+    }
     if (reducedMotion) {
       setPhase("open");
       return;
     }
     playBellSound();
     setPhase("ringing");
-  }, [phase, reducedMotion]);
+  }, [phase, reducedMotion, isCatOnShelf, returnCatToHouse]);
 
   const handleBellComplete = useCallback(() => {
     setPhase((current) => (current === "ringing" ? "emerging" : current));
@@ -114,7 +119,7 @@ export default function InkAssistant() {
       )}
 
       <div
-        className={`pointer-events-none fixed bottom-6 right-2 z-40 hidden md:block lg:right-6 ${
+        className={`pointer-events-none fixed bottom-6 right-0 z-40 hidden md:block lg:right-0 ${
           phase === "playing" ? "invisible" : ""
         }`}
         aria-live="polite"
@@ -141,15 +146,17 @@ export default function InkAssistant() {
               onActivate={handleActivate}
               onBellComplete={handleBellComplete}
               reducedMotion={reducedMotion}
+              isCatOnShelf={isCatOnShelf}
+              onCatClick={toggleCatOnShelf}
             />
 
             <p
-              className={`mt-1 max-w-[160px] text-center font-serif text-[11px] leading-tight text-[var(--color-green)]/80 ${
+              className={`mt-1 max-w-[170px] text-center font-serif text-[11px] leading-tight text-[var(--color-green)]/80 ${
                 phase === "idle" ? "" : "invisible"
               }`}
               aria-hidden={phase !== "idle"}
             >
-              {t("ink.hint")}
+              {isCatOnShelf ? t("ink.hintOnShelf") : t("ink.hint")}
             </p>
           </div>
         </div>

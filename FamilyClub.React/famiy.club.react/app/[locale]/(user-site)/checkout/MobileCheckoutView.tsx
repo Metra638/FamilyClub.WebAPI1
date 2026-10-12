@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { DeliveryProvider, DeliveryType, PaymentMethod } from "./page";
 import NovaPoshtaFields from "./NovaPoshtaFields";
 import UkrposhtaFields from "./UkrposhtaFields";
+import MeestFields from "./MeestFields";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
 
 export type MobileCheckoutViewProps = {
@@ -424,13 +425,24 @@ export default function MobileCheckoutView({
 
               {/* Meest Option */}
               <div
-                onClick={() => setDeliveryProvider("meest")}
-                className="py-3 flex items-center justify-between gap-3 cursor-pointer"
+                onClick={() => {
+                  if (deliveryProvider !== "meest") {
+                    setDeliveryProvider("meest");
+                    setBranch("");
+                    setBranchRef?.("");
+                  }
+                }}
+                className="py-3 flex flex-col gap-2 cursor-pointer"
               >
+                <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <RadioBtn
                     active={deliveryProvider === "meest"}
-                    onClick={() => setDeliveryProvider("meest")}
+                      onClick={() => {
+                        setDeliveryProvider("meest");
+                        setBranch("");
+                        setBranchRef?.("");
+                      }}
                   />
                   <div className="flex flex-col leading-snug">
                     <span className="text-[20px] font-semibold text-[var(--foreground-primary)]">Meest</span>
@@ -442,6 +454,23 @@ export default function MobileCheckoutView({
                 <div className="bg-[#0066b3] text-white font-extrabold italic px-3 py-1 rounded text-[14px] tracking-wide shadow-sm shrink-0">
                   Meest<span className="text-[#ee3338] not-italic ml-0.5">›</span>
                 </div>
+                </div>
+
+                {deliveryProvider === "meest" && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <MeestFields
+                      city={city}
+                      setCity={setCity}
+                      cityRef={cityRef}
+                      setCityRef={setCityRef}
+                      branch={branch}
+                      setBranch={setBranch}
+                      branchRef={branchRef}
+                      setBranchRef={setBranchRef}
+                      variant="mobile"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -469,7 +498,7 @@ export default function MobileCheckoutView({
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="font-extrabold text-[15px] text-[#1a1f71] italic tracking-tight">VISA</span>
+                <span className="font-extrabold text-[15px] text-[#1a1f71] dark:text-[#7ba0ff] italic tracking-tight">VISA</span>
                 <div className="flex -space-x-1.5 items-center">
                   <div className="size-[15px] rounded-full bg-[#eb001b]/90" />
                   <div className="size-[15px] rounded-full bg-[#f79e1b]/90" />
@@ -493,7 +522,7 @@ export default function MobileCheckoutView({
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0 self-start sm:self-center mt-1 sm:mt-0">
-                <span className="font-extrabold text-[15px] text-[#1a1f71] italic tracking-tight">VISA</span>
+                <span className="font-extrabold text-[15px] text-[#1a1f71] dark:text-[#7ba0ff] italic tracking-tight">VISA</span>
                 <div className="flex -space-x-1.5 items-center">
                   <div className="size-[15px] rounded-full bg-[#eb001b]/90" />
                   <div className="size-[15px] rounded-full bg-[#f79e1b]/90" />

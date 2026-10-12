@@ -1,0 +1,44 @@
+{
+  "Files": [
+    {
+      "FileName": "Program.cs",
+      "Methods": {
+        "Global": {
+          "CodeChanges": [
+            {
+              "InsertAfter": "app.MapRazorPages();",
+              "Block": "app.{0}()",
+              "InsertBefore": [ "app.Run();" ],
+              "LeadingTrivia": {
+                "Newline": true
+              }
+            }
+          ]
+        },
+        "OpenApi": {
+          "CodeChanges": [
+            {
+              "InsertAfter": "WebApplication.CreateBuilder.Services.AddControllers();",
+              "InsertBefore": [ "var app = builder.Build();" ],
+              "Options": [ "OpenApi" ],
+              "Block": "WebApplication.CreateBuilder.Services.AddOpenApi()",
+              "LeadingTrivia": {
+                "Newline": true
+              }
+            },
+            {
+              "CheckBlock": "app.MapOpenApi()",
+              "Block": "if (app.Environment.IsDevelopment())\r\n{\r\n    app.MapOpenApi();\r\n}",
+              "Options": [ "OpenApi" ],
+              "InsertAfter": "var app = WebApplication.CreateBuilder.Build();",
+              "InsertBefore": [ "app.UseHttpsRedirection();" ],
+              "LeadingTrivia": {
+                "Newline": true
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

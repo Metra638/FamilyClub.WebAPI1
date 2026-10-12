@@ -12,6 +12,7 @@ import { favoriteService } from "@/lib/api/services";
 import { getAuthToken, getAuthUserId } from "@/lib/auth/tokenStorage";
 import { usePaws } from "@/app/(user-site)/paws/hooks/usePaws";
 import { useLocale, useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+import { useTheme } from "@/lib/theme/ThemeProvider";
 
 export interface MobileCartViewProps {
   cartItems: Array<{
@@ -76,6 +77,8 @@ export default function MobileCartView({
   const { locale } = useLocale();
   const t = useTranslations();
   const lp = useLocalizedPath();
+  const { theme } = useTheme();
+  const isNight = theme === "ink-night";
   const [agreed, setAgreed] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
@@ -266,6 +269,7 @@ export default function MobileCartView({
                           className={`w-[24px] h-[24px] object-contain transition-transform ${
                             isFav ? "scale-110 filter brightness-90 sepia-[0.3] hue-rotate-[320deg] saturate-[5]" : ""
                           }`}
+                          style={!isFav && isNight ? { filter: "brightness(0) invert(0.88)" } : undefined}
                         />
                       </button>
 
@@ -403,25 +407,25 @@ export default function MobileCartView({
           {/* Підсумок замовлення */}
           <div className="flex flex-col gap-3 w-full max-w-[392px] mx-auto text-[var(--foreground-primary)]">
             <div className="flex items-center justify-between">
-              <span className="text-[18px] sm:text-[20px] text-[rgba(155,158,175,0.7)] font-normal">{t("cart.subtotal")}</span>
+              <span className="text-[18px] sm:text-[20px] text-[var(--color-muted-fg)] font-normal">{t("cart.subtotal")}</span>
               <span className="text-[18px] sm:text-[20px] font-semibold text-[var(--foreground-primary)]">
                 {formatPrice(subtotal)}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[18px] sm:text-[20px] text-[rgba(155,158,175,0.7)] font-normal">{t("cart.discount")}</span>
+              <span className="text-[18px] sm:text-[20px] text-[var(--color-muted-fg)] font-normal">{t("cart.discount")}</span>
               <span className="text-[18px] sm:text-[20px] font-semibold text-[#c81e1e]">
                 {totalDiscount > 0 ? `- ${formatPrice(totalDiscount)}` : t("cart.zeroPrice")}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[18px] sm:text-[20px] text-[rgba(155,158,175,0.7)] font-normal">{t("cart.delivery")}</span>
+              <span className="text-[18px] sm:text-[20px] text-[var(--color-muted-fg)] font-normal">{t("cart.delivery")}</span>
               <span className="text-[18px] sm:text-[20px] font-semibold text-[var(--foreground-primary)]">
                 {formatPrice(deliveryCost)}
               </span>
             </div>
             <div className="flex items-center justify-between pt-1">
-              <span className="text-[18px] sm:text-[20px] text-[rgba(155,158,175,0.7)] font-normal">{t("cart.total")}</span>
+              <span className="text-[18px] sm:text-[20px] text-[var(--color-muted-fg)] font-normal">{t("cart.total")}</span>
               <span className="text-[22px] sm:text-[24px] font-bold text-[#c81e1e]">
                 {formatPrice(totalToPay)}
               </span>

@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>X.PagedList.Mvc.Core</id>
+    <version>10.5.9</version>
+    <title>X.PagedList.Mvc.Core</title>
+    <authors>Troy Goode, Andrew Gubskiy</authors>
+    <license type="file">LICENSE.md</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <icon>x-pagedlist.png</icon>
+    <readme>README.md</readme>
+    <projectUrl>https://andrew.gubskiy.com/open-source</projectUrl>
+    <description>ASP.NET Core extensions for implementing paging in web applications.</description>
+    <copyright>Andrew Gubskiy © 2025</copyright>
+    <tags>paging pagedlist paged list web mvc</tags>
+    <repository type="git" url="https://github.com/dncuug/X.PagedList.git" commit="d31750be974fdf9220ca110aec2c4a1273ca8f40" />
+    <dependencies>
+      <group targetFramework="net6.0">
+        <dependency id="X.PagedList" version="10.5.9" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net8.0">
+        <dependency id="X.PagedList" version="10.5.9" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+    <frameworkReferences>
+      <group targetFramework="net6.0">
+        <frameworkReference name="Microsoft.AspNetCore.App" />
+      </group>
+      <group targetFramework="net8.0">
+        <frameworkReference name="Microsoft.AspNetCore.App" />
+      </group>
+    </frameworkReferences>
+  </metadata>
+</package>

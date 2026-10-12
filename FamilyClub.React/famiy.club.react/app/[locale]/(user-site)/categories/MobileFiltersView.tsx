@@ -17,6 +17,7 @@ import {
   AgeRestrictionDto,
 } from "@/lib/api/generated";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+import { useTheme } from "@/lib/theme/ThemeProvider";
 
 const FALLBACK_CATEGORY_KEYS = [
   "romance",
@@ -80,6 +81,8 @@ export default function MobileFiltersView() {
   const searchParams = useSearchParams();
   const t = useTranslations();
   const lp = useLocalizedPath();
+  const { theme } = useTheme();
+  const isNight = theme === "ink-night";
 
   // Active expanded accordion section
   const [activeSection, setActiveSection] = useState<SectionId>(null);
@@ -245,7 +248,7 @@ export default function MobileFiltersView() {
             className="w-full h-[140px] border-b border-[var(--color-brown)]/40 shadow-[var(--shadow-card)] flex-shrink-0"
             style={{
               backgroundImage:
-                "linear-gradient(180deg, rgba(170, 140, 112, 0) 65%, rgba(74, 53, 33, 0.45) 100%), linear-gradient(90deg, rgb(199, 163, 129) 0%, rgb(199, 163, 129) 100%)",
+                "linear-gradient(180deg, rgba(170, 140, 112, 0) 65%, rgba(74, 53, 33, 0.45) 100%), linear-gradient(90deg, var(--color-wood) 0%, var(--color-wood) 100%)",
             }}
           />
         ))}
@@ -361,7 +364,11 @@ export default function MobileFiltersView() {
                         onChange={(e) => setAuthorSearch(e.target.value)}
                         className="w-full bg-transparent text-[var(--foreground-primary)] text-[14px] font-sans placeholder:text-[var(--color-muted-fg)] focus:outline-none"
                       />
-                      <img src="/images/header/zoom_out_24px.svg" alt={t("common.search")} className="w-[18px] h-[18px] shrink-0 opacity-70 ml-1" />
+                      <img
+                        src="/images/header/zoom_out_24px.svg"
+                        alt={t("common.search")}
+                        className={`w-[18px] h-[18px] shrink-0 opacity-70 ml-1 ${isNight ? "brightness-0 invert-[0.88]" : ""}`}
+                      />
                     </div>
 
                     <div className="flex flex-col gap-2 max-h-[230px] overflow-y-auto pr-1">

@@ -360,6 +360,11 @@ export default function MobileUserProfileView({
                           }
                           alt=""
                           className="w-[24px] h-[24px] sm:w-[26px] sm:h-[26px] object-contain"
+                          style={
+                            !isFav(book.id) && isNight
+                              ? { filter: "brightness(0) invert(0.88)" }
+                              : undefined
+                          }
                         />
                       </button>
 
@@ -403,7 +408,7 @@ export default function MobileUserProfileView({
                               e.stopPropagation();
                               if (book.id && !isInCart(book.id)) await addToCart(book.id);
                             }}
-                            className="p-1 rounded-full hover:bg-black/5 active:scale-90 transition-all z-20"
+                            className="p-1 rounded-full hover:bg-[color-mix(in_srgb,var(--foreground-primary)_10%,transparent)] active:scale-90 transition-all z-20"
                             aria-label={t("profile.ariaAddToCart")}
                           >
                             <img
@@ -414,6 +419,11 @@ export default function MobileUserProfileView({
                               }
                               alt=""
                               className="w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] object-contain"
+                              style={
+                                !isInCart(book.id) && isNight
+                                  ? { filter: "brightness(0) invert(0.88)" }
+                                  : undefined
+                              }
                             />
                           </button>
                         </div>

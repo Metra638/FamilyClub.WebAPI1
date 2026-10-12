@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where([data-theme="ink-night"], [data-theme="ink-night"] *));
 @import "sweetalert2/dist/sweetalert2.min.css";
 @import "./sweetalert-theme.css";
 
@@ -72,7 +73,7 @@
   --font-geist-serif: var(--font-lora), 'Lora', Georgia, Cambria, 'Times New Roman', Times, serif; /* Lora font from Figma */
   --font-geist-inter: var(--font-inter), 'Inter', sans-serif; /* Inter font from Figma */
 
-
+  
 
 
 
@@ -193,6 +194,52 @@
     drop-shadow(0 -8px 30px rgba(245, 243, 238, 0.45));
 }
 
+/* Home About — papyrus + home banner shadows follow PNG alpha (no box frame) */
+.about-papyrus-sheet {
+  filter: drop-shadow(0 16px 28px rgba(36, 36, 36, 0.55));
+}
+
+.about-home-banner {
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.55));
+}
+
+.reviews-papyrus-sheet {
+  filter: drop-shadow(0 16px 28px rgba(36, 36, 36, 0.55));
+}
+[data-theme="ink-night"] .reviews-papyrus-sheet {
+  filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.88) saturate(0.55)
+    drop-shadow(0 16px 28px rgba(0, 0, 0, 0.75));
+}
+
+.ink-cat-photo {
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.45));
+}
+
+[data-theme="ink-night"] .about-papyrus-sheet {
+  filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.88) saturate(0.55)
+    drop-shadow(0 16px 28px rgba(0, 0, 0, 0.75));
+}
+
+[data-theme="ink-night"] .about-home-banner {
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.7));
+}
+
+[data-theme="ink-night"] .ink-cat-photo {
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.65));
+}
+
+[data-theme="ink-night"] .product-page-bg-texture {
+  filter: invert(1) hue-rotate(180deg) brightness(0.55) contrast(0.9) saturate(0.5);
+  opacity: 0.3;
+}
+.advantages-polaroid {
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.45));
+}
+
+[data-theme="ink-night"] .advantages-polaroid {
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.65));
+}
+
 /* Same gray wash for admin desktop shelf background */
 [data-theme="ink-night"] .admin-shelf-surface::before {
   content: "";
@@ -203,29 +250,30 @@
   z-index: 1;
 }
 
-/* Book card shelf motion — shared timing for plate + content */
+/* Book card shelf motion — matching userProfile sliding out from the shelf */
 .book-card-shell {
-  --book-card-motion: 1s cubic-bezier(0.22, 1, 0.36, 1);
-  --book-card-drop: 12px;
+  --card-drop: 18px;
+}
+
+.book-card-shell:hover {
+  transform: none;
 }
 
 .book-card-bg {
-  transition:
-    transform var(--book-card-motion),
-    box-shadow var(--book-card-motion);
+  transition: bottom 300ms ease-out, box-shadow 300ms ease-out;
 }
 
 .book-card-shell:hover .book-card-bg {
-  transform: scaleY(1.055);
-  box-shadow: 0px 16px 18px 0px rgba(36, 36, 36, 0.35);
+  bottom: calc(-1 * var(--card-drop)); /* верх на місці, низ +18px */
+  box-shadow: 0px 16px 20px 0px rgba(36, 36, 36, 0.4);
 }
 
 .book-card-content {
-  transition: transform var(--book-card-motion);
+  transition: transform 300ms ease-out;
 }
 
 .book-card-shell:hover .book-card-content {
-  transform: translateY(var(--book-card-drop));
+  transform: translateY(var(--card-drop)); /* ті самі 18px */
 }
 
 /* Book card action icons — full black (day) / white (night) instantly on icon hover */
@@ -376,6 +424,51 @@ button:hover > .book-card-action-icon--night {
   max-width: 98px;
 }
 
+/* Product page — same ribbons, larger */
+.book-format-ribbon--lg {
+  --ribbon-tip: 14px;
+  height: 52px;
+  width: 60px;
+}
+
+.book-format-ribbon--lg .book-format-ribbon__icon {
+  left: 12px;
+  width: 28px;
+  height: 28px;
+}
+
+.book-format-ribbon--lg .book-format-ribbon__label {
+  left: 48px;
+  font-size: 16px;
+}
+
+.book-format-ribbon--lg.book-format-ribbon--paper:hover {
+  width: 200px;
+}
+
+.book-format-ribbon--lg.book-format-ribbon--ebook:hover {
+  width: 190px;
+}
+
+.book-format-ribbon--lg.book-format-ribbon--audio:hover {
+  width: 230px;
+}
+
+.book-format-ribbon--lg.book-format-ribbon--paper:hover .book-format-ribbon__label {
+  max-width: 140px;
+}
+
+.book-format-ribbon--lg.book-format-ribbon--ebook:hover .book-format-ribbon__label {
+  max-width: 120px;
+}
+
+.book-format-ribbon--lg.book-format-ribbon--audio:hover .book-format-ribbon__label {
+  max-width: 170px;
+}
+
+
+
+
 [data-theme="ink-night"] .user-menu-panel img {
   filter: brightness(0) invert(0.88);
 }
@@ -391,6 +484,16 @@ button:hover > .book-card-action-icon--night {
 
 [data-theme="ink-night"] .admin-parchment-bg-soft {
   filter: invert(1) hue-rotate(180deg) brightness(0.78) contrast(0.82) saturate(0.45);
+}
+
+/* Add-product center column — parchment + soft edge shadow (day/night) */
+.add-product-panel-bg {
+  filter: drop-shadow(0 16px 28px rgba(36, 36, 36, 0.55));
+}
+
+[data-theme="ink-night"] .add-product-panel-bg {
+  filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.88) saturate(0.55)
+    drop-shadow(0 16px 28px rgba(0, 0, 0, 0.75));
 }
 
 /* Profile header text/icons — match inverted parchment */
@@ -418,6 +521,24 @@ body {
 html {
   overflow-x: clip;
 }
+
+/* Header papyrus background + bottom shadow */
+.header-torn-bg {
+  filter: drop-shadow(0 6px 10px rgba(36, 36, 36, 0.35));
+}
+[data-theme="ink-night"] .header-torn-bg {
+  filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.88) saturate(0.55)
+    drop-shadow(0 6px 12px rgba(0, 0, 0, 0.55));
+}
+
+.header-torn-edge {
+  filter: drop-shadow(0 8px 4px rgba(36, 36, 36, 0.4));
+}
+/* 
+[data-theme="ink-night"] .header-torn-edge {
+  filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.88) saturate(0.55)
+    drop-shadow(0 10px 5px rgba(0, 0, 0, 0.55));
+} */
 
 body {
   /* clip avoids a second vertical scrollport (hidden on both html+body does) */

@@ -151,8 +151,8 @@ export default function MobileBottomNav() {
           href={member ? localizedPath("/userProfile", locale) : localizedPath("/login", locale)}
           className="flex flex-col items-center justify-center gap-1 min-w-[56px] py-1"
         >
-          <div className="w-[24px] h-[24px] rounded-full overflow-hidden flex items-center justify-center bg-[rgba(0,0,0,0.05)] border border-[rgba(0,0,0,0.1)]">
-            {member && member.avatarData ? (
+          {member && member.avatarData ? (
+            <div className="w-[24px] h-[24px] rounded-full overflow-hidden flex items-center justify-center bg-[color-mix(in_srgb,var(--foreground-primary)_8%,transparent)] border border-[color-mix(in_srgb,var(--foreground-primary)_20%,transparent)]">
               <img
                 src={
                   member.avatarData.startsWith("http") ||
@@ -163,18 +163,19 @@ export default function MobileBottomNav() {
                 alt={member.name}
                 className="w-full h-full object-cover"
               />
-            ) : (
-              <img
-                src="/images/header/person_24px.png"
-                alt={t("nav.profile")}
-                className={`w-[18px] h-[18px] object-contain ${
-                  isActive("/userProfile") || isActive("/login")
-                    ? "opacity-100"
-                    : "opacity-60"
-                }`}
-              />
-            )}
-          </div>
+            </div>
+          ) : (
+            <svg
+              className={`w-[24px] h-[24px] transition-colors ${
+                isActive("/userProfile") || isActive("/login")
+                  ? "text-[var(--color-green)] fill-current"
+                  : "text-[var(--foreground-primary)]/60 fill-current"
+              }`}
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+          )}
           <span
             className={`text-[12px] font-medium leading-none tracking-tight ${
               isActive("/userProfile") || isActive("/login")

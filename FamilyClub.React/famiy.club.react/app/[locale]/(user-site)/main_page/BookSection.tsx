@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import BookCard from "./BookCard";
+import ShelfCat from "./ShelfCat";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+import { useMascotShelf } from "@/lib/mascot/MascotShelfContext";
 
 type Book = {
     title: string;
@@ -23,32 +26,67 @@ type BookSectionProps = {
     pillWidth?: number;
     isFav?: (id?: number) => boolean;
     onToggleFavorite?: (productId: number) => void;
+    shelfIndex?: number;
 };
 
-export default function BookSection({ title, books, showMore = false, showMoreHref, pillWidth, isFav, onToggleFavorite }: BookSectionProps) {
+export default function BookSection({
+    title,
+    books,
+    showMore = false,
+    showMoreHref,
+    pillWidth,
+    isFav,
+    onToggleFavorite,
+    shelfIndex,
+}: BookSectionProps) {
     const t = useTranslations();
     const lp = useLocalizedPath();
     const moreHref = showMoreHref ?? lp("/pick-book");
 
+    const { isCatOnShelf, activeShelfIndex, registerShelf } = useMascotShelf();
+
+    useEffect(() => {
+        if (shelfIndex !== undefined) {
+            return registerShelf(shelfIndex);
+        }
+    }, [shelfIndex, registerShelf]);
+
+    const hasCat = isCatOnShelf && shelfIndex !== undefined && activeShelfIndex === shelfIndex;
+
     return (
         <section
-            className="relative z-0 w-full overflow-x-clip pt-0 pb-0"
+            className="relative w-full overflow-visible pt-0 pb-0"
             style={{
                 backgroundImage:
                     "linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 12%, transparent) 0.24409%, transparent 17.892%), linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 22%, transparent) 9.5072%, transparent 49.996%), linear-gradient(90deg, var(--background-main) 0%, var(--background-main) 100%)",
             }}
         >
-            <div className="relative z-10 h-[105px] w-full shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] bg-[var(--color-shelf)]">
-                <img src="/images/catalog/shelf_tex1.png" className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-50 pointer-events-none" alt="" />
-                <div className="absolute inset-0 bg-[rgba(0,0,0,0.27)] pointer-events-none" />
-                <div className="absolute left-0 right-0 bottom-0 h-[70px]">
-                    <img src="/images/catalog/shelf_tex2.png" className="absolute inset-0 w-full h-full object-cover mix-blend-multiply pointer-events-none" alt="" />
-                    <img src="/images/catalog/shelf_tex3.png" className="absolute inset-0 w-full h-full object-cover pointer-events-none" alt="" />
-                </div>
+            {/* Акуратна дерев'яна поличка з дизайну (Group 187.png з userProfile) */}
+            <div
+                id={shelfIndex !== undefined ? `book-shelf-${shelfIndex}` : undefined}
+                data-shelf-index={shelfIndex}
+                className="relative h-[85px] md:h-[95px] w-full overflow-visible"
+            >
+                <img
+                    src="/images/userProfile/Group 187.png"
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-0 z-10 w-full h-full object-fill pointer-events-none"
+                />
+
+                {/* Кіт Інк на поличці */}
+                {hasCat && (
+                    <div className="pointer-events-none absolute inset-0 z-50 mx-auto max-w-[1220px] px-4 lg:px-0">
+                        <div className="relative h-full w-full" id="shelf-cat-anchor" data-shelf-cat="true">
+                            <ShelfCat />
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <div className="relative z-10 mx-auto max-w-[1220px] px-4 lg:px-0">
-                <div className="absolute top-0 left-0 right-0 z-30 flex flex-wrap items-start justify-between gap-4 pointer-events-none px-4 lg:px-0">
+            {/* Контейнер книг та плашки назви */}
+            <div className="relative mx-auto max-w-[1220px] px-4 lg:px-0">
+                <div className="absolute top-[36px] md:top-[14px] left-0 right-0 z-30 flex flex-wrap items-start justify-between gap-4 pointer-events-none px-4 lg:px-0">
                     <div
                         className="pointer-events-auto flex h-[57px] max-w-full items-center justify-center rounded-t-none rounded-b-[30px] bg-[var(--background-elevated)] px-6 md:px-8 shadow-[0px_8px_8.5px_0px_rgba(0,0,0,0.5)] w-fit"
                         style={pillWidth ? { minWidth: `${pillWidth}px` } : undefined}
@@ -67,10 +105,14 @@ export default function BookSection({ title, books, showMore = false, showMoreHr
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[60px] pb-12 pt-[75px]">
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[60px] pb-12 -mt-[50px]">
                     {books.map((book, index) => (
-                        <BookCard key={`${book.title}-${index}`} {...book} isFavorite={isFav?.(book.productId)}
-                            onToggleFavorite={onToggleFavorite} />
+                        <BookCard
+                            key={`${book.title}-${index}`}
+                            {...book}
+                            isFavorite={isFav?.(book.productId)}
+                            onToggleFavorite={onToggleFavorite}
+                        />
                     ))}
                 </div>
             </div>

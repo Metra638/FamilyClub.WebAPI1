@@ -10,6 +10,7 @@ import { CurrentUser } from "../userProfile/hooks/useCurrentUser";
 import { FavoriteBook } from "@/lib/hooks/useFavorites";
 import FormatBadge from "../userProfile/section/FormatBadge";
 import { useLocale, useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+import { useTheme } from "@/lib/theme/ThemeProvider";
 
 const FORMAT_CONFIG = [
   { id: 3, icon: "/images/userProfile/Property1.svg", icon1: "/images/userProfile/Rectangle 185.svg", labelKey: "profile.formats.paper" },
@@ -63,6 +64,8 @@ export default function MobileLibraryView({
   const { locale } = useLocale();
   const t = useTranslations();
   const lp = useLocalizedPath();
+  const { theme } = useTheme();
+  const isNight = theme === "ink-night";
   const { reviews: userReviews, loading: loadingUserReviews } = useUserReviews(userId);
 
   const [authors, setAuthors] = useState<AuthorDTO[]>([]);
@@ -287,6 +290,11 @@ export default function MobileLibraryView({
                       }
                       alt=""
                       className="w-[26px] h-[26px] sm:w-[28px] sm:h-[28px] object-contain opacity-85 hover:opacity-100 transition-opacity drop-shadow-md"
+                      style={
+                        !isFav(book.id) && isNight
+                          ? { filter: "brightness(0) invert(0.88)" }
+                          : undefined
+                      }
                     />
                   </button>
 
@@ -384,7 +392,7 @@ export default function MobileLibraryView({
                   rel="noopener noreferrer"
                   className="active:scale-90 transition-transform"
                 >
-                  <img src={icon} alt={name} className="w-[36px] h-[36px] object-contain drop-shadow" />
+                  <img src={icon} alt={name} className="user-profile-social-icon w-[36px] h-[36px] object-contain drop-shadow" />
                 </a>
               ))}
             </div>

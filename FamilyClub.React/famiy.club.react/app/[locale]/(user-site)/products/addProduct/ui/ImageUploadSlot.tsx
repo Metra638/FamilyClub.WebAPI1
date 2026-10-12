@@ -30,7 +30,7 @@ export function ImageUploadSlot({
       <img
         src="/images/addProducts/Rectangle 305.svg"
         alt=""
-        className={`absolute inset-0 w-full h-full`}
+        className={`absolute inset-0 w-full h-full admin-parchment-bg`}
         style={{ objectFit: 'fill' }}
       />
       <input

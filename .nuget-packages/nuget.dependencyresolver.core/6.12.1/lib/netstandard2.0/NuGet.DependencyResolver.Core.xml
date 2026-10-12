@@ -1,0 +1,900 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NuGet.DependencyResolver.Core</name>
+    </assembly>
+    <members>
+        <member name="T:NuGet.DependencyResolver.GraphItemKeyComparer`1">
+            <summary>
+            A <see cref="T:NuGet.DependencyResolver.GraphItem`1" /> Key based comparer. Two instances are equal only if the Keys are equal.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.GraphItemKeyComparer`1.Instance">
+            <summary>
+            Returns a singleton instance for the <see cref="!:GraphItemKeyComparer" />.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphItemKeyComparer`1.#ctor">
+            <summary>
+            Get a singleton instance only through the <see cref="!:GraphItemKeyComparer.Instance" />.
+            </summary>
+        </member>
+        <member name="T:NuGet.DependencyResolver.GraphEdge`1">
+            <summary>
+            GraphEdge holds a reference to the parent node, the incoming edge to the parent, and
+            the out going edge to the current position of the walk.
+            
+            Root -&gt; OuterEdge -&gt; Node -&gt; Edge -&gt; (Current Node)
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.GraphEdge`1.OuterEdge">
+            <summary>
+            Incoming edge to <see cref="P:NuGet.DependencyResolver.GraphEdge`1.Item" />.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.GraphEdge`1.Item">
+            <summary>
+            Graph node between <see cref="P:NuGet.DependencyResolver.GraphEdge`1.OuterEdge" /> and <see cref="P:NuGet.DependencyResolver.GraphEdge`1.Edge" />.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.GraphEdge`1.Edge">
+            <summary>
+            Outgoing edge from <see cref="P:NuGet.DependencyResolver.GraphEdge`1.Item" />.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.GraphItem`1.IsCentralTransitive">
+            <summary>
+            If set it will indicate that the graph node was created due to a transitive dependency for a package that was also defined in the central packages management file. 
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.GraphNode`1.ParentNodes">
+            <summary>
+            Used in case that a node is removed from its outernode and needs to keep reference of its parents.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphNode`1.EnsureInnerNodeCapacity(System.Int32)">
+            <summary>
+            Ensures that <see cref="P:NuGet.DependencyResolver.GraphNode`1.InnerNodes" /> has the capacity to add
+            <paramref name="additionalSpace" /> more items.
+            </summary>
+            <param name="additionalSpace">The count of additional items that will be added.</param>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.IsRelevantDowngrade(NuGet.DependencyResolver.DowngradeResult{NuGet.DependencyResolver.RemoteResolveResult})">
+            <summary>
+            A downgrade is relevant if the node itself was `Accepted`.
+            A node that itself wasn't `Accepted`, or has a parent that wasn't accepted is not relevant.
+            </summary>
+            <param name="d">Downgrade result to analyze</param>
+            <returns>Whether the downgrade is relevant.</returns>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.GetPath``1(NuGet.DependencyResolver.GraphNode{``0})">
+            <summary>
+            A 1.0.0 -&gt; B 1.0.0 -&gt; C 2.0.0
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.GetPathWithLastRange``1(NuGet.DependencyResolver.GraphNode{``0})">
+            <summary>
+            A 1.0.0 -&gt; B 1.0.0 -&gt; C (= 2.0.0)
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.GetIdAndRange``1(NuGet.DependencyResolver.GraphNode{``0})">
+            <summary>
+            Prints the id and version constraint for a node.
+            </summary>
+            <remarks>Projects will not display a range.</remarks>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.GetIdAndVersionOrRange``1(NuGet.DependencyResolver.GraphNode{``0})">
+            <summary>
+            Prints the id and version of a node. If the version does not exist use the range.
+            </summary>
+            <remarks>Projects will not display a version or range.</remarks>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.GetId``1(NuGet.DependencyResolver.GraphNode{``0})">
+            <summary>
+            Id of the node.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.GetVersionOrDefault``1(NuGet.DependencyResolver.GraphNode{``0})">
+            <summary>
+            Version of the resolved node version if it exists.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.GetVersionRange``1(NuGet.DependencyResolver.GraphNode{``0})">
+            <summary>
+            Dependency range for the node.
+            </summary>
+            <remarks>Defaults to All</remarks>
+        </member>
+        <member name="M:NuGet.DependencyResolver.GraphOperations.IsPackage``1(NuGet.DependencyResolver.GraphNode{``0})">
+            <summary>
+            True if the node is resolved to a package or allows a package if unresolved.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.Tracker`1.IsBestVersion(NuGet.DependencyResolver.GraphItem{`0})">
+            <remarks>
+            Note, this method returns <see langword="true" /> for items that were never tracked.
+            </remarks>
+        </member>
+        <member name="F:NuGet.DependencyResolver.Tracker`1.Entry._storage">
+             <summary>
+             This field can have one of three values:
+            
+             - null: when no graph items exist in this entry
+             - a graph item: when only a single graph item exists in this entry
+             - a hash set of graph items: when multiple graph items exist in this entry
+            
+             This packing exists in order to reduce the size of this object in
+             memory. For large graphs, this can amount to a significant saving in memory,
+             which helps overall performance.
+             </summary>
+        </member>
+        <member name="T:NuGet.DependencyResolver.LibraryRangeCacheKey">
+            <summary>
+            Helper type to hold a library range and framework.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.LibraryRangeCacheKey.Framework">
+            <summary>
+            Target framework
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.LibraryRangeCacheKey.LibraryRange">
+            <summary>
+            Library range information.
+            </summary>
+        </member>
+        <member name="T:NuGet.DependencyResolver.LockFileCacheKey">
+            <summary>
+            Helper class to hold lock file libraries per TFM/RID combo.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.LockFileCacheKey.TargetFramework">
+            <summary>
+            Target framework.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.LockFileCacheKey.RuntimeIdentifier">
+            <summary>	
+            Null for RIDless graphs.	
+            </summary>	
+        </member>
+        <member name="P:NuGet.DependencyResolver.LockFileCacheKey.Name">
+            <summary>
+            Full framework name.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.PackagingUtility.GetLibraryDependencyFromNuspec(NuGet.Packaging.Core.PackageDependency)">
+            <summary>
+            Convert a nuspec dependency to a library dependency.
+            </summary>
+        </member>
+        <member name="T:NuGet.DependencyResolver.IRemoteDependencyProvider">
+            <summary>
+            A remote dependency provider.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.IRemoteDependencyProvider.IsHttp">
+            <summary>
+            Gets a flag indicating whether or not the provider source is HTTP or HTTPS.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.IRemoteDependencyProvider.Source">
+            <summary>
+            Gets the package source.
+            </summary>
+            <remarks>Optional. This will be <see langword="null" /> for project providers.</remarks>
+        </member>
+        <member name="P:NuGet.DependencyResolver.IRemoteDependencyProvider.SourceRepository">
+            <summary>
+            Gets the source repository.
+            </summary>
+            <remarks>Optional. This will be <see langword="null" /> for project providers.</remarks>
+        </member>
+        <member name="M:NuGet.DependencyResolver.IRemoteDependencyProvider.FindLibraryAsync(NuGet.LibraryModel.LibraryRange,NuGet.Frameworks.NuGetFramework,NuGet.Protocol.Core.Types.SourceCacheContext,NuGet.Common.ILogger,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously discovers all versions of a package from a source and selects the best match.
+            </summary>
+            <remarks>This does not download the package.</remarks>
+            <param name="libraryRange">A library range.</param>
+            <param name="targetFramework">A target framework.</param>
+            <param name="cacheContext">A source cache context.</param>
+            <param name="logger">A logger.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>A task that represents the asynchronous operation.
+            The task result (<see cref="P:System.Threading.Tasks.Task`1.Result" />) returns a <see cref="T:NuGet.LibraryModel.LibraryIdentity" />
+            instance.</returns>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="libraryRange" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="targetFramework" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="cacheContext" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="logger" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:OperationCanceledException">Thrown if <paramref name="cancellationToken" />
+            is cancelled.</exception>
+        </member>
+        <member name="M:NuGet.DependencyResolver.IRemoteDependencyProvider.GetDependenciesAsync(NuGet.LibraryModel.LibraryIdentity,NuGet.Frameworks.NuGetFramework,NuGet.Protocol.Core.Types.SourceCacheContext,NuGet.Common.ILogger,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously gets package dependencies.
+            </summary>
+            <param name="libraryIdentity">A library identity.</param>
+            <param name="targetFramework">A target framework.</param>
+            <param name="cacheContext">A source cache context.</param>
+            <param name="logger">A logger.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>A task that represents the asynchronous operation.
+            The task result (<see cref="P:System.Threading.Tasks.Task`1.Result" />) returns a <see cref="T:NuGet.LibraryModel.LibraryDependencyInfo" />
+            instance.</returns>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="libraryIdentity" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="targetFramework" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="cacheContext" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="logger" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:OperationCanceledException">Thrown if <paramref name="cancellationToken" />
+            is cancelled.</exception>
+        </member>
+        <member name="M:NuGet.DependencyResolver.IRemoteDependencyProvider.GetPackageDownloaderAsync(NuGet.Packaging.Core.PackageIdentity,NuGet.Protocol.Core.Types.SourceCacheContext,NuGet.Common.ILogger,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously gets a package downloader.
+            </summary>
+            <param name="packageIdentity">A package identity.</param>
+            <param name="cacheContext">A source cache context.</param>
+            <param name="logger">A logger.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>A task that represents the asynchronous operation.
+            The task result (<see cref="P:System.Threading.Tasks.Task`1.Result" />) returns a <see cref="T:NuGet.Packaging.IPackageDownloader" />
+            instance.</returns>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="packageIdentity" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="cacheContext" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:ArgumentNullException">Thrown if <paramref name="logger" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="!:OperationCanceledException">Thrown if <paramref name="cancellationToken" />
+            is cancelled.</exception>
+        </member>
+        <member name="T:NuGet.DependencyResolver.LocalDependencyProvider">
+            <summary>
+            A local dependency provider.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.LocalDependencyProvider.#ctor(NuGet.DependencyResolver.IDependencyProvider)">
+            <summary>
+            Initializes a new <see cref="T:NuGet.DependencyResolver.LocalDependencyProvider" /> class.
+            </summary>
+            <param name="dependencyProvider"></param>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="dependencyProvider" />
+            is <see langword="null" />.</exception>
+        </member>
+        <member name="P:NuGet.DependencyResolver.LocalDependencyProvider.IsHttp">
+            <summary>
+            Gets a flag indicating whether or not the provider source is HTTP or HTTPS.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.LocalDependencyProvider.Source">
+            <summary>
+            Gets the package source.
+            </summary>
+            <remarks>Optional. This will be <see langword="null" /> for project providers.</remarks>
+        </member>
+        <member name="M:NuGet.DependencyResolver.LocalDependencyProvider.FindLibraryAsync(NuGet.LibraryModel.LibraryRange,NuGet.Frameworks.NuGetFramework,NuGet.Protocol.Core.Types.SourceCacheContext,NuGet.Common.ILogger,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously discovers all versions of a package from a source and selects the best match.
+            </summary>
+            <remarks>This does not download the package.</remarks>
+            <param name="libraryRange">A library range.</param>
+            <param name="targetFramework">A target framework.</param>
+            <param name="cacheContext">A source cache context.</param>
+            <param name="logger">A logger.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>A task that represents the asynchronous operation.
+            The task result (<see cref="P:System.Threading.Tasks.Task`1.Result" />) returns a <see cref="T:NuGet.LibraryModel.LibraryIdentity" />
+            instance.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="libraryRange" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="targetFramework" />
+            is either <see langword="null" /> or empty.</exception>
+        </member>
+        <member name="M:NuGet.DependencyResolver.LocalDependencyProvider.GetDependenciesAsync(NuGet.LibraryModel.LibraryIdentity,NuGet.Frameworks.NuGetFramework,NuGet.Protocol.Core.Types.SourceCacheContext,NuGet.Common.ILogger,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously gets package dependencies.
+            </summary>
+            <param name="libraryIdentity">A library identity.</param>
+            <param name="targetFramework">A target framework.</param>
+            <param name="cacheContext">A source cache context.</param>
+            <param name="logger">A logger.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>A task that represents the asynchronous operation.
+            The task result (<see cref="P:System.Threading.Tasks.Task`1.Result" />) returns a <see cref="T:NuGet.LibraryModel.LibraryDependencyInfo" />
+            instance.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="libraryIdentity" />
+            is either <see langword="null" /> or empty.</exception>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="targetFramework" />
+            is either <see langword="null" /> or empty.</exception>
+        </member>
+        <member name="M:NuGet.DependencyResolver.LocalDependencyProvider.GetPackageDownloaderAsync(NuGet.Packaging.Core.PackageIdentity,NuGet.Protocol.Core.Types.SourceCacheContext,NuGet.Common.ILogger,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously gets a package downloader.
+            </summary>
+            <param name="packageIdentity">A package identity.</param>
+            <param name="cacheContext">A source cache context.</param>
+            <param name="logger">A logger.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>A task that represents the asynchronous operation.
+            The task result (<see cref="P:System.Threading.Tasks.Task`1.Result" />) returns a <see cref="T:NuGet.Packaging.IPackageDownloader" />
+            instance.</returns>
+            <exception cref="T:System.NotSupportedException">Thrown always.</exception>
+        </member>
+        <member name="T:NuGet.DependencyResolver.LocalMatch">
+            <summary>
+            Extends <see cref="T:NuGet.DependencyResolver.RemoteMatch" /> to add a reference to the full Library.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.LocalMatch.LocalLibrary">
+            <summary>
+            Full local Library metadata
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.LocalMatch.LocalProvider">
+            <summary>
+            The local provider where the library was found.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.RemoteDependencyWalker.WalkParentsAndCalculateDependencyResult(NuGet.DependencyResolver.GraphEdge{NuGet.DependencyResolver.RemoteResolveResult},NuGet.LibraryModel.LibraryDependency,System.Func{NuGet.LibraryModel.LibraryRange,System.ValueTuple{NuGet.DependencyResolver.RemoteDependencyWalker.DependencyResult,NuGet.LibraryModel.LibraryDependency}})">
+            <summary>
+            Walks up the package dependency graph to check for cycle, potentially degraded package versions <see cref="T:NuGet.DependencyResolver.RemoteDependencyWalker.DependencyResult" />.
+            Cycle: A -&gt; B -&gt; A (cycle)
+            Downgrade: B depends up on D 1.0. Hence this method returns a downgrade while processing D 2.0 package.
+            A -&gt; B -&gt; C -&gt; D 2.0 (downgrade)
+                   -&gt; D 1.0
+            </summary>
+            <param name="graphEdge">Graph Edge node to check for cycle or potential degrades</param>
+            <param name="dependency">Transitive package dependency</param>
+            <param name="rootPredicate">Func delegate to invoke when processing direct package dependency</param>
+        </member>
+        <member name="M:NuGet.DependencyResolver.RemoteDependencyWalker.MarkCentralVersionForTransitiveProcessing(NuGet.LibraryModel.LibraryDependency,NuGet.DependencyResolver.RemoteDependencyWalker.TransitiveCentralPackageVersions,NuGet.DependencyResolver.GraphNode{NuGet.DependencyResolver.RemoteResolveResult})">
+            <summary>
+            Mark a central package version that it is transitive and need to be added to the graph.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.RemoteDependencyWalker.AddTransitiveCentralPackageVersionNodesAsync(NuGet.DependencyResolver.GraphNode{NuGet.DependencyResolver.RemoteResolveResult},NuGet.LibraryModel.LibraryDependency,NuGet.Frameworks.NuGetFramework,System.String,NuGet.RuntimeModel.RuntimeGraph,NuGet.DependencyResolver.RemoteDependencyWalker.TransitiveCentralPackageVersions)">
+            <summary>
+            New <see cref="T:NuGet.DependencyResolver.GraphNode`1" /> will be created for each of the items in the <paramref name="transitiveCentralPackageVersions" />
+            and added as nodes of the <paramref name="rootNode" />.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.RemoteDependencyWalker.IsDependencyValidForGraph(NuGet.LibraryModel.LibraryDependency)">
+            <summary>
+            A centrally defined package version has the potential to become a transitive dependency.
+            A such dependency is defined by
+                ReferenceType == LibraryDependencyReferenceType.None
+            However do not include them in the graph for the begining.
+            </summary>
+        </member>
+        <member name="T:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeStackState">
+            <summary>
+            Captures state to begin or resume processing of a GraphNode
+            </summary>
+        </member>
+        <member name="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeStackState.GraphNode">
+            <summary>
+            The <see cref="T:NuGet.DependencyResolver.GraphNode`1" /> that is currently being processed.
+            </summary>
+        </member>
+        <member name="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeStackState.DependencyData">
+            <summary>
+            The dependencies of the current <see cref="T:NuGet.DependencyResolver.GraphNode`1" /> that will be updated as a final step.
+            </summary>
+        </member>
+        <member name="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeStackState.DependencyIndex">
+            <summary>
+            Where we are when processing dependencies. Also used to flag where we are in processing the current <see cref="T:NuGet.DependencyResolver.GraphNode`1" />.
+            </summary>
+        </member>
+        <member name="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeStackState.OuterEdge">
+            <summary>
+            The <see cref="!:GraphEdge" /> for the current <see cref="T:NuGet.DependencyResolver.GraphNode`1" />.
+            </summary>
+        </member>
+        <member name="T:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeCreationData">
+            <summary>
+            Stores data that is required to create a <see cref="T:NuGet.DependencyResolver.GraphNode`1" /> for later use.
+            </summary>
+        </member>
+        <member name="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeCreationData.GraphItemTask">
+            <summary>
+            A <see cref="T:System.Threading.Tasks.Task`1" /> that represents the retrieval of the necessary <see cref="T:NuGet.DependencyResolver.GraphItem`1" /> to complete construction of the <see cref="T:NuGet.DependencyResolver.GraphNode`1" />.
+            </summary>
+        </member>
+        <member name="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeCreationData.RuntimeDependencies">
+            <summary>
+            The set of <see cref="T:NuGet.LibraryModel.LibraryDependency" /> items used during creation.
+            </summary>
+        </member>
+        <member name="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeCreationData.LibraryRange">
+            <summary>
+            The <see cref="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeCreationData.LibraryRange" /> of this <see cref="T:NuGet.DependencyResolver.GraphNode`1" /> to construct.
+            </summary>
+        </member>
+        <member name="F:NuGet.DependencyResolver.RemoteDependencyWalker.GraphNodeCreationData.OuterEdge">
+            <summary>
+            Edge pointing to the parent <see cref="T:NuGet.DependencyResolver.GraphNode`1" />.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.RemoteWalkContext.LockFileLibraries">
+            <summary>
+            Packages lock file libraries to be used while generating restore graph.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.RemoteWalkContext.FindLibraryEntryCache">
+            <summary>
+            Library entry cache.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.RemoteWalkContext.IsMsBuildBased">
+            <summary>
+            True if this is a csproj or similar project. Xproj should be false.
+            </summary>
+        </member>
+        <member name="M:NuGet.DependencyResolver.RemoteWalkContext.FilterDependencyProvidersForLibrary(NuGet.LibraryModel.LibraryRange)">
+            <summary>
+            Applies source mapping pattern filtering for a given package
+            </summary>
+            <param name="libraryRange"></param>
+            <returns>Returns a subset of sources when source mapping patterns are configured otherwise returns all the sources</returns>
+        </member>
+        <member name="M:NuGet.DependencyResolver.ResolverUtility.FindPackageLibraryMatchCachedAsync(NuGet.LibraryModel.LibraryRange,NuGet.DependencyResolver.RemoteWalkContext,System.Threading.CancellationToken)">
+            <summary>
+            Resolves the library from the given sources. Note that it does not download the package.
+            </summary>
+            <param name="libraryRange">The library requested</param>
+            <param name="remoteWalkContext">remote Providers (all sources, including file sources)</param>
+            <param name="cancellationToken">cancellation token</param>
+            <returns>The requested range and remote match.</returns>
+        </member>
+        <member name="T:NuGet.DependencyResolver.Strings">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.Strings.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.Strings.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.Strings.Error_PackageNotFoundWhenExpected">
+            <summary>
+              Looks up a localized string similar to The feed '{0}' lists package '{1}' but multiple attempts to download the nupkg have failed. The feed is either invalid or required packages were removed while the current operation was in progress. Verify the package exists on the feed and try again..
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.Strings.Log_MatchingSourceFoundForPackage">
+            <summary>
+              Looks up a localized string similar to Package source mapping matches found for package ID '{0}' are: '{1}'..
+            </summary>
+        </member>
+        <member name="P:NuGet.DependencyResolver.Strings.Log_NoMatchingSourceFoundForPackage">
+            <summary>
+              Looks up a localized string similar to Package source mapping match not found for package ID '{0}'..
+            </summary>
+        </member>
+        <member name="T:NuGet.Shared.HashCodeCombiner">
+            <summary>
+            Hash code creator, based on the original NuGet hash code combiner/ASP hash code combiner implementations
+            </summary>
+        </member>
+        <member name="M:NuGet.Shared.HashCodeCombiner.GetHashCode``2(``0,``1)">
+            <summary>
+            Create a unique hash code for the given set of items
+            </summary>
+        </member>
+        <member name="M:NuGet.Shared.HashCodeCombiner.GetHashCode``3(``0,``1,``2)">
+            <summary>
+            Create a unique hash code for the given set of items
+            </summary>
+        </member>
+        <member name="M:NuGet.Shared.Extensions.AsList``1(System.Collections.Generic.IEnumerable{``0})">
+            <summary>
+            Return the enumerable as a List of T, copying if required. Optimized for common case where it is an List of T.
+            Avoid mutating the return value.
+            </summary>
+            <remarks>https://aspnetwebstack.codeplex.com/SourceControl/latest#src/Common/CollectionExtensions.cs</remarks>
+        </member>
+        <member name="M:NuGet.Shared.Extensions.AsHashSet``1(System.Collections.Generic.ISet{``0},System.Collections.Generic.IEqualityComparer{``0})">
+            <summary>
+            Return the ISet as a HashSet of T, copying if required. Optimized for common case where it is a HashSet of T.
+            Avoid mutating the return value.
+            </summary>
+        </member>
+        <member name="M:NuGet.Shared.Extensions.AppendInt(System.Text.StringBuilder,System.Int32)">
+             <summary>
+             Helper function to append an <see cref="T:System.Int32" /> to a <see cref="T:System.Text.StringBuilder" />. Calling
+             <see cref="M:System.Text.StringBuilder.Append(System.Int32)" /> directly causes an allocation by first converting the
+             <see cref="T:System.Int32" /> to a string and then appending that result:
+             <code>
+             public StringBuilder Append(int value)
+             {
+                 return Append(value.ToString(CultureInfo.CurrentCulture));
+             }
+             </code>
+            
+             Note that this uses the current culture to do the conversion while <see cref="M:NuGet.Shared.Extensions.AppendInt(System.Text.StringBuilder,System.Int32)" /> does
+             not do any cultural sensitive conversion.
+             </summary>
+             <param name="sb">The <see cref="T:System.Text.StringBuilder" /> to append to.</param>
+             <param name="value">The <see cref="T:System.Int32" /> to append.</param>
+        </member>
+        <member name="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``1(System.Collections.Generic.IList{``0})">
+             <summary>
+             Avoids allocating an enumerator when enumerating an <see cref="T:System.Collections.Generic.IList`1" />.
+             </summary>
+             <remarks>
+             <para>
+             Returns a struct-based enumerator that avoids heap allocation during enumeration.
+             If the underlying type is <see cref="T:System.Collections.Generic.List`1" /> then this method will delegate to <see cref="T:System.Collections.Generic.List`1.Enumerator" />,
+             otherwise the collection's items are accessed by index via <see cref="T:System.Collections.Generic.IList`1" />'s indexer directly.
+             </para>
+             <para>
+             When using a struct-based enumerator, no heap allocation occurs during enumeration via <see langword="foreach" />.
+             This is in contrast to the interface-based enumerator <see cref="T:System.Collections.Generic.IEnumerator`1" /> which will
+             always be allocated on the heap.
+             </para>
+             </remarks>
+             <example>
+             <code>
+             <![CDATA[IList<string> list = ...;
+            
+             foreach (string item in list.NoAllocEnumerate())
+             {
+                 // ...
+             }]]>
+             </code>
+             </example>
+        </member>
+        <member name="T:NuGet.NoAllocEnumerateExtensions.OptimisticallyNonAllocatingListEnumerable`1">
+            <summary>
+            Provides a struct-based enumerator for use with <see cref="T:System.Collections.Generic.IList`1" />.
+            Do not use this type directly. Use <see cref="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``1(System.Collections.Generic.IList{``0})" /> instead.
+            </summary>
+        </member>
+        <member name="T:NuGet.NoAllocEnumerateExtensions.OptimisticallyNonAllocatingListEnumerable`1.Enumerator">
+            <summary>
+            A struct-based enumerator for use with <see cref="T:System.Collections.Generic.IList`1" />.
+            Do not use this type directly. Use <see cref="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``1(System.Collections.Generic.IList{``0})" /> instead.
+            </summary>
+        </member>
+        <member name="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``1(System.Collections.Generic.IEnumerable{``0})">
+             <summary>
+             Avoids allocating an enumerator when enumerating an <see cref="T:System.Collections.Generic.IEnumerable`1" /> where the concrete type
+             has a well known struct enumerator, such as for <see cref="T:System.Collections.Generic.List`1" />, or when index-based access is possible via
+             <see cref="T:System.Collections.Generic.IList`1" />.
+             </summary>
+             <remarks>
+             <para>
+             Several collection types (e.g. <see cref="T:System.Collections.Generic.List`1" />) provide a struct-based enumerator type
+             (e.g. <see cref="T:System.Collections.Generic.List`1.Enumerator" />) which the compiler can use in <see langword="foreach" /> statements.
+             When using a struct-based enumerator, no heap allocation occurs during such enumeration.
+             This is in contrast to the interface-based enumerator <see cref="T:System.Collections.Generic.IEnumerator`1" /> which will
+             always be allocated on the heap.
+             </para>
+             <para>
+             This method returns a custom struct enumerator that will avoid any heap allocation if <paramref name="source" />
+             (which is declared via interface <see cref="T:System.Collections.Generic.IEnumerable`1" />) is actually of known concrete type that
+             provides its own struct enumerator. If so, it delegates to that type's enumerator without any boxing
+             or other heap allocation.
+             </para>
+             <para>
+             If <paramref name="source" /> is not of a known concrete type, the returned enumerator falls back to the
+             interface-based enumerator, which will be allocated on the heap. Benchmarking shows the overhead in
+             such cases is low enough to be within the measurement error, meaning this is an inexpensive optimization
+             that won't regress behavior and with low downside for cases where it cannot apply an optimization.
+             </para>
+             </remarks>
+             <example>
+             <code>
+             <![CDATA[IEnumerable<string> source = ...;
+            
+             foreach (string item in source.NoAllocEnumerate())
+             {
+                 // ...
+             }]]>
+             </code>
+             </example>
+        </member>
+        <member name="T:NuGet.NoAllocEnumerateExtensions.OptimisticallyNonAllocatingEnumerable`1">
+            <summary>
+            Provides a struct-based enumerator for use with <see cref="T:System.Collections.Generic.IEnumerable`1" />.
+            Do not use this type directly. Use <see cref="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``1(System.Collections.Generic.IEnumerable{``0})" /> instead.
+            </summary>
+        </member>
+        <member name="T:NuGet.NoAllocEnumerateExtensions.OptimisticallyNonAllocatingEnumerable`1.Enumerator">
+            <summary>
+            A struct-based enumerator for use with <see cref="T:System.Collections.Generic.IEnumerable`1" />.
+            Do not use this type directly. Use <see cref="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``1(System.Collections.Generic.IEnumerable{``0})" /> instead.
+            </summary>
+        </member>
+        <member name="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``2(System.Collections.Generic.IDictionary{``0,``1})">
+             <summary>
+             Avoids allocating an enumerator when enumerating an <see cref="T:System.Collections.Generic.IDictionary`2" /> where the concrete type
+             has a well known struct enumerator, such as for <see cref="T:System.Collections.Generic.Dictionary`2" />.
+             </summary>
+             <remarks>
+             <para>
+             Several collection types (e.g. <see cref="T:System.Collections.Generic.Dictionary`2" />) provide a struct-based enumerator type
+             (e.g. <see cref="T:System.Collections.Generic.Dictionary`2.Enumerator" />) which the compiler can use in <see langword="foreach" /> statements.
+             When using a struct-based enumerator, no heap allocation occurs during such enumeration.
+             This is in contrast to the interface-based enumerator <see cref="T:System.Collections.Generic.IEnumerator`1" /> which will
+             always be allocated on the heap.
+             </para>
+             <para>
+             This method returns a custom struct enumerator that will avoid any heap allocation if <paramref name="dictionary" />
+             (which is declared via interface <see cref="T:System.Collections.Generic.IEnumerable`1" />) is actually of known concrete type that
+             provides its own struct enumerator. If so, it delegates to that type's enumerator without any boxing
+             or other heap allocation.
+             </para>
+             <para>
+             If <paramref name="dictionary" /> is not of a known concrete type, the returned enumerator falls back to the
+             interface-based enumerator, which will be allocated on the heap. Benchmarking shows the overhead in
+             such cases is low enough to be within the measurement error, meaning this is an inexpensive optimization
+             that won't regress behavior and with low downside for cases where it cannot apply an optimization.
+             </para>
+             </remarks>
+             <example>
+             <code>
+             <![CDATA[IDictionary<string, string> dictionary = ...;
+            
+             foreach ((string key, string value) in dictionary.NoAllocEnumerate())
+             {
+                 // ...
+             }]]>
+             </code>
+             </example>
+        </member>
+        <member name="T:NuGet.NoAllocEnumerateExtensions.OptimisticallyNonAllocatingDictionaryEnumerable`2">
+            <summary>
+            Provides a struct-based enumerator for use with <see cref="T:System.Collections.Generic.IDictionary`2" />.
+            Do not use this type directly. Use <see cref="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``2(System.Collections.Generic.IDictionary{``0,``1})" /> instead.
+            </summary>
+        </member>
+        <member name="T:NuGet.NoAllocEnumerateExtensions.OptimisticallyNonAllocatingDictionaryEnumerable`2.Enumerator">
+            <summary>
+            A struct-based enumerator for use with <see cref="T:System.Collections.Generic.IEnumerable`1" />.
+            Do not use this type directly. Use <see cref="M:NuGet.NoAllocEnumerateExtensions.NoAllocEnumerate``2(System.Collections.Generic.IDictionary{``0,``1})" /> instead.
+            </summary>
+        </member>
+        <member name="P:NuGet.TaskResult.True">
+            <summary>
+            Gets a <see cref="T:System.Threading.Tasks.Task`1" /> that's completed successfully with the result of <see langword="true" />.
+            </summary>
+        </member>
+        <member name="P:NuGet.TaskResult.False">
+            <summary>
+            Gets a <see cref="T:System.Threading.Tasks.Task`1" /> that's completed successfully with the result of <see langword="false" />.
+            </summary>
+        </member>
+        <member name="M:NuGet.TaskResult.Boolean(System.Boolean)">
+            <summary>
+            Returns a <see cref="T:System.Threading.Tasks.Task`1" /> that's completed successfully with the result of <paramref name="b" />.
+            </summary>
+        </member>
+        <member name="P:NuGet.TaskResult.Zero">
+            <summary>
+            Gets a <see cref="T:System.Threading.Tasks.Task`1" /> that's completed successfully with the result of <see langword="true" />.
+            </summary>
+        </member>
+        <member name="P:NuGet.TaskResult.One">
+            <summary>
+            Gets a <see cref="T:System.Threading.Tasks.Task`1" /> that's completed successfully with the result of <see langword="false" />.
+            </summary>
+        </member>
+        <member name="M:NuGet.TaskResult.Integer(System.Int32)">
+            <summary>
+            Returns a <see cref="T:System.Threading.Tasks.Task`1" /> that's completed successfully with the result of <paramref name="i" />.
+            </summary>
+        </member>
+        <member name="M:NuGet.TaskResult.Null``1">
+            <summary>
+            Returns a <see cref="T:System.Threading.Tasks.Task`1" /> of type <typeparamref name="T" /> that's completed successfully with the result of <see langword="null" />.
+            </summary>
+        </member>
+        <member name="M:NuGet.TaskResult.EmptyEnumerable``1">
+            <summary>
+            Returns a <see cref="T:System.Threading.Tasks.Task`1" /> whose value is an empty enumerable of type <typeparamref name="T" />.
+            </summary>
+        </member>
+        <member name="M:NuGet.TaskResult.EmptyArray``1">
+            <summary>
+            Returns a <see cref="T:System.Threading.Tasks.Task`1" /> whose value is an empty array with element type <typeparamref name="T" />.
+            </summary>
+        </member>
+        <member name="T:NuGet.TaskResultCache`2">
+            <summary>
+            Provides a caching mechanism for async operations.
+            </summary>
+            <typeparam name="TKey">The key to use for storing the async operation.</typeparam>
+            <typeparam name="TValue">The return type of the async operation.</typeparam>
+        </member>
+        <member name="F:NuGet.TaskResultCache`2._cache">
+            <summary>
+            Represents the cache of async operations.
+            </summary>
+        </member>
+        <member name="F:NuGet.TaskResultCache`2._perTaskLock">
+            <summary>
+            Represents a dictionary of locks to synchronize access to individual async operations in the cache.
+            </summary>
+        </member>
+        <member name="M:NuGet.TaskResultCache`2.#ctor(System.Collections.Generic.IEqualityComparer{`0})">
+            <summary>
+            Initializes a new instance of the <see cref="T:NuGet.TaskResultCache`2" /> class with the specified key comparer.
+            </summary>
+            <param name="comparer">An <see cref="T:System.Collections.Generic.IEqualityComparer`1" /> to use when comparing keys.</param>
+        </member>
+        <member name="M:NuGet.TaskResultCache`2.#ctor(System.Int32)">
+            <summary>
+            Initializes a new instance of the <see cref="T:NuGet.TaskResultCache`2" /> class with the specified initial capacity.
+            </summary>
+            <param name="capacity">The default capacity for the cache.</param>
+        </member>
+        <member name="M:NuGet.TaskResultCache`2.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:NuGet.TaskResultCache`2" /> class.
+            </summary>
+        </member>
+        <member name="P:NuGet.TaskResultCache`2.Keys">
+            <summary>
+            Gets a collection containing the keys in the cache.
+            </summary>
+        </member>
+        <member name="M:NuGet.TaskResultCache`2.GetOrAddAsync``1(`0,System.Func{``0,System.Threading.Tasks.Task{`1}},``0,System.Threading.CancellationToken)">
+            <summary>
+            Gets the cached async operation associated with the specified key, or runs the operation asynchronously and returns <see cref="T:System.Threading.Tasks.Task`1" /> that the caller can await.
+            </summary>
+            <param name="key">The key for the async operation to get or store in the cache.</param>
+            <param name="valueFactory">A <see cref="T:System.Func`1" /> to execute asynchronously if a cached operation does not exist.</param>
+            <param name="state">A state object to pass to the value factory.</param>
+            <param name="cancellationToken">A <see cref="T:System.Threading.CancellationToken" /> to use for signaling that an operation should be cancelled.</param>
+            <returns>A <see cref="T:System.Threading.Tasks.Task`1" /> for the specified asynchronous operation from the cache if found, otherwise the scheduled asynchronous operation to await.</returns>
+        </member>
+        <member name="M:NuGet.TaskResultCache`2.GetOrAddAsync``1(`0,System.Boolean,System.Func{``0,System.Threading.Tasks.Task{`1}},``0,System.Threading.CancellationToken)">
+            <summary>
+            Gets the cached async operation associated with the specified key, or runs the operation asynchronously and returns <see cref="T:System.Threading.Tasks.Task`1" /> that the caller can await, and optionally refreshes the cache.
+            </summary>
+            <param name="key">The key for the async operation to get or store in the cache.</param>
+            <param name="refresh"><see langword="true" /> to force the specified asynchronous operation to be executed and stored in the cache even if a cached operation exists, otherwise <see langword="false" />.</param>
+            <param name="valueFactory">A <see cref="T:System.Func`2" /> to execute asynchronously if a cached operation does not exist.</param>
+            <param name="state">A state object to pass to the value factory.</param>
+            <param name="cancellationToken">A <see cref="T:System.Threading.CancellationToken" /> to use for signaling that an operation should be cancelled.</param>
+            <returns>A <see cref="T:System.Threading.Tasks.Task`1" /> for the specified asynchronous operation from the cache if found, otherwise the scheduled asynchronous operation to await.</returns>
+        </member>
+        <member name="M:NuGet.TaskResultCache`2.GetValueAsync(`0)">
+            <summary>
+            Gets the async operation associated with the specified key if one exists, otherwise throws a <see cref="T:System.Collections.Generic.KeyNotFoundException" />.
+            </summary>
+            <param name="key">The key for the async operation to get the value of.</param>
+            <returns></returns>
+            <exception cref="T:System.Collections.Generic.KeyNotFoundException">The specified key does not exist in the cache.</exception>
+        </member>
+        <member name="M:NuGet.TaskResultCache`2.TryGetValue(`0,System.Threading.Tasks.Task{`1}@)">
+            <inheritdoc cref="M:System.Collections.Generic.Dictionary`2.TryGetValue(`0,`1@)" />
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.AllowNullAttribute">
+            <summary>Specifies that null is allowed as an input even if the corresponding type disallows it.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.DisallowNullAttribute">
+            <summary>Specifies that null is disallowed as an input even if the corresponding type allows it.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.MaybeNullAttribute">
+            <summary>Specifies that an output may be null even if the corresponding type disallows it.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.NotNullAttribute">
+            <summary>Specifies that an output will not be null even if the corresponding type allows it. Specifies that an input argument was not null when the call returns.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute">
+            <summary>Specifies that when a method returns <see cref="P:System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute.ReturnValue" />, the parameter may be null even if the corresponding type disallows it.</summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute.#ctor(System.Boolean)">
+            <summary>Initializes the attribute with the specified return value condition.</summary>
+            <param name="returnValue">
+            The return value condition. If the method returns this value, the associated parameter may be null.
+            </param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute.ReturnValue">
+            <summary>Gets the return value condition.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute">
+            <summary>Specifies that when a method returns <see cref="P:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute.ReturnValue" />, the parameter will not be null even if the corresponding type allows it.</summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute.#ctor(System.Boolean)">
+            <summary>Initializes the attribute with the specified return value condition.</summary>
+            <param name="returnValue">
+            The return value condition. If the method returns this value, the associated parameter will not be null.
+            </param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute.ReturnValue">
+            <summary>Gets the return value condition.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute">
+            <summary>Specifies that the output will be non-null if the named parameter is non-null.</summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute.#ctor(System.String)">
+            <summary>Initializes the attribute with the associated parameter name.</summary>
+            <param name="parameterName">
+            The associated parameter name.  The output will be non-null if the argument to the parameter specified is non-null.
+            </param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute.ParameterName">
+            <summary>Gets the associated parameter name.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.DoesNotReturnAttribute">
+            <summary>Applied to a method that will never return under any circumstance.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.DoesNotReturnIfAttribute">
+            <summary>Specifies that the method will not return if the associated Boolean parameter is passed the specified value.</summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.DoesNotReturnIfAttribute.#ctor(System.Boolean)">
+            <summary>Initializes the attribute with the specified parameter value.</summary>
+            <param name="parameterValue">
+            The condition parameter value. Code after the method will be considered unreachable by diagnostics if the argument to
+            the associated parameter matches this value.
+            </param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.DoesNotReturnIfAttribute.ParameterValue">
+            <summary>Gets the condition parameter value.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute">
+            <summary>Specifies that the method or property will ensure that the listed field and property members have not-null values.</summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.#ctor(System.String)">
+            <summary>Initializes the attribute with a field or property member.</summary>
+            <param name="member">
+            The field or property member that is promised to be not-null.
+            </param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.#ctor(System.String[])">
+            <summary>Initializes the attribute with the list of field and property members.</summary>
+            <param name="members">
+            The list of field and property members that are promised to be not-null.
+            </param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.Members">
+            <summary>Gets field or property member names.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute">
+            <summary>Specifies that the method or property will ensure that the listed field and property members have not-null values when returning with the specified return value condition.</summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.#ctor(System.Boolean,System.String)">
+            <summary>Initializes the attribute with the specified return value condition and a field or property member.</summary>
+            <param name="returnValue">
+            The return value condition. If the method returns this value, the associated parameter will not be null.
+            </param>
+            <param name="member">
+            The field or property member that is promised to be not-null.
+            </param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.#ctor(System.Boolean,System.String[])">
+            <summary>Initializes the attribute with the specified return value condition and list of field and property members.</summary>
+            <param name="returnValue">
+            The return value condition. If the method returns this value, the associated parameter will not be null.
+            </param>
+            <param name="members">
+            The list of field and property members that are promised to be not-null.
+            </param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.ReturnValue">
+            <summary>Gets the return value condition.</summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.Members">
+            <summary>Gets field or property member names.</summary>
+        </member>
+    </members>
+<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" /><SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" /><Reference URI=""><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" /><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" /></Transforms><DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" /><DigestValue>tXsGBBHhhlgAZWjiJyzf00HBrT9zI8+DzGiVbYqNtZs=</DigestValue></Reference></SignedInfo><SignatureValue>a9CFpahtOLWMbkxJxD9HwZ94waAMvYJcNxz2Hofrd92IAF7kldL4YYe3OBv2i3daCxVVQwpgIZWbv6RFQljn4Hp1W5evWOQ4qZUYbB9npdtYuVNpgspqxVb56V/5bNlSLNBHG2vV1JQByq9P1DEfFhJLMant+t6pVDJxNxiwJcdiH1RWbNUB94nn/nWggOm6WLi+lBIEdQANbbvGlEEbniPG71PWc1ZMgpyFAHC+449fVvdOpi5bQnzpcyBizA6TgYGcCWaZ7xh0ZmfiQ3FcLlesn4WSBfjvOiUjyBQv9C02s/w2q2+UnPeG0UKNH+Ai/2z2XHrQS9Tiyo/HCZIWoA==</SignatureValue><KeyInfo><KeyValue><RSAKeyValue><Modulus>n3RnXcCDp20WFMoNNzt4s9fV12T5roRJlv+bshDfvJoMZfhyRnixgUfGAbrRlS1St/EcXFXD2MhRkF3CnMYIoeMOMuMyYtxr2sC2B5bDRMUMM/r9I4GP2nowUthCWKFIS1RPlM0YoVfKKMaH7bJii29sW+waBUulAKN2c+Gn5znaiOxRqIu4OL8f9DCHYpME5+Teek3SL95sH5GQhZq7CqTdM0fBw/FmLLx98SpBu7v8XapoTz6jJpyNozhcP/59mi/Fu4tT2rI2vD50Vx/0GlR9DNZ2py/iyPU7DG/3p1n1zluuRp3uXKjDfVKH7xDbXcMBJid22a3CPbuC2QJLow==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue></KeyValue><X509Data><X509Certificate>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</X509Certificate><X509Certificate>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</X509Certificate><X509Certificate>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</X509Certificate></X509Data></KeyInfo><Object Id="ts-countersig"><X509Data><X509Certificate>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</X509Certificate><X509Certificate>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</X509Certificate></X509Data><CounterSignature ts-format="cms-timestamp-message" xmlns="http://schemas.microsoft.com/xmldsig/timestamp/2003">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</CounterSignature></Object></Signature></doc>

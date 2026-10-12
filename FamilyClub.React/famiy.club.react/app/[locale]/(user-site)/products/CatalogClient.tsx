@@ -16,6 +16,47 @@ interface CatalogClientProps {
 
 const PRODUCTS_PER_PAGE = 12; // 4 columns × 3 rows
 
+type ShelfDecor = {
+  src: string;
+  side: "left" | "right";
+  width: number;
+  height: number;
+  offsetY?: number;
+};
+
+/** Desktop shelf side props (same assets as the previous catalog decorations layer). */
+const CATALOG_SHELF_DECORS: ShelfDecor[] = [
+  { src: "/images/catalog/lilies.png", side: "left", width: 304, height: 137 },
+  { src: "/images/catalog/pillows.png", side: "right", width: 314, height: 251 },
+  { src: "/images/catalog/train.png", side: "left", width: 306, height: 210 },
+  { src: "/images/catalog/plaid.png", side: "right", width: 295, height: 286, offsetY: 130 },
+  { src: "/images/catalog/hunger_games.png", side: "left", width: 336, height: 128 },
+];
+
+function seededRandom(seed: number) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function pickShelfDecorsForRows(rowCount: number, seed: number): Array<ShelfDecor | null> {
+  const rand = seededRandom(seed);
+  const pool = [...CATALOG_SHELF_DECORS];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  return Array.from({ length: rowCount }, (_, rowIndex) => {
+    // ~80% of shelves get a prop; shuffle pool so repeats are delayed
+    if (rand() < 0.2) return null;
+    return pool[rowIndex % pool.length];
+  });
+}
+
 export default function CatalogClient({ initialProducts = [] }: CatalogClientProps) {
   const searchParams = useSearchParams();
   const t = useTranslations();
@@ -172,6 +213,18 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
     const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
     return filteredProducts.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
   }, [filteredProducts, currentPage]);
+
+  const desktopShelfRowCount = Math.max(1, Math.ceil(paginatedProducts.length / 4));
+
+  // Stable per page (seeded) so hydration matches; reshuffles when page/product count changes
+  const shelfDecorByRow = useMemo(
+    () =>
+      pickShelfDecorsForRows(
+        desktopShelfRowCount,
+        currentPage * 9973 + paginatedProducts.length * 13 + 42,
+      ),
+    [desktopShelfRowCount, currentPage, paginatedProducts.length],
+  );
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -585,12 +638,12 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
 
       {/* DESKTOP CATALOG VIEW */}
       <div className="hidden md:block">
-        <div className="w-full pt-[140px] pb-[60px] relative">
+        <div className="w-full pt-[280px] pb-[60px] relative">
           <div className="max-w-[1220px] mx-auto px-[16px] lg:px-0 relative">
             <img 
               src="/images/catalog/arrow.svg" 
               alt={t("catalog.arrowAlt")} 
-              className="absolute left-[80px] -top-[120px] w-[120px] h-[72px] -rotate-90 pointer-events-none hidden md:block"
+              className="absolute left-[120px] -top-[120px] w-[120px] h-[72px] -rotate-90 pointer-events-none hidden md:block"
             />
             <div className="flex flex-col md:flex-row justify-between items-end gap-6 md:gap-0">
               <div className="max-w-[590px] font-mono font-semibold text-[16px] tracking-[-0.176px] leading-[1.5]">
@@ -647,116 +700,132 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
           </div>
         </div>
 
-        {/* Desktop Products Grid on Wooden Shelves */}
-        <div className="relative w-full overflow-hidden">
-          {/* Background Wooden Shelf Layer */}
-          <div className="absolute inset-0 pointer-events-none z-0 flex flex-col">
-            {Array.from({ length: Math.max(1, Math.ceil(paginatedProducts.length / 4)) }).map((_, rowIndex) => (
-              <div key={`shelf-desktop-${rowIndex}`} className="relative w-full h-[605px] flex-shrink-0">
-                <div 
-                  className="absolute inset-0"
-                  style={{ 
-                    backgroundImage: "linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 12%, transparent) 0.24409%, transparent 17.892%), linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 22%, transparent) 9.5072%, transparent 49.996%), linear-gradient(90deg, var(--background-main) 0%, var(--background-main) 100%)" 
-                  }} 
-                />
-                <div className="absolute left-0 right-0 top-0 h-[105px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] bg-[var(--color-shelf)]">
-                  <img src="/images/catalog/shelf_tex1.png" className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-50" alt="" />
-                  <div className="absolute inset-0 bg-[rgba(0,0,0,0.27)]" />
-                </div>
-                <div className="absolute left-0 right-0 top-[35px] h-[70px] bg-[var(--color-shelf)]">
-                  <img src="/images/catalog/shelf_tex2.png" className="absolute inset-0 w-full h-full object-cover mix-blend-multiply" alt="" />
-                  <img src="/images/catalog/shelf_tex3.png" className="absolute inset-0 w-full h-full object-cover" alt="" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop Decorations Layer */}
-          <div className="absolute inset-0 pointer-events-none z-10 hidden xl:block mx-auto max-w-[1920px]">
-             <img src="/images/catalog/lilies.png" className="absolute left-0 top-[260px] w-[304px] h-[137px]" alt="" />
-             <img src="/images/catalog/pillows.png" className="absolute right-[0px] top-[200px] w-[314px] h-[251px]" alt="" />
-             <img src="/images/catalog/train.png" className="absolute left-0 top-[660px] w-[306px] h-[210px]" alt="" />
-             <img src="/images/catalog/plaid.png" className="absolute right-[0px] top-[710px] w-[295px] h-[286px]" alt="" />
-             <img src="/images/catalog/hunger_games.png" className="absolute left-0 top-[1210px] w-[336px] h-[128px]" alt="" />
-          </div>
-
-          <div className="max-w-[1220px] mx-auto px-[16px] lg:px-0 pt-[180px] pb-[100px] relative z-20">
-            {loading ? (
-              <div className="text-center py-[100px] relative z-20">
-                <p className="text-[18px] text-[var(--color-muted-fg)] font-mono">{t("catalog.loadingBooks")}</p>
-              </div>
-            ) : loadError ? (
-              <div className="text-center py-[100px] relative z-20">
-                <h2 className="text-[24px] font-bold text-[var(--foreground-primary)] mb-[16px]">
-                  {t("catalog.loadErrorTitle")}
-                </h2>
-                <p className="text-[16px] text-[var(--color-muted-fg)]">
-                  {t("catalog.loadErrorText")}
-                </p>
-              </div>
-            ) : paginatedProducts.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-[60px] gap-y-[205px] mb-[60px]">
-                  {paginatedProducts.map((product) => (
-                    <Link
-                      key={product.id}
-                      href={lp(`/products/${product.id}`)}
-                      className="flex justify-center"
+        {/* Desktop Products Grid on Wooden Shelves (same shelf tech as home BookSection) */}
+        <div className="relative w-full overflow-visible pb-[100px]">
+          {loading ? (
+            <div className="max-w-[1220px] mx-auto px-[16px] lg:px-0 pt-[120px] text-center py-[100px]">
+              <p className="text-[18px] text-[var(--color-muted-fg)] font-mono">{t("catalog.loadingBooks")}</p>
+            </div>
+          ) : loadError ? (
+            <div className="max-w-[1220px] mx-auto px-[16px] lg:px-0 pt-[120px] text-center py-[100px]">
+              <h2 className="text-[24px] font-bold text-[var(--foreground-primary)] mb-[16px]">
+                {t("catalog.loadErrorTitle")}
+              </h2>
+              <p className="text-[16px] text-[var(--color-muted-fg)]">
+                {t("catalog.loadErrorText")}
+              </p>
+            </div>
+          ) : paginatedProducts.length > 0 ? (
+            <>
+              <div className="relative z-20 w-full pt-[40px]">
+                {Array.from({ length: desktopShelfRowCount }).map((_, rowIndex) => {
+                  const row = paginatedProducts.slice(rowIndex * 4, rowIndex * 4 + 4);
+                  const decor = shelfDecorByRow[rowIndex];
+                  return (
+                    <section
+                      key={`catalog-shelf-${rowIndex}`}
+                      className="relative w-full overflow-visible pt-0 pb-0"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 12%, transparent) 0.24409%, transparent 17.892%), linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 22%, transparent) 9.5072%, transparent 49.996%), linear-gradient(90deg, var(--background-main) 0%, var(--background-main) 100%)",
+                      }}
                     >
-                      <BookCard
-                        title={product.productName || t("catalog.untitled")}
-                        price={getDesktopProductPrice(product)}
-                        image={getProductImage(product)}
-                        rating={0}
-                      />
-                    </Link>
-                  ))}
-                </div>
+                      <div className="relative h-[85px] md:h-[95px] w-full overflow-visible">
+                        <img
+                          src="/images/userProfile/Group 187.png"
+                          alt=""
+                          aria-hidden
+                          className="absolute inset-0 z-10 w-full h-full object-fill pointer-events-none"
+                        />
+                      </div>
 
-                {/* Desktop Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-[20px] py-[40px]">
-                    <button
-                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                      className="flex items-center justify-center w-[40px] h-[40px] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold text-xl"
-                      aria-label={t("catalog.previousPageAria")}
-                    >
-                      ←
-                    </button>
-                    <div className="flex items-center gap-[8px]">
-                      {pageNumbers.map((pageNum, index) => (
-                        pageNum === "..." ? (
-                          <span key={`ellipsis-${index}`} className="px-[8px] font-mono">
-                            ...
-                          </span>
-                        ) : (
-                          <button
-                            key={`desktop-page-${pageNum}`}
-                            onClick={() => handlePageChange(pageNum as number)}
-                            className={`flex items-center justify-center w-[40px] h-[40px] rounded-full transition-all font-mono font-semibold text-[18px] ${
-                              currentPage === pageNum
-                                ? "bg-[var(--foreground-primary)] text-[var(--background-main)]"
-                                : "bg-transparent text-[var(--foreground-primary)] border border-[var(--color-border-warm)] hover:bg-[var(--foreground-primary)] hover:text-[var(--background-main)]"
+                      {/* Side props on shelves — random per row (xl+) */}
+                      {decor ? (
+                        <div className="pointer-events-none absolute inset-0 z-[15] hidden xl:block overflow-visible">
+                          <img
+                            src={decor.src}
+                            alt=""
+                            aria-hidden
+                            className={`absolute object-contain ${
+                              decor.side === "left" ? "left-0" : "right-0"
                             }`}
-                          >
-                            {pageNum}
-                          </button>
-                        )
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                      disabled={currentPage === totalPages}
-                      className="flex items-center justify-center w-[40px] h-[40px] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold text-xl"
-                      aria-label={t("catalog.nextPageAria")}
-                    >
-                      →
-                    </button>
+                            style={{
+                              width: decor.width,
+                              height: decor.height,
+                              // низ декору ≈ на поверхні полиці (~85–95px)
+                              top: `calc(${55}px - ${decor.height}px + 12px + ${decor.offsetY ?? 0}px)`,
+                            }}
+                          />
+                        </div>
+                      ) : null}
+
+                      <div className="relative mx-auto max-w-[1220px] px-4 lg:px-0">
+                        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[60px] pb-12 -mt-[50px]">
+                          {row.map((product) => (
+                            <Link
+                              key={product.id}
+                              href={lp(`/products/${product.id}`)}
+                              className="flex justify-center"
+                            >
+                              <BookCard
+                                title={product.productName || t("catalog.untitled")}
+                                price={getDesktopProductPrice(product)}
+                                image={getProductImage(product)}
+                                rating={0}
+                              />
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="max-w-[1220px] mx-auto px-[16px] lg:px-0 flex items-center justify-center gap-[20px] py-[40px]">
+                  <button
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="flex items-center justify-center w-[40px] h-[40px] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold text-xl"
+                    aria-label={t("catalog.previousPageAria")}
+                  >
+                    ←
+                  </button>
+                  <div className="flex items-center gap-[8px]">
+                    {pageNumbers.map((pageNum, index) =>
+                      pageNum === "..." ? (
+                        <span key={`ellipsis-${index}`} className="px-[8px] font-mono">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={`desktop-page-${pageNum}`}
+                          onClick={() => handlePageChange(pageNum as number)}
+                          className={`flex items-center justify-center w-[40px] h-[40px] rounded-full transition-all font-mono font-semibold text-[18px] ${
+                            currentPage === pageNum
+                              ? "bg-[var(--foreground-primary)] text-[var(--background-main)]"
+                              : "bg-transparent text-[var(--foreground-primary)] border border-[var(--color-border-warm)] hover:bg-[var(--foreground-primary)] hover:text-[var(--background-main)]"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ),
+                    )}
                   </div>
-                )}
-              </>
-            ) : (
+                  <button
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center justify-center w-[40px] h-[40px] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold text-xl"
+                    aria-label={t("catalog.nextPageAria")}
+                  >
+                    →
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="max-w-[1220px] mx-auto px-[16px] lg:px-0 pt-[120px]">
               <div className="text-center py-[100px] relative z-20 bg-[color-mix(in_srgb,var(--background-elevated)_70%,transparent)] rounded-3xl border border-[var(--color-border-warm)]">
                 <h2 className="text-[24px] font-bold text-[var(--foreground-primary)] mb-[16px]">
                   {t("catalog.noProductsTitle")}
@@ -775,8 +844,8 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
                   </button>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

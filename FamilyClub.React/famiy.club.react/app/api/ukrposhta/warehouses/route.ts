@@ -16,6 +16,20 @@ import { UKRAINE_POSTAL_REGIONS } from "@/lib/api/ukrposhtaRegions";
 const cache = new Map<string, { data: UkrposhtaWarehouse[]; expiry: number }>();
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24;
 
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export async function GET(request: Request) {
   const ip = getClientIp(request);
   const rateLimit = novaPoshtaRateLimiter.check(ip);
@@ -40,6 +54,9 @@ export async function GET(request: Request) {
   if (!rawCity && !search && !isPostalCode && (!latStr || !lonStr)) {
     return Response.json([]);
   }
+
+  const userLat = latStr ? parseFloat(latStr) : null;
+  const userLon = lonStr ? parseFloat(lonStr) : null;
 
   const cleanCity = rawCity
     .split(",")[0]
@@ -213,7 +230,72 @@ export async function GET(request: Request) {
       }
     }
 
+    // If coordinates are provided, search for nearby post offices in the area (e.g. adjacent villages/towns)
+    if (userLat != null && userLon != null) {
+      try {
+        const box = `${(userLon - 0.15).toFixed(4)},${(userLat + 0.15).toFixed(4)},${(userLon + 0.15).toFixed(4)},${(userLat - 0.15).toFixed(4)}`;
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=Укрпошта&viewbox=${box}&bounded=1&countrycodes=ua&format=jsonv2&accept-language=uk&limit=25`,
+          {
+            headers: {
+              "User-Agent": "FamilyClub-Store/1.0 (https://familyclub.ua; admin@familyclub.ua)",
+              Accept: "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
+
+        if (geoRes.ok) {
+          const json = await geoRes.json();
+          for (const item of json) {
+            const lat = parseFloat(item.lat);
+            const lon = parseFloat(item.lon);
+            const postMatch = (item.display_name || item.name || "").match(/\b\d{5}\b/);
+            const postcode = postMatch ? postMatch[0] : "";
+            const ref = postcode || String(item.place_id || item.osm_id);
+
+            if (!warehouses.some((w) => w.ref === ref || (postcode && w.postcode === postcode))) {
+              const parts = (item.display_name || "").split(",");
+              const streetPart = parts.slice(0, 3).join(",").trim();
+              let title = item.name || "Укрпошта";
+              if (!title.toLowerCase().includes("укрпошта") && !title.toLowerCase().includes("відділення")) {
+                title = `Відділення ${title}`;
+              }
+              const description = postcode
+                ? `${title} (${postcode}): ${streetPart}`
+                : `${title}: ${streetPart}`;
+
+              warehouses.push({
+                ref,
+                postcode,
+                number: postcode || String(item.osm_id),
+                description,
+                shortAddress: streetPart,
+                latitude: Number.isFinite(lat) ? lat : undefined,
+                longitude: Number.isFinite(lon) ? lon : undefined,
+              });
+      }
+    }
+        }
+      } catch (boxErr) {
+        console.warn("Ukrposhta viewbox search failed", boxErr);
+      }
+    }
+
     clearTimeout(timeout);
+
+    if (userLat != null && userLon != null) {
+      warehouses.sort((a, b) => {
+        if (a.latitude != null && a.longitude != null && b.latitude != null && b.longitude != null) {
+          const distA = getDistanceKm(userLat, userLon, a.latitude, a.longitude);
+          const distB = getDistanceKm(userLat, userLon, b.latitude, b.longitude);
+          return distA - distB;
+        }
+        if (a.latitude != null && a.longitude != null) return -1;
+        if (b.latitude != null && b.longitude != null) return 1;
+        return 0;
+      });
+    }
 
     cache.set(cacheKey, { data: warehouses, expiry: Date.now() + CACHE_TTL_MS });
     return Response.json(warehouses);

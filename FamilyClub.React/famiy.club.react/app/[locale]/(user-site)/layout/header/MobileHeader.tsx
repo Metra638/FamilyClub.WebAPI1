@@ -121,7 +121,7 @@ export default function MobileHeader() {
               <img
                 src="/images/header/zoom_out_24px.svg"
                 alt={t("common.search")}
-                className="w-[24px] h-[24px]"
+                className={`w-[24px] h-[24px] ${theme === "ink-night" ? "brightness-0 invert-[0.92]" : ""}`}
               />
             </Link>
 

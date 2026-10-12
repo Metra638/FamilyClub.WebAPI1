@@ -433,7 +433,7 @@ export default function MobileProductDetails({
 
                   {/* Heart icon on top right */}
                   <button type="button" className="absolute right-2 top-2 z-10 opacity-70 hover:opacity-100">
-                    <img src="/images/main_page/icons/rec-icon-favorite.svg" alt="" className="w-5 h-5" />
+                    <img src="/images/main_page/icons/rec-icon-favorite.svg" alt="" className="w-5 h-5" style={monoIconFilter} />
                   </button>
 
                   {/* Book Cover */}
@@ -560,13 +560,13 @@ export default function MobileProductDetails({
                 <div className="flex items-center justify-between text-[13px] text-[var(--color-muted-fg)] mt-4 pt-2.5 border-t border-[var(--color-menu-separator)]">
                   <span>{rev.timeLabel || ""}</span>
                   <div className="flex items-center gap-4">
-                    <button type="button" className="hover:text-black transition-colors" title={t("product.report")}>
-                      <img src="/images/header/more_horiz_24px.svg" alt="" className="w-5 h-5 opacity-70" />
+                    <button type="button" className="hover:text-[var(--foreground-primary)] transition-colors" title={t("product.report")}>
+                      <img src="/images/header/more_horiz_24px.svg" alt="" className="w-5 h-5 opacity-70" style={monoIconFilter} />
                     </button>
                     <div className="flex items-center gap-1.5 font-medium text-[var(--foreground-primary)]">
                       <span>{rev.likesCount || 0}</span>
                       <button type="button" className="hover:scale-110 transition-transform">
-                        <img src="/images/main_page/icons/rec-icon-favorite.svg" alt={t("product.like")} className="w-5 h-5 opacity-80" />
+                        <img src="/images/main_page/icons/rec-icon-favorite.svg" alt={t("product.like")} className="w-5 h-5 opacity-80" style={monoIconFilter} />
                       </button>
                     </div>
                   </div>

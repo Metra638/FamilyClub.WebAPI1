@@ -9,6 +9,8 @@ type InkHouseProps = {
   onActivate: () => void;
   onBellComplete: () => void;
   reducedMotion: boolean;
+  isCatOnShelf?: boolean;
+  onCatClick?: () => void;
 };
 
 /** Intrinsic size of InkInHouse.png */
@@ -39,11 +41,14 @@ export default function InkHouse({
   onActivate,
   onBellComplete,
   reducedMotion,
+  isCatOnShelf = false,
+  onCatClick,
 }: InkHouseProps) {
   const t = useTranslations();
   const isOpen = phase === "open" || phase === "emerging";
   const isRinging = phase === "ringing";
   const interactive = phase === "idle";
+  const isCatOut = isOpen || isCatOnShelf;
 
   const bellFrame = useSpriteAnimation({
     frames: INK_ASSETS.ringingBell,
@@ -53,7 +58,7 @@ export default function InkHouse({
     onComplete: onBellComplete,
   });
 
-  const houseSrc = isOpen
+  const houseSrc = isCatOut
     ? INK_ASSETS.outOfHouse
     : isRinging
       ? INK_ASSETS.inHouseRinging
@@ -61,13 +66,13 @@ export default function InkHouse({
 
   return (
     <div
-      className="relative flex items-center justify-center select-none"
+      className="relative flex items-center justify-end select-none"
       style={{ width: BOX_W, height: BOX_H }}
     >
       <div className="relative" style={{ width: DISP_W, height: DISP_H }}>
         <img
           src={houseSrc}
-          alt={isOpen ? t("ink.houseEmptyAlt") : t("ink.houseWithCatAlt")}
+          alt={isCatOut ? t("ink.houseEmptyAlt") : t("ink.houseWithCatAlt")}
           className="pointer-events-none absolute inset-0 h-full w-full object-fill"
           draggable={false}
         />
@@ -76,8 +81,8 @@ export default function InkHouse({
         {interactive && (
           <button
             type="button"
-            aria-label={t("ink.callCatAria")}
-            onClick={onActivate}
+            aria-label={isCatOnShelf ? t("ink.returnCatAria") : t("ink.callCatAria")}
+            onClick={onCatClick ?? onActivate}
             className="group absolute z-10 cursor-pointer rounded-full border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-green)]"
             style={{
               left: `${HOLE_LEFT}%`,
@@ -102,7 +107,7 @@ export default function InkHouse({
           aria-label={t("ink.ringBellAria")}
           disabled={!interactive && !isRinging}
           onClick={interactive ? onActivate : undefined}
-          className={`absolute z-20 border-0 bg-transparent p-0 ${
+          className={`absolute z-0 border-0 bg-transparent p-0 ${
             interactive ? "cursor-pointer" : "cursor-default"
           } ${isRinging ? "ink-bell-shake" : ""}`}
           style={{

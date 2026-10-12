@@ -34,7 +34,7 @@ const imgNotebookLines  = "/images/not-found/notebook-lines.svg";
 export default function NotFound() {
   return (
     <LocaleProvider locale="uk" dictionary={ukDictionary as Dictionary}>
-    <html lang="uk" className={`${sourceSans.variable} ${robotoMono.variable}`}>
+    <html lang="uk" className={`${sourceSans.variable} ${robotoMono.variable}`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -43,7 +43,7 @@ export default function NotFound() {
           }}
         />
       </head>
-      <body className="antialiased bg-[#F5F3EE] text-foreground font-sans m-0 p-0 flex flex-col min-h-screen">
+      <body className="antialiased bg-[var(--background-main)] text-[var(--foreground-primary)] font-sans m-0 p-0 flex flex-col min-h-screen" suppressHydrationWarning>
         <ThemeProvider>
         <MobileHeader />
         <header className="bg-[var(--background-main)] w-full hidden md:flex flex-row overflow-x-0 fixed z-30 h-[62px] shadow-[0px_0px_15px_0px_#24242499]">

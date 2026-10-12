@@ -30,7 +30,7 @@ export default function ButtonSubmitAddProduct({
           text-[var(--color-white)]
           transition-all duration-200
           hover:opacity-90
-          hover:shadow-[0px_0px_20px_0px_#00000080]
+          hover:shadow-[var(--shadow-card-hover)]
           active:scale-[0.98]
         "
       >

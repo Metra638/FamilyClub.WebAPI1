@@ -61,7 +61,7 @@ export default function BookCard({
     : "book-card-star-icon";
 
   const card = (
-    <div className="book-card-shell group relative z-0 h-[400px] w-[260px] hover:z-20">
+    <div className="book-card-shell group relative z-0 h-[490px] w-[260px] hover:z-[5]">
       {/* Plate stretches from top; content drops in sync (same duration/easing) */}
       <div
         className="book-card-bg absolute inset-0 origin-top rounded-bl-[30px] rounded-br-[30px] shadow-[0px_10px_10px_0px_rgba(36,36,36,0.3)] will-change-transform"
@@ -71,9 +71,9 @@ export default function BookCard({
         }}
       />
 
-      <div className="book-card-content absolute inset-0 z-[1]">
+      <div className="book-card-content absolute inset-0 z-[1] mt-8">
         {activeFormatTags.length > 0 ? (
-          <div className="absolute left-0 top-[20px] z-20 flex flex-col gap-2">
+          <div className="absolute left-0 top-[65px] z-20 flex flex-col gap-2">
             {activeFormatTags.map((tag) => {
               const item = formatIconMap[tag];
               const label = t(`product.formats.${tag}`);
@@ -109,7 +109,7 @@ export default function BookCard({
             if (!productId || !onToggleFavorite) return;
             onToggleFavorite(productId);
           }}
-          className="absolute right-[18px] top-[20px] z-10 h-[30px] w-[30px] cursor-pointer"
+          className="absolute right-[18px] top-[65px] z-10 h-[30px] w-[30px] cursor-pointer"
           aria-label={t("product.favoriteAria")}
         >
           <img
@@ -132,13 +132,13 @@ export default function BookCard({
         {image ? (
           <img
             alt={title}
-            className="absolute left-1/2 top-[20px] h-[190px] w-[140px] -translate-x-1/2 object-contain"
+            className="absolute left-1/2 top-[65px] h-[190px] w-[140px] -translate-x-1/2 object-contain"
             src={image}
             loading="lazy"
             decoding="async"
           />
         ) : (
-          <div className="absolute left-1/2 top-[20px] h-[190px] w-[140px] -translate-x-1/2 flex flex-col items-center justify-center text-[var(--color-muted-fg)] text-center p-2 bg-[color-mix(in_srgb,var(--foreground-primary)_8%,var(--background-elevated))] rounded-[6px] shadow-sm border border-[color-mix(in_srgb,var(--foreground-primary)_14%,transparent)]">
+          <div className="absolute left-1/2 top-[65px] h-[190px] w-[140px] -translate-x-1/2 flex flex-col items-center justify-center text-[var(--color-muted-fg)] text-center p-2 bg-[color-mix(in_srgb,var(--foreground-primary)_8%,var(--background-elevated))] rounded-[6px] shadow-sm border border-[color-mix(in_srgb,var(--foreground-primary)_14%,transparent)]">
             <span className="text-3xl mb-1">📖</span>
             <span className="text-xs font-serif">{t("product.noPhoto")}</span>
           </div>

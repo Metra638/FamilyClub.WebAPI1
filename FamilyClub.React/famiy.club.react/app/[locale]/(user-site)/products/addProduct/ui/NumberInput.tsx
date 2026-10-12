@@ -14,7 +14,7 @@ export function NumberInput({ label, placeholder, value, onChange, className,tex
         {label}
       </p>
       <input
-        className="input-field rounded-[9px] px-4 bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040] h-[40px]"
+        className="input-field rounded-[9px] px-4 bg-[var(--background-elevated)] text-[var(--foreground-primary)] shadow-[var(--shadow-input)] h-[40px]"
         type="number"
         placeholder={placeholder}
         value={value ?? ""}

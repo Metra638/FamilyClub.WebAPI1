@@ -1,0 +1,42 @@
+{
+  "Alias": "minimalapi",
+  "Description": "Generates an endpoints file (with CRUD API endpoints) given a model and optional DbContext.",
+  "Arguments" :  [],
+  "Options": [
+    {
+      "Name": "endpoints",
+      "ShortName": "e",
+      "Description": "Endpoints class to use. (not file name)"
+    },
+    {
+      "Name": "model",
+      "ShortName": "m",
+      "Description": "Model class to use"
+    },
+    {
+      "Name": "dataContext",
+      "ShortName": "dc",
+      "Description": "DbContext class to use"
+    },
+    {
+      "Name": "relativeFolderPath",
+      "ShortName": "outDir",
+      "Description": "Specify the relative output folder path from project where the file needs to be generated, if not specified, file will be generated in the project folder"
+    },
+    {
+      "Name": "open",
+      "ShortName": "o",
+      "Description": "Use this option to enable OpenAPI"
+    },
+    {
+      "Name": "endpointsNamespace",
+      "ShortName": "namespace",
+      "Description": "Specify the name of the namespace to use for the generated Endpoints file"
+    },
+    {
+      "Name": "databaseProvider",
+      "ShortName": "dbProvider",
+      "Description": "Database provider to use. Options (without quotes) include 'sqlserver' (default), 'sqlite', 'cosmos', 'postgres'. Example: -dbProvider sqlite"
+    }
+  ]
+}

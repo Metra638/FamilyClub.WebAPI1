@@ -4,6 +4,7 @@ import { PlatformSettingsProvider } from "@/lib/platformSettings/PlatformSetting
 import PlatformSettingsEffects from "@/lib/platformSettings/PlatformSettingsEffects";
 import MaintenanceGate from "@/lib/platformSettings/MaintenanceGate";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
+import { MascotShelfProvider } from "@/lib/mascot/MascotShelfContext";
 
 export default function UserSiteProviders({
     children,
@@ -14,7 +15,9 @@ export default function UserSiteProviders({
         <ThemeProvider>
             <PlatformSettingsProvider>
                 <PlatformSettingsEffects />
-                <MaintenanceGate>{children}</MaintenanceGate>
+                <MascotShelfProvider>
+                    <MaintenanceGate>{children}</MaintenanceGate>
+                </MascotShelfProvider>
             </PlatformSettingsProvider>
         </ThemeProvider>
     );

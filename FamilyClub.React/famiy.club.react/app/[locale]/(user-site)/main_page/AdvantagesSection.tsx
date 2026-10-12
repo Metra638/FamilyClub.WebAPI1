@@ -2,6 +2,16 @@
 
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
+const ABOUT_ATMOSPHERE_IMAGES = {
+    uk: "/images/body/Rectangle%20296-uk.webp",
+    en: "/images/body/Rectangle%20296-en.webp",
+} as const;
+
+const ABOUT_READING_HALL_IMAGES = {
+    uk: "/images/body/Rectangle%20295-uk.webp",
+    en: "/images/body/Rectangle%20295-en.webp",
+} as const;
+
 const advantageIcons = [
     "/images/main_page/advantages/advantages-icon-1.png",
     "/images/main_page/advantages/advantages-icon-2.png",
@@ -13,57 +23,84 @@ type AdvantageCardProps = {
     title: string;
     description: string;
     icon: string;
-    className?: string;
 };
 
-function AdvantageCard({ title, description, icon, className }: AdvantageCardProps) {
+function AdvantageCard({ title, description, icon }: AdvantageCardProps) {
     return (
-        <div className={`relative h-[325px] w-[250px] text-center text-[var(--color-cream)] transition-transform hover:-translate-y-2 ${className ?? ""}`}>
-            <img alt="" className="absolute inset-0 h-full w-full" src="/images/main_page/advantages/advantages-card-bg.png" />
+        /*
+          Whole card slides as one unit on hover (same speed).
+          Description sits in the top zone tucked under the brown band when collapsed;
+          icon stays fully visible below that tuck — no separate icon animation.
+        */
+        <div className="advantage-card group relative h-[420px] w-[250px] text-center text-[var(--color-cream)] transition-transform duration-300 ease-out will-change-transform hover:translate-y-16">
             <img
                 alt=""
-                className="absolute left-1/2 top-[20px] h-[197px] w-[197px] -translate-x-1/2 object-contain"
-                src={icon}
+                className="absolute inset-0 h-full w-full object-fill"
+                src="/images/main_page/advantages/advantages-card-bg.png"
             />
-            <p className="absolute left-1/2 top-[15px] w-[210px] -translate-x-1/2 text-[14px] leading-[1.3] text-[var(--color-cream)] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                {description}
-            </p>
-            <p className="absolute bottom-[40px] left-1/2 w-[200px] -translate-x-1/2 whitespace-pre-line font-mono text-[22px] font-semibold leading-[1.2] text-[var(--color-cream)] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-                {title}
-            </p>
+
+            <div className="relative z-[1] flex h-full flex-col items-center px-3 pt-5 pb-12">
+                <p className="w-[210px] shrink-0 text-[14px] leading-[1.35] text-[var(--color-cream)] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    {description}
+                </p>
+
+                {/* Extra gap so the drawing isn’t cramped / clipped under the brown edge */}
+                <img
+                    alt=""
+                    className="mt-8 h-[170px] w-[170px] shrink-0 object-contain"
+                    src={icon}
+                />
+
+                <p className="mt-auto w-[200px] whitespace-pre-line font-mono text-[22px] font-semibold leading-[1.2] text-[var(--color-cream)] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+                    {title}
+                </p>
+            </div>
         </div>
     );
 }
 
 export default function AdvantagesSection() {
-    const { dictionary } = useLocale();
+    const { locale, dictionary } = useLocale();
     const advantages = dictionary.home.advantages;
+    const about = dictionary.home.about;
+    const atmosphereImageSrc = ABOUT_ATMOSPHERE_IMAGES[locale];
+    const readingHallImageSrc = ABOUT_READING_HALL_IMAGES[locale];
 
     return (
-        <section className="relative z-10 pb-16 pt-8">
-            <div className="mx-auto max-w-[1260px] px-4">
-                <div
-                    className="relative rounded-[15px] py-8 text-center shadow-[0px_8px_20px_rgba(0,0,0,0.4)] border-[3px] border-[var(--color-border-warm)]"
-                    style={{
-                        backgroundImage:
-                            "linear-gradient(to right, var(--color-wood-gradient-from), var(--color-wood-gradient-via), var(--color-wood-gradient-to))",
-                    }}
-                >
-                    <h2 className="font-mono text-[40px] font-bold text-[var(--foreground-primary)] md:text-[56px]">
-                        {advantages.title}
-                    </h2>
+        <section className="relative z-[5] overflow-visible pb-24 pt-0">
+            {/*
+              Brown under papyrus (About is z-20). Polaroids ~10% tucked under it;
+              slide down on hover.
+            */}
+            <div className="relative z-[5] mx-auto max-w-[1140px] -mt-28 overflow-visible rounded-[18px] bg-[var(--color-wood)] px-6 pb-10 pt-6 md:px-10">
+                <div className="relative z-[15] -mt-[48px] mb-6 flex flex-wrap items-start justify-center gap-6 md:-mt-[56px] md:mb-8 md:gap-14">
+                    <img
+                        alt={about.readingHallAlt}
+                        className="advantages-polaroid h-auto w-[350px] max-w-[48%] origin-center rotate-[16deg] object-contain transition-transform duration-500 ease-out will-change-transform hover:z-20 hover:translate-y-6 md:w-[476px] md:max-w-none md:hover:translate-y-8"
+                        src={readingHallImageSrc}
+                    />
+                    <img
+                        alt={about.libraryAtmosphereAlt}
+                        className="advantages-polaroid h-auto w-[322px] max-w-[46%] origin-center rotate-[-7deg] object-contain transition-transform duration-500 ease-out will-change-transform hover:z-20 hover:translate-y-6 md:w-[448px] md:max-w-none md:hover:translate-y-8"
+                        src={atmosphereImageSrc}
+                    />
                 </div>
 
-                <div className="mt-[-20px] flex flex-wrap justify-center gap-6 md:gap-8 pt-4">
-                    {advantages.items.map((item, index) => (
-                        <AdvantageCard
-                            key={item.title}
-                            title={item.title}
-                            description={item.description}
-                            icon={advantageIcons[index] ?? advantageIcons[0]}
-                        />
-                    ))}
-                </div>
+                <h2 className="relative z-[6] mt-4 text-center font-mono text-[40px] font-bold text-[var(--foreground-primary)] md:mt-8 md:text-[56px]">
+                    {advantages.title}
+                </h2>
+            </div>
+
+            {/* Slightly tighter card gap so side insets read clearly */}
+            <div className="relative z-0 mx-auto mt-[-78px] flex max-w-[1260px] flex-wrap justify-center gap-4 px-8 md:gap-8 md:px-14">
+                {advantages.items.map((item, index) => (
+                    <AdvantageCard
+                        key={item.title}
+                        title={item.title}
+                        description={item.description}
+                        icon={advantageIcons[index] ?? advantageIcons[0]}
+                    />
+                ))}
             </div>
         </section>
     );

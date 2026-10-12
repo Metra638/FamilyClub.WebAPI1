@@ -52,7 +52,7 @@ export default function AddProductPage() {
       <div className="relative overflow-hidden w-[900px] ml-[27vw] -mt-[4px] mx-auto">
         <div
           aria-hidden
-          className="absolute inset-0 pointer-events-none admin-parchment-bg"
+          className="absolute inset-0 pointer-events-none add-product-panel-bg"
           style={{
             backgroundImage: "url('/images/addProducts/Rectangle 312.svg')",
             backgroundSize: "cover",

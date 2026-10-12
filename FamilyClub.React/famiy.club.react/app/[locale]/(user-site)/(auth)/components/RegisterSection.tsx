@@ -5,6 +5,7 @@ import { AsYouType } from "libphonenumber-js";
 import { authService } from "@/lib/api/services";
 import { readApiErrorMessage } from "@/lib/api/readApiError";
 import { useTranslations } from "@/lib/i18n/LocaleProvider";
+import { validatePhoneNumber } from "@/lib/validation/phoneValidation";
 
 type RegisterSectionProps = {
   onGoToLogin: () => void;
@@ -89,7 +90,8 @@ export default function RegisterSection({ onGoToLogin }: RegisterSectionProps) {
       setError(t("auth.passwordComplexity"));
       return;
     }
-    if (!phone || phone.replace(/\D/g, "").length < 8) {
+    const phoneCheck = validatePhoneNumber(phone, detectedCountry);
+    if (!phoneCheck.isValid) {
       setError(t("auth.invalidPhone"));
       return;
     }
@@ -106,7 +108,7 @@ export default function RegisterSection({ onGoToLogin }: RegisterSectionProps) {
           password: formData.password,
           name: formData.firstName.trim() || undefined,
           surname: formData.lastName.trim() || undefined,
-          phoneNumber: phone.trim(),
+          phoneNumber: phoneCheck.normalized,
         },
       });
       onGoToLogin();

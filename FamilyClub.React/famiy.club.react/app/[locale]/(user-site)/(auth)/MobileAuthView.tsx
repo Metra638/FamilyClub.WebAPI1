@@ -7,12 +7,15 @@ import { authService } from "@/lib/api/services";
 import { loginErrorMessage } from "@/lib/auth/loginErrorMessage";
 import { setAuthSession } from "@/lib/auth/tokenStorage";
 import { useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+import { useTheme } from "@/lib/theme/ThemeProvider";
 import AuthBrandLogo from "./components/AuthBrandLogo";
 
 export default function MobileAuthView() {
   const router = useRouter();
   const t = useTranslations();
   const lp = useLocalizedPath();
+  const { theme } = useTheme();
+  const isNight = theme === "ink-night";
   const [formData, setFormData] = useState({ login: "", password: "" });
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -152,7 +155,7 @@ export default function MobileAuthView() {
                       : "/images/login register/eye-open-default.svg"
                 }
                 alt=""
-                className="w-[24px] h-[24px] object-contain"
+                className={`w-[24px] h-[24px] object-contain ${isNight ? "brightness-0 invert-[0.88]" : ""}`}
               />
             </button>
           </div>

@@ -26,7 +26,7 @@ export default function BookSizeSelectForm({
         onChange={(e) =>
           onChange(e.target.value ? Number(e.target.value) : undefined)
         }
-        className={`input rounded-[9px] text-[12.5px] bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040] h-[40px]`}
+        className={`input rounded-[9px] text-[12.5px] bg-[var(--background-elevated)] text-[var(--foreground-primary)] shadow-[var(--shadow-input)] h-[40px]`}
       >
         <option value="" className="text-[var(--color-muted-fg)]">
           {t("sellerProduct.selectPrintFormat")}

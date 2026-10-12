@@ -3,6 +3,7 @@
 import BookCard from "@/app/(user-site)/main_page/BookCard";
 import MobileProductDetails from "./MobileProductDetails";
 import ReviewPagination from "./ReviewPagination";
+import { useTheme } from "@/lib/theme/ThemeProvider";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
@@ -44,6 +45,7 @@ type ReviewCardData = {
   bookImage?: string | null;
   likesCount?: number;
 };
+
 
 const formatIconMap = {
   paper: {
@@ -123,14 +125,15 @@ const formatWeight = (value?: number | null) => {
   return `${kilograms.toFixed(2)} кг`;
 };
 
-const TORN_PAPER_SRC = "/images/body/Rectangle287.png";
+const PRICE_TORN_PAPER_SRC = "/images/body/Rectangle352.png";
+const TORN_PAPER_SRC = "/images/body/Rectangle 352.png";
 
-function TornPaperBox({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function TornPaperBox({ children, className = "", src = TORN_PAPER_SRC, }: { children: React.ReactNode; className?: string; src?: string; }) {
   // Real torn-edge parchment asset (not CSS zigzags). Luminance mask
   // keeps the deckle silhouette and drops the black padding of the PNG.
   const tornMaskStyle: CSSProperties = {
-    WebkitMaskImage: `url('${TORN_PAPER_SRC}')`,
-    maskImage: `url('${TORN_PAPER_SRC}')`,
+    WebkitMaskImage: `url('${src}')`,
+    maskImage: `url('${src}')`,
     WebkitMaskSize: "100% 100%",
     maskSize: "100% 100%",
     WebkitMaskRepeat: "no-repeat",
@@ -149,7 +152,7 @@ function TornPaperBox({ children, className = "" }: { children: React.ReactNode;
       style={tornMaskStyle}
     >
       <img
-        src={TORN_PAPER_SRC}
+        src={src}
         alt=""
         aria-hidden
         className="absolute inset-0 h-full w-full object-fill pointer-events-none admin-parchment-bg"
@@ -223,6 +226,11 @@ export default function ProductDetailsClient({ id }: { id: string }) {
   const t = useTranslations();
   const lp = useLocalizedPath();
   const { locale } = useLocale();
+  const { theme } = useTheme();
+  const isNight = theme === "ink-night";
+  const actionIconClass = isNight
+    ? "book-card-action-icon book-card-action-icon--night"
+    : "book-card-action-icon book-card-action-icon--day";
   const [product, setProduct] = useState<ProductDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isNotFound, setIsNotFound] = useState(false);
@@ -490,9 +498,9 @@ export default function ProductDetailsClient({ id }: { id: string }) {
   const weightText =
     currentProduct?.weightGrams != null
       ? t("product.weightKg").replace(
-          "{value}",
-          (currentProduct.weightGrams / 1000).toFixed(2),
-        )
+        "{value}",
+        (currentProduct.weightGrams / 1000).toFixed(2),
+      )
       : "";
   const yearText = formatYear(currentProduct?.publishingDate);
 
@@ -847,7 +855,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
 
       {/* 2. Десктопна версія */}
       <div className="hidden md:block">
-        <div className="relative min-h-screen w-full bg-[var(--color-product-page-bg)] pb-24 overflow-hidden">
+      <div className="relative min-h-screen w-full bg-[var(--background-main)] pb-24 overflow-hidden">
           <img
             alt=""
             className="absolute inset-0 h-full w-full object-cover opacity-25 pointer-events-none"
@@ -856,7 +864,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
 
           {/* 1. ВЕРХНІЙ БЛОК: ДОШКА З ІНФОРМАЦІЄЮ ПРО КНИГУ (УСЕ ВЕРХНЄ В СЕРЕДИНІ БЕЖЕВОЇ ДОШКИ) */}
           <div className="relative pt-20 pb-16">
-            <div className="relative mx-auto max-w-[1360px] rounded-t-[16px] bg-[var(--color-product-board)] pt-10 sm:pt-14 md:pt-16 px-6 sm:px-10 md:px-14 pb-16 shadow-[0_25px_60px_rgba(0,0,0,0.6)] text-[var(--foreground-primary)]">
+            <div className="relative mx-auto max-w-[1360px] rounded-[16px] bg-[var(--color-product-board)] pt-10 sm:pt-14 md:pt-16 px-6 sm:px-10 md:px-14 pb-16 shadow-[0_25px_60px_rgba(0,0,0,0.6)] text-[var(--foreground-primary)]">
               <div className="mb-6">
                 <button
                   className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-[var(--background-elevated)] text-[24px] font-bold text-[var(--foreground-primary)] shadow-md transition-transform hover:scale-105"
@@ -927,22 +935,21 @@ export default function ProductDetailsClient({ id }: { id: string }) {
 
                   {formatTags.length > 0 ? (
                     <div className="mt-6 flex flex-col gap-3.5">
-                      {formatTags.map((tag, idx) => {
+                      {formatTags.map((tag) => {
                         const item = desktopFormatIconMap[tag];
                         if (!item) return null;
-                        const isGreen = idx % 2 !== 0;
                         return (
                           <div
                             key={tag}
-                            className={`relative flex h-[52px] w-[80px] items-center justify-center rounded-l-[8px] shadow-md transition-transform hover:translate-x-1 ${isGreen ? "bg-[var(--color-product-cta)]" : "bg-[var(--color-shelf)]"}`}
+                            className={`book-format-ribbon book-format-ribbon--lg book-format-ribbon--${tag}`}
                             title={item.label}
                           >
-                            <img alt={item.label} className="h-[28px] w-[28px] object-contain brightness-200" src={item.icon} />
-                            <div className={`absolute -right-[14px] top-0 h-[52px] w-[14px] ${isGreen ? "text-[var(--color-product-cta)]" : "text-[var(--color-shelf)]"}`}>
-                              <svg className="h-full w-full block" viewBox="0 0 14 52" fill="currentColor">
-                                <path d="M0,0 L14,26 L0,52 Z" />
-                              </svg>
-                            </div>
+                            <img
+                              alt=""
+                              className="book-format-ribbon__icon"
+                              src={item.icon}
+                            />
+                            <span className="book-format-ribbon__label">{item.label}</span>
                           </div>
                         );
                       })}
@@ -963,7 +970,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
                 {/* ДОШКА КУПІВЛІ (BUY BOX - GROUP 448) */}
                 <div className="flex flex-col">
                   <div className="flex flex-col drop-shadow-[0_10px_20px_rgba(36,36,36,0.25)]">
-                    <div className="flex h-[64px] items-center justify-between rounded-t-[20px] bg-[var(--color-product-cta)] px-6 text-white">
+                    <div className="flex h-[64px] items-center justify-between rounded-[20px] bg-[var(--color-product-cta)] px-6 text-white">
                       <div className="flex items-center gap-3">
                         {authorPhoto ? (
                           <img alt={authorName || t("product.authorAlt")} className="h-[44px] w-[44px] rounded-full object-cover border-2 border-white shadow-sm" src={authorPhoto} />
@@ -983,13 +990,16 @@ export default function ProductDetailsClient({ id }: { id: string }) {
                       </button>
                     </div>
 
-                    <TornPaperBox className="rounded-t-none">
+                    <TornPaperBox className="rounded-t-none" src={PRICE_TORN_PAPER_SRC}>
                       <div className="text-[14px] text-[var(--color-muted-fg)]">{t("product.priceAtLibria")}</div>
                       <div className="mt-1 font-mono text-[38px] font-bold text-[var(--foreground-primary)]">{desktopPriceText || t("product.zeroPrice")}</div>
 
                       <div className="mt-8 flex items-center justify-between gap-4">
                         <button
-                          className="flex flex-1 items-center cursor-pointer justify-center gap-3 py-3.5 px-6 rounded-[12px] bg-[var(--color-product-cta)] hover:bg-[var(--color-product-cta-hover)] active:scale-[0.98] text-white font-bold text-[18px] shadow-[0_6px_20px_color-mix(in_srgb,var(--color-product-cta)_35%,transparent)] transition-all"
+                          className={`flex flex-1 items-center cursor-pointer justify-center gap-3 rounded-[21px] bg-transparent py-2.5 px-6 text-[18px] text-[color-mix(in_srgb,var(--foreground-primary)_70%,transparent)] shadow-none transition-all hover:text-[var(--foreground-primary)] active:scale-[0.98] ${isNight
+                            ? "hover:shadow-[0_8px_28px_rgba(255,255,255,0.22)]"
+                            : "hover:shadow-[0_8px_24px_rgba(36,36,36,0.28)]"
+                            }`}
                           type="button"
                           onClick={async () => {
                             if (!currentProduct?.id) return;
@@ -1001,16 +1011,34 @@ export default function ProductDetailsClient({ id }: { id: string }) {
                             }
                           }}
                         >
-                          <img alt="" className="h-[24px] w-[24px] brightness-200" src="/images/main_page/icons/rec-icon-basket.svg" />
+                          <img
+                            alt=""
+                            className={`h-[24px] w-[24px] ${actionIconClass}`}
+                            src="/images/main_page/icons/rec-icon-basket.svg"
+                          />
                           <span>{t("product.addToCart")}</span>
                         </button>
                         <button
-                          className={`flex h-[40px] w-[40px] items-center justify-center transition-transform ${isFavorite ? "text-red-500 scale-110" : "opacity-80 hover:opacity-100"}`}
+                          className={`flex h-[40px] w-[40px] items-center justify-center transition-transform ${isFavorite ? "scale-110" : "opacity-80 hover:opacity-100"
+                            }`}
                           type="button"
                           onClick={toggleFavorite}
                           aria-label={t("product.addToFavorites")}
                         >
-                          <img alt="" className="h-[30px] w-[30px]" src="/images/main_page/icons/rec-icon-favorite.svg" />
+                          <img
+                            alt=""
+                            className={`h-[30px] w-[30px] ${isFavorite
+                              ? isNight
+                                ? "book-card-favorite-icon--night"
+                                : ""
+                              : actionIconClass
+                              }`}
+                            src={
+                              isFavorite
+                                ? "/images/userProfile/heart-filled.svg"
+                                : "/images/main_page/icons/rec-icon-favorite.svg"
+                            }
+                          />
                         </button>
                       </div>
 
@@ -1137,25 +1165,19 @@ export default function ProductDetailsClient({ id }: { id: string }) {
                 </div>
               </div>
 
-              {/* Bottom torn paper edge of the main board */}
-              <div className="w-full overflow-hidden leading-none text-[var(--color-product-board)] absolute left-0 right-0 top-full z-10 -mt-[1px]">
-                <svg className="w-full h-[18px] block rotate-180" viewBox="0 0 1200 10" fill="currentColor" preserveAspectRatio="none">
-                  <path d="M0,10 L0,5 C 15,2 30,7 45,4 S 75,1 90,5 S 120,2 135,6 S 165,1 180,4 S 210,7 225,3 S 255,1 270,5 S 300,2 315,6 S 345,1 360,4 S 390,7 405,3 S 435,1 450,5 S 480,2 495,6 S 525,1 540,4 S 570,7 585,3 S 615,1 630,5 S 660,2 675,6 S 705,1 720,4 S 750,7 765,3 S 795,1 810,5 S 840,2 855,6 S 885,1 900,4 S 930,7 945,3 S 975,1 990,5 S 1020,2 1035,6 S 1065,1 1080,4 S 1110,7 1125,3 S 1155,1 1170,5 S 1185,3 1200,4 L1200,10 Z" />
-                </svg>
-              </div>
             </div>
           </div>
 
           {/* 2. СЕРЕДНІЙ БЛОК: СМУГА ВІДГУКІВ НА ПОВНУ ШИРИНУ ЕКРАНУ (ЯК У FIGMA) */}
-          <section className="relative w-full bg-[var(--color-product-reviews-bg)] py-20 my-16 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            {/* Top torn edge pointing up */}
-            <div className="w-full overflow-hidden leading-none text-[var(--color-product-reviews-bg)] absolute left-0 right-0 bottom-full">
-              <svg className="w-full h-[16px] block" viewBox="0 0 1200 10" fill="currentColor" preserveAspectRatio="none">
-                <path d="M0,10 L0,5 C 15,2 30,7 45,4 S 75,1 90,5 S 120,2 135,6 S 165,1 180,4 S 210,7 225,3 S 255,1 270,5 S 300,2 315,6 S 345,1 360,4 S 390,7 405,3 S 435,1 450,5 S 480,2 495,6 S 525,1 540,4 S 570,7 585,3 S 615,1 630,5 S 660,2 675,6 S 705,1 720,4 S 750,7 765,3 S 795,1 810,5 S 840,2 855,6 S 885,1 900,4 S 930,7 945,3 S 975,1 990,5 S 1020,2 1035,6 S 1065,1 1080,4 S 1110,7 1125,3 S 1155,1 1170,5 S 1185,3 1200,4 L1200,10 Z" />
-              </svg>
-            </div>
+          <section className="relative z-10 w-full overflow-visible py-20 my-16">
+            <img
+              alt=""
+              aria-hidden
+              className="reviews-papyrus-sheet pointer-events-none absolute inset-0 z-0 h-full w-full object-fill"
+              src="/images/body/Rectangle353.png"
+            />
 
-            <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+            <div className="relative z-10 mx-auto max-w-[1280px] px-4 md:px-8">
               <div className="flex items-center gap-4 rounded-[30px] bg-[var(--background-elevated)] px-6 h-[60px] shadow-[0px_0px_15px_rgba(0,0,0,0.35)] border border-[color-mix(in_srgb,var(--foreground-primary)_10%,transparent)] max-w-[1220px] mx-auto mb-12">
                 <input
                   className="flex-1 bg-transparent text-[18px] text-[var(--foreground-primary)] placeholder:text-[var(--color-muted-fg)] focus:outline-none font-sans"
@@ -1167,7 +1189,7 @@ export default function ProductDetailsClient({ id }: { id: string }) {
                   disabled={isSubmittingComment}
                 />
                 <button
-                  className="flex h-[46px] w-[54px] shrink-0 items-center justify-center rounded-full bg-[var(--foreground-primary)] text-[20px] font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
+                  className="flex h-[46px] w-[54px] shrink-0 items-center justify-center rounded-full bg-[var(--foreground-primary)] text-[20px] font-bold text-[var(--background-elevated)] transition-transform hover:scale-105 disabled:opacity-50"
                   type="button"
                   onClick={handleCommentSubmit}
                   disabled={isSubmittingComment || !newComment.trim()}
@@ -1218,12 +1240,6 @@ export default function ProductDetailsClient({ id }: { id: string }) {
               </div>
             </div>
 
-            {/* Bottom torn edge pointing down */}
-            <div className="w-full overflow-hidden leading-none text-[var(--color-product-reviews-bg)] absolute left-0 right-0 top-full">
-              <svg className="w-full h-[16px] block rotate-180" viewBox="0 0 1200 10" fill="currentColor" preserveAspectRatio="none">
-                <path d="M0,10 L0,5 C 15,2 30,7 45,4 S 75,1 90,5 S 120,2 135,6 S 165,1 180,4 S 210,7 225,3 S 255,1 270,5 S 300,2 315,6 S 345,1 360,4 S 390,7 405,3 S 435,1 450,5 S 480,2 495,6 S 525,1 540,4 S 570,7 585,3 S 615,1 630,5 S 660,2 675,6 S 705,1 720,4 S 750,7 765,3 S 795,1 810,5 S 840,2 855,6 S 885,1 900,4 S 930,7 945,3 S 975,1 990,5 S 1020,2 1035,6 S 1065,1 1080,4 S 1110,7 1125,3 S 1155,1 1170,5 S 1185,3 1200,4 L1200,10 Z" />
-              </svg>
-            </div>
           </section>
 
           {/* 3. НИЖНІЙ БЛОК: СХОЖІ ТА БІЛЬШЕ (НА ДЕРЕВ'ЯНОМУ ФОНІ З ВЕРХНІМИ ВКЛАДКАМИ ЯК У FIGMA) */}

@@ -51,7 +51,7 @@ export default function PromotionSelectForm({
             );
           }
         }}
-        className={`w-[200px] rounded-[9px] text-[14px] px-2 bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040] h-[40px]
+        className={`w-[200px] rounded-[9px] text-[14px] px-2 bg-[var(--background-elevated)] shadow-[var(--shadow-input)] h-[40px]
           ${!value ? "text-[var(--color-muted-fg)]" : "text-[var(--foreground-primary)]"}
         `}
       >

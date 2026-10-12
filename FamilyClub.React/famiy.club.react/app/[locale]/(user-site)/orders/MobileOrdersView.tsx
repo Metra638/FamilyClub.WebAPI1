@@ -8,6 +8,7 @@ import printIcon from "@/public/images/userProfile/Паперова.svg";
 import ebookIcon from "@/public/images/userProfile/mobile-button-solid-full 1.png";
 import audioIcon from "@/public/images/userProfile/volume-solid-full 1.png";
 import { useLocale, useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+import { useTheme } from "@/lib/theme/ThemeProvider";
 
 interface MobileOrdersViewProps {
   ordersByTab: Record<OrderTabId, MockOrderItem[]>;
@@ -40,6 +41,8 @@ export default function MobileOrdersView({
   const { locale } = useLocale();
   const t = useTranslations();
   const lp = useLocalizedPath();
+  const { theme } = useTheme();
+  const isNight = theme === "ink-night";
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const printIconSrc =
@@ -191,7 +194,7 @@ export default function MobileOrdersView({
 
       {/* Informational Notice */}
       {(activeTab === "add_review" || activeTab === "returns" || activeTab === "history") && (
-        <div className="text-center text-[13px] font-semibold text-[var(--foreground-primary)] mb-4 bg-[var(--background-elevated)]/75 backdrop-blur-sm py-2 px-4 rounded-xl max-w-[392px] mx-auto shadow-sm border border-white/40">
+        <div className="text-center text-[13px] font-semibold text-[var(--foreground-primary)] mb-4 bg-[var(--background-elevated)]/75 backdrop-blur-sm py-2 px-4 rounded-xl max-w-[392px] mx-auto shadow-sm border border-[var(--color-border-warm)]/40">
           {t("orders.autoRemoveNote")}
         </div>
       )}
@@ -246,7 +249,7 @@ export default function MobileOrdersView({
                         title={t("orders.copyOrderNumber")}
                       >
                         {copiedId === item.id ? (
-                          <span className="text-[11px] text-green-800 font-bold whitespace-nowrap">
+                          <span className="text-[11px] text-[var(--color-green)] font-bold whitespace-nowrap">
                             ✓
                           </span>
                         ) : (
@@ -276,21 +279,21 @@ export default function MobileOrdersView({
                       <img
                         src={printIconSrc}
                         alt={t("orders.formats.paper")}
-                        className="w-[18px] h-auto object-contain"
+                        className={`w-[18px] h-auto object-contain ${isNight ? "brightness-0 invert-[0.88]" : ""}`}
                       />
                     )}
                     {item.formats.includes("ebook") && (
                       <img
                         src={ebookIconSrc}
                         alt={t("orders.formats.ebook")}
-                        className="w-[16px] h-auto object-contain"
+                        className={`w-[16px] h-auto object-contain ${isNight ? "brightness-0 invert-[0.88]" : ""}`}
                       />
                     )}
                     {item.formats.includes("audio") && (
                       <img
                         src={audioIconSrc}
                         alt={t("orders.formats.audio")}
-                        className="w-[16px] h-auto object-contain"
+                        className={`w-[16px] h-auto object-contain ${isNight ? "brightness-0 invert-[0.88]" : ""}`}
                       />
                     )}
                   </div>

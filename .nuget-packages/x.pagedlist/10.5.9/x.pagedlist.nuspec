@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>X.PagedList</id>
+    <version>10.5.9</version>
+    <title>X.PagedList</title>
+    <authors>Troy Goode, Andrew Gubskiy</authors>
+    <license type="file">LICENSE.md</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <icon>x-pagedlist.png</icon>
+    <readme>README.md</readme>
+    <projectUrl>https://andrew.gubskiy.com/open-source</projectUrl>
+    <description>Library for easily paging through any IEnumerable/IQueryable in .NET</description>
+    <copyright>Andrew Gubskiy © 2025</copyright>
+    <tags>paging pagedlist paged list</tags>
+    <repository type="git" url="https://github.com/dncuug/X.PagedList.git" commit="d31750be974fdf9220ca110aec2c4a1273ca8f40" />
+    <dependencies>
+      <group targetFramework="net6.0" />
+      <group targetFramework="net8.0" />
+      <group targetFramework=".NETStandard2.0" />
+    </dependencies>
+  </metadata>
+</package>

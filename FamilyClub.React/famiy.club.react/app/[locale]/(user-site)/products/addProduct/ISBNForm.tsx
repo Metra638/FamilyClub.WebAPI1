@@ -22,7 +22,7 @@ export default function ISBNForm({
     <>
       <div className="flex items-baseline gap-2 h-[32px]">
         <span className="text-[18px]">ISBN</span>
-        <span className="text-[#00000033] text-[16px]">
+        <span className="text-[var(--color-muted-fg)] text-[16px]">
           {t("sellerProduct.isbnDigits")}
         </span>
       </div>
@@ -32,13 +32,13 @@ export default function ISBNForm({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="5649827409123"
-          className="isbn-input rounded-[9px] bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040] w-[120px] h-[40px] text-center"
+          className="isbn-input rounded-[9px] bg-[var(--background-elevated)] text-[var(--foreground-primary)] shadow-[var(--shadow-input)] w-[120px] h-[40px] text-center"
         />
         <button
           type="button"
           onClick={onLookup}
           disabled={loading}
-          className="isbn-btn rounded-[9px] bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040] w-[200px] h-[40px]"
+          className="isbn-btn rounded-[9px] bg-[var(--background-elevated)] text-[var(--foreground-primary)] shadow-[var(--shadow-input)] w-[200px] h-[40px]"
         >
           {loading
             ? t("sellerProduct.isbnSearch")

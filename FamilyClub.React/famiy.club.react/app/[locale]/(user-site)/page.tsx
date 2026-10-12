@@ -416,9 +416,15 @@ export default function Home() {
                 <Hero />
 
                 {desktopRecommendationBooks.length > 0 ? (
-
-                    <BookSection title={recommendationTitle} books={desktopRecommendationBooks} showMore pillWidth={631} 
-                    isFav={isFav} onToggleFavorite={toggleFavorite}/>
+                    <BookSection
+                        title={recommendationTitle}
+                        books={desktopRecommendationBooks}
+                        showMore
+                        pillWidth={631}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={0}
+                    />
                 ) : null}
 
                 <InkSection />
@@ -431,30 +437,88 @@ export default function Home() {
 
                 <FormatSection />
 
-                {romanceBooks.length > 0 ? <BookSection title={t("home.sections.romance")} books={romanceBooks} pillWidth={206} isFav={isFav} onToggleFavorite={toggleFavorite} /> : null}
+                {romanceBooks.length > 0 ? (
+                    <BookSection
+                        title={t("home.sections.romance")}
+                        books={romanceBooks}
+                        pillWidth={206}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={1}
+                    />
+                ) : null}
                 {thrillerBooks.length > 0 ? (
-                    <BookSection title={t("home.sections.thrillers")} books={thrillerBooks} pillWidth={253} isFav={isFav} onToggleFavorite={toggleFavorite} />
+                    <BookSection
+                        title={t("home.sections.thrillers")}
+                        books={thrillerBooks}
+                        pillWidth={253}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={2}
+                    />
                 ) : null}
                 {scienceBooks.length > 0 ? (
-                    <BookSection title={t("home.sections.science")} books={scienceBooks} pillWidth={211} isFav={isFav} onToggleFavorite={toggleFavorite}/>
+                    <BookSection
+                        title={t("home.sections.science")}
+                        books={scienceBooks}
+                        pillWidth={211}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={3}
+                    />
                 ) : null}
                 {fantasyBooks.length > 0 ? (
-                    <BookSection title={t("home.sections.fantasy")} books={fantasyBooks} pillWidth={292} isFav={isFav} onToggleFavorite={toggleFavorite}/>
+                    <BookSection
+                        title={t("home.sections.fantasy")}
+                        books={fantasyBooks}
+                        pillWidth={292}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={4}
+                    />
                 ) : null}
 
                 <PromoBanner />
 
                 {desktopHitsBooks.length > 0 ? (
-                    <BookSection title={t("home.sections.bestsellers")} books={desktopHitsBooks} pillWidth={355} isFav={isFav} onToggleFavorite={toggleFavorite}/>
+                    <BookSection
+                        title={t("home.sections.bestsellers")}
+                        books={desktopHitsBooks}
+                        pillWidth={355}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={5}
+                    />
                 ) : null}
                 {desktopNewBooks.length > 0 && pickResult.basedOnPreferences ? (
-                    <BookSection title={t("home.sections.newArrivals")} books={desktopNewBooks} pillWidth={237} isFav={isFav} onToggleFavorite={toggleFavorite}/>
+                    <BookSection
+                        title={t("home.sections.newArrivals")}
+                        books={desktopNewBooks}
+                        pillWidth={237}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={6}
+                    />
                 ) : null}
                 {setBooks.length > 0 ? (
-                    <BookSection title={t("home.sections.bookSets")} books={setBooks} pillWidth={472} isFav={isFav} onToggleFavorite={toggleFavorite}/>
+                    <BookSection
+                        title={t("home.sections.bookSets")}
+                        books={setBooks}
+                        pillWidth={472}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={7}
+                    />
                 ) : null}
                 {desktopAnnouncementBooks.length > 0 ? (
-                    <BookSection title={t("home.sections.announcements")} books={desktopAnnouncementBooks} pillWidth={204} isFav={isFav} onToggleFavorite={toggleFavorite}/>
+                    <BookSection
+                        title={t("home.sections.announcements")}
+                        books={desktopAnnouncementBooks}
+                        pillWidth={204}
+                        isFav={isFav}
+                        onToggleFavorite={toggleFavorite}
+                        shelfIndex={8}
+                    />
                 ) : null}
             </div>
         </main>

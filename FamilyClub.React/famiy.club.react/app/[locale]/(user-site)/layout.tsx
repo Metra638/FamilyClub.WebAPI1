@@ -85,20 +85,32 @@ export default async function RootLayout({
           <UserSiteProviders>
             <PresenceHeartbeatMount />
             <MobileHeader />
-            <header className="bg-[var(--background-main)] w-full hidden md:flex flex-row overflow-x-0 fixed z-[100] h-[62px] shadow-[0px_0px_15px_0px_#24242499]">
-              <div className="max-w-[1220px] mx-auto flex items-center lg:px-0">
-                <UpNavigation />
-              </div>
-            </header>
+            <header className="fixed z-[100] hidden w-full overflow-visible md:block">
+            <div
+              className="header-torn-bg pointer-events-none absolute inset-0 -z-10"
+              style={{
+                backgroundImage: "url('/images/header/header-torn-edge.png')",
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "center bottom",
+                backgroundSize: "100% 100%",
+              }}
+              aria-hidden
+            />
+            <div className="relative z-10 mx-auto flex h-[65px] max-w-[1220px] items-center">
+              <UpNavigation />
+            </div>
+            <div className="h-[16px]" aria-hidden />
+          </header>
             <div className="fixed pointer-events-none z-[95] hidden md:flex flex-row ml-[26%] items-center justify-between max-w-[900px] mx-auto gap-2 mt-[20px] px-4 lg:px-0">
               <HeaderDropDownSection />
             </div>
 
-            <main className="flex-1 md:pt-[62px]">
+            {/* <main className="flex-1 md:pt-[62px]"> */}
+            <main className="flex-1">
               {children}
             </main>
 
-            <div className="hidden md:block">
+            <div className="relative z-20 hidden md:block">
               <Footer />
             </div>
             <MobileBottomNav />

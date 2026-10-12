@@ -16,7 +16,7 @@ export default function AudioFormat({ onSelect }: Props) {
   };
 
   return (
-    <div className="h-[40px] flex flex-row items-center px-4 justify-between rounded-[9px] bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040]">
+    <div className="h-[40px] flex flex-row items-center px-4 justify-between rounded-[9px] bg-[var(--background-elevated)] shadow-[var(--shadow-input)]">
       <p className="text-[14px] text-[var(--color-muted-fg)] ">
         {file ? file.name : t("sellerProduct.uploadAudio")}
       </p>

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>EFCore.NamingConventions</id>
+    <version>10.0.1</version>
+    <authors>Shay Rojansky</authors>
+    <license type="expression">Apache-2.0</license>
+    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>
+    <description>Naming Conventions for Entity Framework Core Tables and Columns.</description>
+    <copyright>Copyright 2023 © Shay Rojansky</copyright>
+    <tags>Entity Framework Core entity-framework-core ef efcore orm sql</tags>
+    <repository type="git" url="git://github.com/efcore/EFCore.NamingConventions" commit="0d83a32ad78593aba114373873a82aee37d918de" />
+    <dependencies>
+      <group targetFramework="net10.0">
+        <dependency id="Microsoft.EntityFrameworkCore" version="[10.0.1, 11.0.0)" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.EntityFrameworkCore.Relational" version="[10.0.1, 11.0.0)" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.DependencyInjection.Abstractions" version="10.0.1" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

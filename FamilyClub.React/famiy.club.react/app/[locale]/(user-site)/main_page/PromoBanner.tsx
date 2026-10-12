@@ -67,7 +67,7 @@ export default function PromoBanner({
                         <Link
                             key={idx}
                             href={banner.href}
-                            className="group relative block h-[320px] md:h-[400px] overflow-hidden rounded-[25px] shadow-[0px_8px_25px_rgba(0,0,0,0.35)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0px_15px_35px_rgba(0,0,0,0.5)] border-[3px] border-[#d4b595]"
+                            className="group relative block h-[300px] md:h-[360px] overflow-hidden rounded-[25px] shadow-[0px_8px_25px_rgba(0,0,0,0.35)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0px_15px_35px_rgba(0,0,0,0.5)]"
                         >
                             <img
                                 alt={banner.title}
@@ -75,7 +75,9 @@ export default function PromoBanner({
                                 src={banner.backgroundImage}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.8)] via-[rgba(0,0,0,0.3)] to-transparent" />
-                            <div className="absolute bottom-[30px] left-[30px] right-[30px] md:bottom-[40px] md:left-[40px]">
+                            <div className="absolute inset-x-0 bottom-0 p-8
+                                opacity-0 translate-y-2 transition-all duration-500
+                                group-hover:opacity-100 group-hover:translate-y-0">
                                 <h3
                                     className="font-mono text-[28px] font-bold text-[var(--color-cream)] md:text-[36px] lg:text-[42px] leading-tight"
                                     style={{ textShadow: "0px 2px 10px rgba(0,0,0,0.8)" }}

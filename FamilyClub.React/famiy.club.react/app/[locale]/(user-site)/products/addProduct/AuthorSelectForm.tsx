@@ -43,7 +43,7 @@ export default function AuthorSelectForm({
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className={`w-full text-left rounded-[9px] bg-[var(--color-white)] shadow-[0px_0px_10px_0px_#00000040] h-[40px] px-3 truncate
+          className={`w-full text-left rounded-[9px] bg-[var(--background-elevated)] shadow-[var(--shadow-input)] h-[40px] px-3 truncate
     ${value.length > 0 ? "text-[var(--foreground-primary)]" : "text-[var(--color-muted-fg)]"}
   `}
         >
@@ -51,7 +51,7 @@ export default function AuthorSelectForm({
         </button>
 
         {open && (
-          <div className="absolute z-10 w-full mt-2 max-h-[180px] overflow-y-auto rounded-[9px] bg-[var(--color-white)] shadow-[0px_0px_15px_0px_#00000040]">
+          <div className="absolute z-10 w-full mt-2 max-h-[180px] overflow-y-auto rounded-[9px] bg-[var(--background-elevated)] text-[var(--foreground-primary)] shadow-[var(--shadow-panel)]">
             {authors.map((a) => (
               <label
                 key={a.id}
