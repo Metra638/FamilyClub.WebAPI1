@@ -9,12 +9,12 @@ backend:
     branch: "Final"
 frontend:
   replicaCount: 1
-  tag: "162"
+  tag: "163"
   image:
     repository: metra638/test1
-    digest: "sha256:d4d15175a9281365e8e8eb8f5fcaad0c6a3655f596267650433c6b3eb2a54ad5"
-    buildDate: "2026-10-12T23:31:06+01:00"
-    commitHash: "fd7c6bf582577068de4a047adc92034c1b237a76"
+    digest: "sha256:c49c10b4fe7f735a7d0b2ddafffaa75525c08a51b540447297212de74a0561ed"
+    buildDate: "2026-10-13T22:11:41+01:00"
+    commitHash: "1b39c6b1ebb536260a253fbbcc4325795bb63c59"
     branch: "Final"
 ingress:
   enabled: true
