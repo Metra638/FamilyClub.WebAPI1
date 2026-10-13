@@ -17,8 +17,9 @@ public class ProductService : IProductService
 	private readonly IActionLogService _actionLog;
 	private readonly ICacheService _cacheService;
 
-	private const string AllProductsCacheKey = "products_all_v3";
-	private static string GetProductCacheKey(int id) => $"products_item_v3_{id}";
+	// Bump when list DTO shape changes (e.g. cover stubs without ImageData) so Redis/L1 stale payloads are skipped.
+	private const string AllProductsCacheKey = "products_all_v4";
+	private static string GetProductCacheKey(int id) => $"products_item_v4_{id}";
 	private static readonly SemaphoreSlim _productsLock = new(1, 1);
 
 	public ProductService(
@@ -52,7 +53,7 @@ public class ProductService : IProductService
                 return cachedProducts;
             }
 
-            // Single query with primary cover image data directly included to avoid 50+ separate HTTP/DB requests on frontend
+            // List payload: cover id stub only (bytes served via GET .../images/{imageId}).
             var rows = await _context.Products
                 .AsNoTracking()
                 .Select(p => new
@@ -77,7 +78,7 @@ public class ProductService : IProductService
                     p.PromotionId,
                     CoverImage = p.ProductImages
                         .OrderBy(i => i.Id)
-                        .Select(i => new { i.Id, i.ImageName, i.ImageData })
+                        .Select(i => new { i.Id, i.ImageName })
                         .FirstOrDefault(),
                     AuthorIds = p.Authors.Select(a => a.Id).ToList(),
                     LanguageIds = p.Languages.Select(l => l.Id).ToList(),
@@ -118,7 +119,7 @@ public class ProductService : IProductService
                         {
                             Id = p.CoverImage.Id,
                             ImageName = p.CoverImage.ImageName ?? string.Empty,
-                            ImageData = p.CoverImage.ImageData ?? Array.Empty<byte>(),
+                            ImageData = Array.Empty<byte>(),
                             ProductId = p.Id,
                         },
                     },
