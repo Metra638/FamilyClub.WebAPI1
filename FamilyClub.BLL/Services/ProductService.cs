@@ -18,8 +18,8 @@ public class ProductService : IProductService
 	private readonly ICacheService _cacheService;
 
 	// Bump when list DTO shape changes (e.g. cover stubs without ImageData) so Redis/L1 stale payloads are skipped.
-	private const string AllProductsCacheKey = "products_all_v4";
-	private static string GetProductCacheKey(int id) => $"products_item_v4_{id}";
+	private const string AllProductsCacheKey = "products_all_v5";
+	private static string GetProductCacheKey(int id) => $"products_item_v5_{id}";
 	private static readonly SemaphoreSlim _productsLock = new(1, 1);
 
 	public ProductService(

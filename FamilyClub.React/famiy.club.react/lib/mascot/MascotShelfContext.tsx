@@ -8,6 +8,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import { usePathname } from "next/navigation";
 
 type MascotShelfContextType = {
   isCatOnShelf: boolean;
@@ -34,11 +35,21 @@ const defaultContext: MascotShelfContextType = {
 const MascotShelfContext = createContext<MascotShelfContextType>(defaultContext);
 
 export function MascotShelfProvider({ children }: { children: React.ReactNode }) {
-  const [isCatOnShelf, setIsCatOnShelf] = useState<boolean>(false);
+  const pathname = usePathname();
+  const [isCatOnShelf, setIsCatOnShelf] = useState<boolean>(true);
   const [activeShelfIndex, setActiveShelfIndex] = useState<number>(0);
   const [availableShelves, setAvailableShelves] = useState<number[]>([]);
   const availableShelvesRef = useRef<number[]>([]);
   availableShelvesRef.current = availableShelves;
+
+  // При кожному поверненні на головну сторінку кіт знову гуляє
+  useEffect(() => {
+    const normalized = (pathname || "").replace(/\/+$/, "");
+    const isHome = normalized === "" || normalized === "/uk" || normalized === "/en";
+    if (isHome) {
+      setIsCatOnShelf(true);
+    }
+  }, [pathname]);
 
   const registerShelf = useCallback((index: number) => {
     setAvailableShelves((prev) => {
