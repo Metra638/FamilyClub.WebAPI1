@@ -86,6 +86,8 @@ spec:
               value: "redis-0.{{ .Release.Name }}-redis.{{ .Release.Namespace }}.svc.cluster.local"
             - name: Redis__Port
               value: "6379"
+            - name: CacheSettings__RedisConnectionString
+              value: "redis-0.{{ .Release.Name }}-redis.{{ .Release.Namespace }}.svc.cluster.local:6379,password=$(Redis__Password),abortConnect=false"
             - name: Redis__Password
               valueFrom:
                 secretKeyRef:
