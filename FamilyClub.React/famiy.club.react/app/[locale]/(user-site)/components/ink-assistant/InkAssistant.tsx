@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "@/lib/i18n/LocaleProvider";
 import "./ink-assistant.css";
 import { INK_ASSETS, type InkPhase } from "./inkAssets";
+import InkCatFigure, { type InkCatActivity } from "./InkCatFigure";
 import InkChatPanel from "./InkChatPanel";
 import InkHouse from "./InkHouse";
 import InkPlayGame from "./game/InkPlayGame";
@@ -31,6 +32,8 @@ export default function InkAssistant() {
   const { isCatOnShelf, toggleCatOnShelf, returnCatToHouse } = useMascotShelf();
   const [phase, setPhase] = useState<InkPhase>("idle");
   const [gameKey, setGameKey] = useState(0);
+  const [activity, setActivity] = useState<InkCatActivity>("idle");
+  const [userTyping, setUserTyping] = useState(false);
 
   const handleActivate = useCallback(() => {
     if (phase !== "idle") return;
@@ -73,17 +76,21 @@ export default function InkAssistant() {
       setPhase("open");
       return;
     }
-    const t = window.setTimeout(() => setPhase("open"), 900);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setPhase("open"), 900);
+    return () => window.clearTimeout(timer);
   }, [phase, reducedMotion]);
 
   const handleClose = useCallback(() => {
     setPhase("idle");
+    setActivity("idle");
+    setUserTyping(false);
   }, []);
 
   const handlePlayGame = useCallback(() => {
     setGameKey((k) => k + 1);
     setPhase("playing");
+    setActivity("idle");
+    setUserTyping(false);
   }, []);
 
   const handleExitGame = useCallback(() => {
@@ -105,8 +112,6 @@ export default function InkAssistant() {
   }, [phase, handleClose]);
 
   const showCat = phase === "emerging" || phase === "open";
-  const catSrc =
-    phase === "emerging" && !reducedMotion ? jumpFrame : INK_ASSETS.lying;
 
   return (
     <>
@@ -126,18 +131,24 @@ export default function InkAssistant() {
       >
         <div className="pointer-events-auto flex items-end gap-2 lg:gap-3">
           {phase === "open" && (
-            <InkChatPanel onClose={handleClose} onPlayGame={handlePlayGame} />
+            <InkChatPanel
+              onClose={handleClose}
+              onPlayGame={handlePlayGame}
+              onActivityChange={setActivity}
+              onUserTypingChange={setUserTyping}
+              reducedMotion={reducedMotion}
+            />
           )}
 
           {showCat && (
-            <div className="ink-cat-in mb-10 h-[130px] w-[200px] shrink-0">
-              <img
-                src={catSrc}
-                alt={t("ink.catAlt")}
-                className="h-full w-full object-contain object-bottom drop-shadow-md"
-                draggable={false}
-              />
-            </div>
+            <InkCatFigure
+              emerging={phase === "emerging" && !reducedMotion}
+              jumpFrame={jumpFrame}
+              activity={activity}
+              userTyping={userTyping}
+              reducedMotion={reducedMotion}
+              alt={t("ink.catAlt")}
+            />
           )}
 
           <div className="relative flex flex-col items-center">

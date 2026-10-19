@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import {
   useLocalizedPath,
   useTranslations,
   useLocale,
 } from "@/lib/i18n/LocaleProvider";
 import { apiBasePath } from "@/lib/api/services";
+import type { InkCatActivity } from "./InkCatFigure";
 
 type ChatMessage = {
   id: string;
@@ -27,21 +34,27 @@ type QuickReply = {
 type InkChatPanelProps = {
   onClose: () => void;
   onPlayGame?: () => void;
+  onActivityChange?: (activity: InkCatActivity) => void;
+  onUserTypingChange?: (typing: boolean) => void;
+  reducedMotion?: boolean;
 };
+
+const THINK_MS_LOCAL = 550;
+const TYPE_MS_PER_CHAR = 22;
 
 function matchReply(input: string, t: (key: string) => string): string | null {
   const q = input.toLowerCase().trim();
   if (!q) return t("ink.match.empty");
-  if (/(повернення|обмін|return|exchange|refund)/i.test(q)){
+  if (/(повернення|обмін|return|exchange|refund)/i.test(q)) {
     return t("ink.match.returns");
   }
-  if (/(замовлення|order|статус|мої замовлення|my orders|tracking)/i.test(q)){
+  if (/(замовлення|order|статус|мої замовлення|my orders|tracking)/i.test(q)) {
     return t("ink.match.order");
   }
-  if(/(аккаунт|профіль|login|account|profile|увійти|sign in|акаунт)/i.test(q)){
+  if (/(аккаунт|профіль|login|account|profile|увійти|sign in|акаунт)/i.test(q)) {
     return t("ink.match.account");
   }
-  if(/(розробник|developer|developers|розробники)/i.test(q)){
+  if (/(розробник|developer|developers|розробники)/i.test(q)) {
     return t("ink.match.developer");
   }
   if (/(гра|пограт|полюван|лазер|мишк|play|game|laser|mouse)/i.test(q)) {
@@ -53,7 +66,6 @@ function matchReply(input: string, t: (key: string) => string): string | null {
   if (/(рекоменд|порекоменд|що почита|recommend|suggest)/i.test(q)) {
     return t("ink.match.recommend");
   }
-  // «книга» сама по собі йде в LLM/пошук; FAQ лише для підбору
   if (/(підібр|що почита)/i.test(q)) {
     return t("ink.match.book");
   }
@@ -75,15 +87,30 @@ function matchReply(input: string, t: (key: string) => string): string | null {
   if (/(дякую|thanks|спасиб|thank)/i.test(q)) {
     return t("ink.match.thanks");
   }
-  // return t("ink.match.fallback");
-  return null; // Йдемо в LLM
+  return null;
 }
 
-export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps) {
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+export default function InkChatPanel({
+  onClose,
+  onPlayGame,
+  onActivityChange,
+  onUserTypingChange,
+  reducedMotion = false,
+}: InkChatPanelProps) {
   const t = useTranslations();
   const lp = useLocalizedPath();
   const welcome = t("ink.welcome");
   const { locale } = useLocale();
+  const setActivity = (value: InkCatActivity) => {
+    onActivityChange?.(value);
+  };
+
   const quickReplies = useMemo<QuickReply[]>(
     () => [
       {
@@ -141,30 +168,34 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
     { id: "welcome", from: "ink", text: welcome },
   ]);
   const [draft, setDraft] = useState("");
-  const [thinking, setThinking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [showThinkingHint, setShowThinkingHint] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
     setMessages([{ id: "welcome", from: "ink", text: welcome }]);
   }, [welcome]);
 
   useEffect(() => {
+    cancelledRef.current = false;
+    return () => {
+      cancelledRef.current = true;
+      setActivity("idle");
+      onUserTypingChange?.(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- clear cat state on unmount
+  }, []);
+
+  useEffect(() => {
+    onUserTypingChange?.(draft.trim().length > 0);
+  }, [draft, onUserTypingChange]);
+
+  useEffect(() => {
     const el = listRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages, thinking]);
-
-  const pushInk = (text: string, books?: { id: number; title: string }[]) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `ink-${Date.now()}-${prev.length}`,
-        from: "ink",
-        text,
-        books: books && books.length > 0 ? books : undefined,
-      },
-    ]);
-  };
+  }, [messages, showThinkingHint]);
 
   const pushUser = (text: string) => {
     setMessages((prev) => [
@@ -173,51 +204,117 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
     ]);
   };
 
-  const handleQuick = (item: QuickReply) => {
-    if (thinking) return;
-    pushUser(item.label);
-    window.setTimeout(() => {
-      pushInk(item.reply);
-      if (item.action === "play") {
-        window.setTimeout(() => onPlayGame?.(), 500);
+  /** Думає → пише (анімація кота) → поступово друкує текст у чат. */
+  const deliverInkReply = async (
+    fullText: string,
+    books?: { id: number; title: string }[],
+    options?: { thinkMs?: number; skipThink?: boolean },
+  ) => {
+    if (!options?.skipThink) {
+      setActivity("thinking");
+      setShowThinkingHint(true);
+      await sleep(options?.thinkMs ?? THINK_MS_LOCAL);
+      if (cancelledRef.current) return;
+    }
+
+    setShowThinkingHint(false);
+    setActivity("writing");
+
+    const id = `ink-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id,
+        from: "ink",
+        text: reducedMotion ? fullText : "",
+        books: books && books.length > 0 ? books : undefined,
+      },
+    ]);
+
+    if (!reducedMotion) {
+      for (let i = 1; i <= fullText.length; i++) {
+        if (cancelledRef.current) return;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === id ? { ...m, text: fullText.slice(0, i) } : m,
+          ),
+        );
+        await sleep(TYPE_MS_PER_CHAR);
       }
-    }, 280);
+    }
+
+    if (cancelledRef.current) return;
+    setActivity("idle");
+  };
+
+  const handleQuick = async (item: QuickReply) => {
+    if (busy) return;
+    setBusy(true);
+    pushUser(item.label);
+    try {
+      await deliverInkReply(item.reply, undefined, { thinkMs: THINK_MS_LOCAL });
+      if (item.action === "play" && !cancelledRef.current) {
+        await sleep(280);
+        onPlayGame?.();
+      }
+    } finally {
+      if (!cancelledRef.current) {
+        setBusy(false);
+        setShowThinkingHint(false);
+        setActivity("idle");
+      }
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (thinking) return;
+    if (busy) return;
     const text = draft.trim();
     if (!text) return;
+
+    setBusy(true);
     pushUser(text);
     setDraft("");
-    const faq = matchReply(text, t);
-    if (faq) {
-      window.setTimeout(() => pushInk(faq), 320);
-      return;
-    }
 
-    setThinking(true);
+    const faq = matchReply(text, t);
     try {
-      const res = await fetch(`${apiBasePath}/api/InkAssistant/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, locale }),
-      });
-      if (!res.ok) throw new Error("bad status");
-      const data = (await res.json()) as {
-        reply: string;
-        needsSupport: boolean;
-        books?: { id: number; title: string }[] | null;
-      };
-      pushInk(
-        data.reply || t("ink.match.fallback"),
-        data.books ?? undefined,
-      );
-    } catch {
-      pushInk(t("ink.match.fallback"));
+      if (faq) {
+        await deliverInkReply(faq, undefined, { thinkMs: THINK_MS_LOCAL });
+        return;
+      }
+
+      setActivity("thinking");
+      setShowThinkingHint(true);
+
+      let replyText = t("ink.match.fallback");
+      let books: { id: number; title: string }[] | undefined;
+
+      try {
+        const res = await fetch(`${apiBasePath}/api/InkAssistant/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, locale }),
+        });
+        if (!res.ok) throw new Error("bad status");
+        const data = (await res.json()) as {
+          reply: string;
+          needsSupport: boolean;
+          books?: { id: number; title: string }[] | null;
+        };
+        replyText = data.reply || t("ink.match.fallback");
+        books = data.books ?? undefined;
+      } catch {
+        replyText = t("ink.match.fallback");
+      }
+
+      if (cancelledRef.current) return;
+      await deliverInkReply(replyText, books, { skipThink: true });
     } finally {
-      setThinking(false);
+      if (!cancelledRef.current) {
+        setBusy(false);
+        setShowThinkingHint(false);
+        setActivity("idle");
+      }
     }
   };
 
@@ -229,8 +326,13 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
     >
       <div className="flex items-center justify-between bg-[var(--color-green)] px-3 py-2 text-[var(--color-cream)]">
         <div className="flex items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#F5C542]" aria-hidden />
-          <p className="font-serif text-sm font-semibold tracking-wide text-[var(--color-cream)]">Ink</p>
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full bg-[#F5C542]"
+            aria-hidden
+          />
+          <p className="font-serif text-sm font-semibold tracking-wide text-[var(--color-cream)]">
+            Ink
+          </p>
         </div>
         <button
           type="button"
@@ -277,7 +379,7 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
             ) : null}
           </div>
         ))}
-        {thinking ? (
+        {showThinkingHint ? (
           <div
             className="ink-thinking self-start max-w-[90%] rounded-[10px] bg-[var(--background-main)] px-2.5 py-1.5 text-[13px] leading-snug text-[var(--color-green)]/80 shadow-[var(--shadow-control)]"
             aria-live="polite"
@@ -294,15 +396,15 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
               key={item.id}
               href={item.href}
               onClick={(e) => {
-                if (thinking) {
+                if (busy) {
                   e.preventDefault();
                   return;
                 }
-                handleQuick(item);
+                void handleQuick(item);
               }}
-              aria-disabled={thinking}
+              aria-disabled={busy}
               className={`rounded-full border border-[var(--color-green)]/35 bg-[var(--background-main)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-green)] transition-colors hover:border-[var(--color-green)] hover:bg-[color-mix(in_srgb,var(--color-green)_18%,transparent)] ${
-                thinking ? "pointer-events-none opacity-50" : ""
+                busy ? "pointer-events-none opacity-50" : ""
               }`}
             >
               {item.label}
@@ -311,8 +413,8 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
             <button
               key={item.id}
               type="button"
-              onClick={() => handleQuick(item)}
-              disabled={thinking}
+              onClick={() => void handleQuick(item)}
+              disabled={busy}
               className="rounded-full border border-[var(--color-green)]/35 bg-[var(--background-main)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-green)] transition-colors hover:border-[var(--color-green)] hover:bg-[color-mix(in_srgb,var(--color-green)_18%,transparent)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {item.label}
@@ -322,7 +424,7 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
       </div>
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={(e) => void handleSubmit(e)}
         className="flex items-center gap-1.5 border-t border-[var(--color-green)]/15 px-2 py-2"
       >
         <input
@@ -330,12 +432,12 @@ export default function InkChatPanel({ onClose, onPlayGame }: InkChatPanelProps)
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t("ink.placeholder")}
           aria-label={t("ink.messageAria")}
-          disabled={thinking}
+          disabled={busy}
           className="min-w-0 flex-1 rounded-[8px] border border-[var(--color-menu-separator)] bg-[var(--background-main)] px-2.5 py-1.5 text-[13px] text-[var(--foreground-primary)] caret-[var(--foreground-primary)] placeholder:text-[var(--color-muted-fg)] outline-none focus:border-[var(--color-green)] disabled:cursor-not-allowed disabled:opacity-60"
         />
         <button
           type="submit"
-          disabled={thinking || !draft.trim()}
+          disabled={busy || !draft.trim()}
           className="rounded-[8px] bg-[var(--color-green)] px-3 py-1.5 text-[12px] font-semibold text-[var(--color-cream)] transition-colors hover:bg-[color-mix(in_srgb,var(--color-green)_85%,black)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("ink.send")}

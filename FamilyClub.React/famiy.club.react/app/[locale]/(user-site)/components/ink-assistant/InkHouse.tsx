@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "@/lib/i18n/LocaleProvider";
 import { INK_ASSETS, type InkPhase } from "./inkAssets";
 import { useSpriteAnimation } from "./useSpriteAnimation";
@@ -45,6 +46,7 @@ export default function InkHouse({
   onCatClick,
 }: InkHouseProps) {
   const t = useTranslations();
+  const [bellHovered, setBellHovered] = useState(false);
   const isOpen = phase === "open" || phase === "emerging";
   const isRinging = phase === "ringing";
   const interactive = phase === "idle";
@@ -62,7 +64,9 @@ export default function InkHouse({
     ? INK_ASSETS.outOfHouse
     : isRinging
       ? INK_ASSETS.inHouseRinging
-      : INK_ASSETS.inHouse;
+      : bellHovered && interactive
+        ? INK_ASSETS.inHouseOnBell
+        : INK_ASSETS.inHouse;
 
   return (
     <div
@@ -107,6 +111,8 @@ export default function InkHouse({
           aria-label={t("ink.ringBellAria")}
           disabled={!interactive && !isRinging}
           onClick={interactive ? onActivate : undefined}
+          onMouseEnter={() => setBellHovered(true)}
+          onMouseLeave={() => setBellHovered(false)}
           className={`absolute z-0 border-0 bg-transparent p-0 ${
             interactive ? "cursor-pointer" : "cursor-default"
           } ${isRinging ? "ink-bell-shake" : ""}`}

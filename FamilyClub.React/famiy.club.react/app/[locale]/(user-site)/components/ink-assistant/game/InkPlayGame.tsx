@@ -21,9 +21,11 @@ const JUMP_TRIGGER_DIST = 175;
 const CATCH_DIST = 52;
 const JUMP_COOLDOWN_MS = 1400;
 const PREPARE_MS = 580;
-const JUMP_MS = 480;
+/** Long enough to play full jump-up + jump-down sheet once */
+const JUMP_MS = 720;
 const CAT_W = 280;
 const CAT_H = 220;
+const JUMP_FRAMES = INK_ASSETS.jumpLeap;
 const CAT_DONE_W = 360;
 const CAT_DONE_H = 360;
 
@@ -67,6 +69,7 @@ export default function InkPlayGame({ onExit, onPlayAgain }: InkPlayGameProps) {
   const phaseRef = useRef<GamePhase>("playing");
   const moveModeRef = useRef<MoveMode>("walk");
   const jumpUntilRef = useRef(0);
+  const jumpStartedAtRef = useRef(0);
   const prepareUntilRef = useRef(0);
   const jumpCooldownUntilRef = useRef(0);
   const walkSpeedRef = useRef(pickBetween(WALK_SPEED_MIN, WALK_SPEED_MAX));
@@ -117,6 +120,8 @@ export default function InkPlayGame({ onExit, onPlayAgain }: InkPlayGameProps) {
     frozenPrey.current = { ...at };
     phaseRef.current = "catching";
     moveModeRef.current = "jump";
+    jumpStartedAtRef.current = performance.now();
+    setJumpFrame(0);
     setMoveMode("jump");
     setPhase("catching");
   };
@@ -162,6 +167,7 @@ export default function InkPlayGame({ onExit, onPlayAgain }: InkPlayGameProps) {
           if (now >= prepareUntilRef.current) {
             moveModeRef.current = "jump";
             setMoveMode("jump");
+            jumpStartedAtRef.current = now;
             jumpUntilRef.current = now + JUMP_MS;
             setJumpFrame(0);
           }
@@ -171,11 +177,16 @@ export default function InkPlayGame({ onExit, onPlayAgain }: InkPlayGameProps) {
           cat.y += dy * speed * (dt / 16);
           if (Math.abs(dx) > 2) setFacingLeft(dx < 0);
 
-          frameAcc += dt;
-          if (frameAcc > 100) {
-            frameAcc = 0;
-            setJumpFrame((f) => (f + 1) % INK_ASSETS.game.jump.length);
-          }
+          const jumpProgress = Math.min(
+            1,
+            (now - jumpStartedAtRef.current) / JUMP_MS,
+          );
+          const frameIdx = Math.min(
+            JUMP_FRAMES.length - 1,
+            Math.floor(jumpProgress * JUMP_FRAMES.length),
+          );
+          setJumpFrame(frameIdx);
+
           if (dist < CATCH_DIST) {
             startCatch(preyPos.current);
           } else if (now >= jumpUntilRef.current) {
@@ -204,9 +215,9 @@ export default function InkPlayGame({ onExit, onPlayAgain }: InkPlayGameProps) {
         cat.y += dy * speed * (dt / 16);
         if (Math.abs(dx) > 2) setFacingLeft(dx < 0);
         frameAcc += dt;
-        if (frameAcc > 90) {
+        if (frameAcc > 85) {
           frameAcc = 0;
-          setJumpFrame((f) => (f + 1) % INK_ASSETS.game.jump.length);
+          setJumpFrame((f) => (f + 1) % JUMP_FRAMES.length);
         }
         if (dist < CATCH_DIST && phaseRef.current === "catching") {
           phaseRef.current = "done";
@@ -235,9 +246,9 @@ export default function InkPlayGame({ onExit, onPlayAgain }: InkPlayGameProps) {
         ? INK_ASSETS.game.catWithMouse
         : INK_ASSETS.game.catHappy
       : moveMode === "jump" || phase === "catching"
-        ? INK_ASSETS.game.jump[jumpFrame]
+        ? JUMP_FRAMES[jumpFrame] ?? JUMP_FRAMES[0]
         : moveMode === "prepare"
-          ? INK_ASSETS.game.jump[0]
+          ? INK_ASSETS.jumpUp[0]
           : INK_ASSETS.walk[walkFrame];
 
   const cat = catPos.current;
