@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/app: {{ .Release.Name }}-redis
+  annotations:
+    config.linkerd.io/opaque-ports: "{{ .Values.redis.service.port }}"
 spec:
   clusterIP: None
   selector:
