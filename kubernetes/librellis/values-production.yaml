@@ -11,4 +11,6 @@ ingress:
   controller:
     serviceAccountName: ingress-nginx
     namespace: ingress-nginx-prod
-
+podAnnotations:
+  linkerd.io/inject: "enabled"
+  config.linkerd.io/opaque-ports: "5432,6379"
