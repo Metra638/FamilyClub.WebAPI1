@@ -14,3 +14,4 @@ spec:
       port: {{ .Values.ollama.env.port }}
       targetPort: http
       protocol: TCP
+      appProtocol: http
