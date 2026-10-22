@@ -29,6 +29,8 @@ spec:
         branch: "{{ .Values.backend.image.branch }}"
         repository: "{{ .Values.backend.image.repository }}"
         tag: "{{ .Values.backend.tag }}"
+        linkerd.io/inject: "{{ .Values.linkerd.inject }}"
+        config.linkerd.io/opaque-ports: "{{ .Values.linkerd.opaquePorts }}"
     spec:
       serviceAccountName: {{ .Release.Name }}-backend
       tolerations:
