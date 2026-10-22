@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ .Release.Name }}-postgres
+  annotations:
+    config.linkerd.io/opaque-ports: "{{ .Values.postgres.service.port }}"
 spec:
   selector:
     app.kubernetes.io/name: {{ .Release.Name }}-postgres
