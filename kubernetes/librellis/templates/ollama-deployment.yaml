@@ -16,6 +16,9 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/app: {{ .Release.Name }}-ollama
+      annotations:
+        linkerd.io/inject: "{{ .Values.linkerd.inject }}"
+        config.linkerd.io/opaque-ports: "{{ .Values.linkerd.opaquePorts }}" 
     spec:
       initContainers:
         - name: pull-models
