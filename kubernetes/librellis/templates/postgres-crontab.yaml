@@ -23,6 +23,8 @@ spec:
       annotations:
         description: "Job for PostgreSQL backup"
         created-by: "CronJob {{ .Release.Name }}-postgres-backup"
+        linkerd.io/inject: "{{ .Values.linkerd.inject }}"
+        config.linkerd.io/opaque-ports: "{{ .Values.linkerd.opaquePorts }}"
     spec:
       ttlSecondsAfterFinished: 600
       template:
