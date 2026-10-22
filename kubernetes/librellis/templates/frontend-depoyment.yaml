@@ -28,6 +28,8 @@ spec:
         branch: "{{ .Values.frontend.image.branch }}"
         repository: "{{ .Values.frontend.image.repository }}"
         tag: "{{ .Values.frontend.tag }}"
+        linkerd.io/inject: "{{ .Values.linkerd.inject }}"
+        config.linkerd.io/opaque-ports: "{{ .Values.linkerd.opaquePorts }}"
     spec:
       serviceAccountName: {{ .Release.Name }}-frontend
       tolerations:
