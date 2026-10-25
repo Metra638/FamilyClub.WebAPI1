@@ -18,8 +18,8 @@ type InkHouseProps = {
 const IMG_W = 342;
 const IMG_H = 460;
 /** Widget box (matches Tailwind w/h on wrapper) */
-const BOX_W = 210;
-const BOX_H = 280;
+const BOX_W = 315;
+const BOX_H = 420;
 
 const DISP_SCALE = Math.min(BOX_W / IMG_W, BOX_H / IMG_H);
 const DISP_W = IMG_W * DISP_SCALE;

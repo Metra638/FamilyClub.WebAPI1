@@ -6,6 +6,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 
+using Npgsql;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
+
 namespace FamilyClub.DAL.EF.DB
 {
 	public class SeedCatalogResult
@@ -37,10 +41,28 @@ namespace FamilyClub.DAL.EF.DB
 
 			using (FamilyClubContext context = new FamilyClubContext(options))
 			{
-				await context.Database.EnsureCreatedAsync();
-			}
+                //await context.Database.EnsureCreatedAsync();
+                var creator = context.GetService<IRelationalDatabaseCreator>();
+                if (!await creator.ExistsAsync())
+                {
+                    try
+                    {
+                        await creator.CreateAsync(); // CREATE DATABASE
+                    }
+                    catch (PostgresException ex) when (ex.SqlState == "42P04")
+                    {
+                        // БД уже створена (інший под / Exists брехнув) — ігноруємо
+                        Console.WriteLine("[DbInitializer] Database already exists (42P04) — continue.");
+                    }
+                }
+                if (!await creator.HasTablesAsync())
+                {
+                    await creator.CreateTablesAsync();
+                }
 
-			var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            }
+
+            var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 			var userManager = serviceProvider.GetRequiredService<UserManager<ClubMember>>();
 
 			string[] roleNames = { "Admin", "User", "Manager" };

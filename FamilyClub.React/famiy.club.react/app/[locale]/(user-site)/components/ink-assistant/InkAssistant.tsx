@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "@/lib/i18n/LocaleProvider";
 import "./ink-assistant.css";
 import { INK_ASSETS, type InkPhase } from "./inkAssets";
@@ -11,6 +11,13 @@ import InkPlayGame from "./game/InkPlayGame";
 import { playBellSound } from "./playBellSound";
 import { useSpriteAnimation } from "./useSpriteAnimation";
 import { useMascotShelf } from "@/lib/mascot/MascotShelfContext";
+
+/** Fallback widths if refs are not ready yet (match InkChatPanel / InkCatFigure / InkHouse). */
+const CHAT_W_FALLBACK = 300;
+const CAT_W_FALLBACK = 504;
+const HOUSE_W_FALLBACK = 315;
+const ROW_GAP_PX = 12;
+const VIEW_SAFE_PX = 16;
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -34,6 +41,11 @@ export default function InkAssistant() {
   const [gameKey, setGameKey] = useState(0);
   const [activity, setActivity] = useState<InkCatActivity>("idle");
   const [userTyping, setUserTyping] = useState(false);
+  /** Stack chat above cat+house only when the horizontal row would overflow the viewport. */
+  const [stackChat, setStackChat] = useState(false);
+  const chatMeasureRef = useRef<HTMLDivElement>(null);
+  const catMeasureRef = useRef<HTMLDivElement>(null);
+  const houseMeasureRef = useRef<HTMLDivElement>(null);
 
   const handleActivate = useCallback(() => {
     if (phase !== "idle") return;
@@ -112,6 +124,81 @@ export default function InkAssistant() {
   }, [phase, handleClose]);
 
   const showCat = phase === "emerging" || phase === "open";
+  const chatOpen = phase === "open";
+
+  useLayoutEffect(() => {
+    if (!chatOpen) {
+      setStackChat(false);
+      return;
+    }
+
+    const measure = () => {
+      const chatW =
+        chatMeasureRef.current?.offsetWidth || CHAT_W_FALLBACK;
+      const catW = showCat
+        ? catMeasureRef.current?.offsetWidth || CAT_W_FALLBACK
+        : 0;
+      const houseW =
+        houseMeasureRef.current?.offsetWidth || HOUSE_W_FALLBACK;
+      const gaps = ROW_GAP_PX * (showCat ? 2 : 1);
+      const rowNeeds = chatW + catW + houseW + gaps + VIEW_SAFE_PX;
+      setStackChat(window.innerWidth < rowNeeds);
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [chatOpen, showCat]);
+
+  const chatPanel = chatOpen ? (
+    <div
+      ref={chatMeasureRef}
+      className={stackChat ? undefined : "relative -top-[60px]"}
+    >
+      <InkChatPanel
+        onClose={handleClose}
+        onPlayGame={handlePlayGame}
+        onActivityChange={setActivity}
+        onUserTypingChange={setUserTyping}
+        reducedMotion={reducedMotion}
+      />
+    </div>
+  ) : null;
+
+  const catFigure = showCat ? (
+    <div ref={catMeasureRef}>
+      <InkCatFigure
+        emerging={phase === "emerging" && !reducedMotion}
+        jumpFrame={jumpFrame}
+        activity={activity}
+        userTyping={userTyping}
+        reducedMotion={reducedMotion}
+        alt={t("ink.catAlt")}
+      />
+    </div>
+  ) : null;
+
+  const houseBlock = (
+    <div ref={houseMeasureRef} className="relative flex flex-col items-center">
+      <InkHouse
+        phase={phase === "playing" ? "open" : phase}
+        onActivate={handleActivate}
+        onBellComplete={handleBellComplete}
+        reducedMotion={reducedMotion}
+        isCatOnShelf={isCatOnShelf}
+        onCatClick={toggleCatOnShelf}
+      />
+
+      <p
+        className={`mt-1 max-w-[170px] text-center font-serif text-[11px] leading-tight text-[var(--color-green)]/80 ${
+          phase === "idle" ? "" : "invisible"
+        }`}
+        aria-hidden={phase !== "idle"}
+      >
+        {isCatOnShelf ? t("ink.hintOnShelf") : t("ink.hint")}
+      </p>
+    </div>
+  );
 
   return (
     <>
@@ -129,48 +216,21 @@ export default function InkAssistant() {
         }`}
         aria-live="polite"
       >
-        <div className="pointer-events-auto flex items-end gap-2 lg:gap-3">
-          {phase === "open" && (
-            <InkChatPanel
-              onClose={handleClose}
-              onPlayGame={handlePlayGame}
-              onActivityChange={setActivity}
-              onUserTypingChange={setUserTyping}
-              reducedMotion={reducedMotion}
-            />
-          )}
-
-          {showCat && (
-            <InkCatFigure
-              emerging={phase === "emerging" && !reducedMotion}
-              jumpFrame={jumpFrame}
-              activity={activity}
-              userTyping={userTyping}
-              reducedMotion={reducedMotion}
-              alt={t("ink.catAlt")}
-            />
-          )}
-
-          <div className="relative flex flex-col items-center">
-            <InkHouse
-              phase={phase === "playing" ? "open" : phase}
-              onActivate={handleActivate}
-              onBellComplete={handleBellComplete}
-              reducedMotion={reducedMotion}
-              isCatOnShelf={isCatOnShelf}
-              onCatClick={toggleCatOnShelf}
-            />
-
-            <p
-              className={`mt-1 max-w-[170px] text-center font-serif text-[11px] leading-tight text-[var(--color-green)]/80 ${
-                phase === "idle" ? "" : "invisible"
-              }`}
-              aria-hidden={phase !== "idle"}
-            >
-              {isCatOnShelf ? t("ink.hintOnShelf") : t("ink.hint")}
-            </p>
+        {stackChat && chatOpen ? (
+          <div className="pointer-events-auto flex flex-col items-end gap-2">
+            {chatPanel}
+            <div className="flex items-end gap-2 lg:gap-3">
+              {catFigure}
+              {houseBlock}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="pointer-events-auto flex items-end gap-2 lg:gap-3">
+            {chatPanel}
+            {catFigure}
+            {houseBlock}
+          </div>
+        )}
       </div>
     </>
   );

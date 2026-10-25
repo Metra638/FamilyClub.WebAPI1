@@ -346,7 +346,7 @@ export default function InkChatPanel({
 
       <div
         ref={listRef}
-        className="flex max-h-[220px] flex-col gap-2 overflow-y-auto px-3 py-3"
+        className="flex max-h-[300px] flex-col gap-2 overflow-y-auto px-3 py-3"
       >
         {messages.map((m) => (
           <div
