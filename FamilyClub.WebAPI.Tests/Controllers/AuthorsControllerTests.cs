@@ -10,12 +10,14 @@ namespace FamilyClub.WebAPI.Tests.Controllers
     public class AuthorsControllerTests
     {
         private readonly Mock<IAuthorService> _authorServiceMock;
+        private readonly Mock<IStorageService> _storageServiceMock;
         private readonly AuthorsController _controller;
 
         public AuthorsControllerTests()
         {
             _authorServiceMock = new Mock<IAuthorService>();
-            _controller = new AuthorsController(_authorServiceMock.Object);
+            _storageServiceMock = new Mock<IStorageService>();
+            _controller = new AuthorsController(_authorServiceMock.Object, _storageServiceMock.Object);
         }
 
         [Fact]
@@ -125,6 +127,8 @@ namespace FamilyClub.WebAPI.Tests.Controllers
         public async Task Delete_WhenSuccess_ReturnsNoContent()
         {
             // Arrange
+            _authorServiceMock.Setup(s => s.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthorDTO { Id = 1, AuthorName = "Author 1" });
             _authorServiceMock.Setup(s => s.DeleteAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 

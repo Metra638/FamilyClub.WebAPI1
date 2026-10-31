@@ -16,6 +16,7 @@ public class ProductService : IProductService
 	private readonly FamilyClubContext _context;
 	private readonly IActionLogService _actionLog;
 	private readonly ICacheService _cacheService;
+	private readonly IStorageService _storageService;
 
 	// Bump when list DTO shape changes (e.g. cover stubs without ImageData) so Redis/L1 stale payloads are skipped.
 	private const string AllProductsCacheKey = "products_all_v5";
@@ -27,13 +28,15 @@ public class ProductService : IProductService
 		IUnitOfWork unitOfWork,
 		FamilyClubContext context,
 		IActionLogService actionLog,
-		ICacheService cacheService)
+		ICacheService cacheService,
+		IStorageService storageService)
     {
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
 		_context = context;
 		_actionLog = actionLog;
 		_cacheService = cacheService;
+		_storageService = storageService;
     }
 
     public async Task<IEnumerable<ProductDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -78,7 +81,7 @@ public class ProductService : IProductService
                     p.PromotionId,
                     CoverImage = p.ProductImages
                         .OrderBy(i => i.Id)
-                        .Select(i => new { i.Id, i.ImageName })
+                        .Select(i => new { i.Id, i.ImageName, i.ImageUrl })
                         .FirstOrDefault(),
                     AuthorIds = p.Authors.Select(a => a.Id).ToList(),
                     LanguageIds = p.Languages.Select(l => l.Id).ToList(),
@@ -120,6 +123,7 @@ public class ProductService : IProductService
                             Id = p.CoverImage.Id,
                             ImageName = p.CoverImage.ImageName ?? string.Empty,
                             ImageData = Array.Empty<byte>(),
+                            ImageUrl = p.CoverImage.ImageUrl,
                             ProductId = p.Id,
                         },
                     },
@@ -143,6 +147,20 @@ public class ProductService : IProductService
         }
     }
 
+    public async Task<string?> GetProductImageUrlAsync(
+        int productId,
+        int imageId,
+        CancellationToken cancellationToken = default)
+    {
+        var image = await _context.Set<ProductImage>()
+            .AsNoTracking()
+            .Where(i => i.ProductId == productId && i.Id == imageId)
+            .Select(i => new { i.ImageUrl })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return image?.ImageUrl;
+    }
+
     public async Task<(byte[] Data, string ContentType)?> GetProductImageAsync(
         int productId,
         int imageId,
@@ -158,22 +176,48 @@ public class ProductService : IProductService
         var image = await _context.Set<ProductImage>()
             .AsNoTracking()
             .Where(i => i.ProductId == productId && i.Id == imageId)
-            .Select(i => new { i.ImageData, i.ImageName })
+            .Select(i => new { i.ImageData, i.ImageName, i.ImageUrl, i.StorageKey })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (image is null || image.ImageData.Length == 0)
+        if (image is null)
         {
             return null;
         }
 
-        var contentType = ResolveImageContentType(image.ImageName, image.ImageData);
-        await _cacheService.SetAsync(
-            cacheKey,
-            new CachedProductImage { Data = image.ImageData, ContentType = contentType },
-            TimeSpan.FromDays(7),
-            cancellationToken);
+        if (image.ImageData != null && image.ImageData.Length > 0)
+        {
+            var contentType = ResolveImageContentType(image.ImageName, image.ImageData);
+            await _cacheService.SetAsync(
+                cacheKey,
+                new CachedProductImage { Data = image.ImageData, ContentType = contentType },
+                TimeSpan.FromDays(7),
+                cancellationToken);
 
-        return (image.ImageData, contentType);
+            return (image.ImageData, contentType);
+        }
+
+        if (!string.IsNullOrEmpty(image.StorageKey) || !string.IsNullOrEmpty(image.ImageUrl))
+        {
+            var keyOrUrl = !string.IsNullOrEmpty(image.StorageKey) ? image.StorageKey : image.ImageUrl!;
+            var downloaded = await _storageService.DownloadAsync(keyOrUrl, cancellationToken);
+            if (downloaded.HasValue)
+            {
+                using var ms = new MemoryStream();
+                await downloaded.Value.Stream.CopyToAsync(ms, cancellationToken);
+                var data = ms.ToArray();
+                var contentType = downloaded.Value.ContentType ?? ResolveImageContentType(image.ImageName, data);
+
+                await _cacheService.SetAsync(
+                    cacheKey,
+                    new CachedProductImage { Data = data, ContentType = contentType },
+                    TimeSpan.FromDays(7),
+                    cancellationToken);
+
+                return (data, contentType);
+            }
+        }
+
+        return null;
     }
 
     public async Task<ProductDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -214,6 +258,8 @@ public class ProductService : IProductService
                 Id = i.Id,
                 ImageName = i.ImageName,
                 ProductId = i.ProductId,
+                ImageUrl = i.ImageUrl,
+                StorageKey = i.StorageKey,
                 ImageData = i.ImageData ?? Array.Empty<byte>()
             })
             .ToListAsync(cancellationToken);
@@ -268,7 +314,7 @@ public class ProductService : IProductService
 	{
 		dto.ProductImages ??= new List<ProductImage>();
 
-		dto = await UploadImagesAsync(dto, productImageFiles);
+		dto = await UploadImagesAsync(dto, productImageFiles, cancellationToken);
 
 		var product = new Product
 		{
@@ -300,7 +346,9 @@ public class ProductService : IProductService
 			ProductImages = dto.ProductImages?.Select(productImage => new ProductImage
 			{
 				ImageData = productImage.ImageData,
-				ImageName = productImage.ImageName
+				ImageName = productImage.ImageName,
+				ImageUrl = productImage.ImageUrl,
+				StorageKey = productImage.StorageKey
 			}).ToList()
 		};
 
@@ -407,10 +455,22 @@ public class ProductService : IProductService
 			existingProduct.ProductImages?.Clear();
 		}
 
+		if (!dto.LeaveOldImages && existingProduct.ProductImages != null)
+		{
+			foreach (var oldImg in existingProduct.ProductImages)
+			{
+				var key = oldImg.StorageKey ?? oldImg.ImageUrl;
+				if (!string.IsNullOrWhiteSpace(key))
+				{
+					await _storageService.DeleteAsync(key, cancellationToken);
+				}
+			}
+		}
+
 		if (productImageFiles is { Count: > 0 })
 		{
 			dto.ProductImages = new List<ProductImage>();
-			await UploadImagesAsync(dto, productImageFiles);
+			await UploadImagesAsync(dto, productImageFiles, cancellationToken);
 
 			foreach (var image in dto.ProductImages)
 			{
@@ -418,6 +478,8 @@ public class ProductService : IProductService
 				{
 					ImageData = image.ImageData,
 					ImageName = image.ImageName,
+					ImageUrl = image.ImageUrl,
+					StorageKey = image.StorageKey,
 					ProductId = existingProduct.Id
 				});
 			}
@@ -523,7 +585,7 @@ public class ProductService : IProductService
 		}
 	}
 
-    private async Task<ProductDto?> UploadImagesAsync(ProductDto? productDto, List<IFormFile> imageFiles)
+    private async Task<ProductDto?> UploadImagesAsync(ProductDto? productDto, List<IFormFile> imageFiles, CancellationToken cancellationToken = default)
     {
         if (imageFiles != null && imageFiles.Count > 0)
         {
@@ -534,13 +596,37 @@ public class ProductService : IProductService
                 var file = imageFiles[i];
                 if (file.Length > 0)
                 {
-                    using var memoryStream = new MemoryStream();
-                    await file.CopyToAsync(memoryStream);
-                    byte[] imageData = memoryStream.ToArray();
+                    string? imageUrl = null;
+                    string? storageKey = null;
+                    byte[]? imageData = null;
+
+                    if (_storageService.IsConfigured)
+                    {
+                        try
+                        {
+                            imageUrl = await _storageService.UploadFileAsync(file, "products", cancellationToken);
+                            storageKey = _storageService.ExtractKey(imageUrl);
+                            imageData = Array.Empty<byte>();
+                        }
+                        catch (Exception ex)
+                        {
+                            await SafeLogAsync("UploadImageS3Fallback", "ProductService", $"S3 upload fallback for {file.FileName}: {ex.Message}", ActionLogCodes.Levels.Warning, cancellationToken);
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(imageUrl))
+                    {
+                        using var memoryStream = new MemoryStream();
+                        await file.CopyToAsync(memoryStream, cancellationToken);
+                        imageData = memoryStream.ToArray();
+                    }
+
                     var productImage = new ProductImage
                     {
-                        ImageData = imageData,
+                        ImageData = imageData ?? Array.Empty<byte>(),
                         ImageName = file.FileName,
+                        ImageUrl = imageUrl,
+                        StorageKey = storageKey
                     };
                     productDto?.ProductImages?.Add(productImage);
                 }
@@ -614,6 +700,8 @@ public class ProductService : IProductService
 				Id = img.Id,
 				ImageData = img.ImageData,
 				ImageName = img.ImageName,
+				ImageUrl = img.ImageUrl,
+				StorageKey = img.StorageKey,
 				ProductId = product.Id,
 			}).ToList(),
 

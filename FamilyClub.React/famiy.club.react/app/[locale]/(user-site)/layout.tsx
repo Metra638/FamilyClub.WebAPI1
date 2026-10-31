@@ -96,12 +96,12 @@ export default async function RootLayout({
               }}
               aria-hidden
             />
-            <div className="relative z-10 mx-auto flex h-[65px] max-w-[1220px] items-center">
+            <div className="relative z-10 mx-auto flex h-[65px] max-w-[1220px] w-full px-4 md:px-6 items-center">
               <UpNavigation />
             </div>
             <div className="h-[16px]" aria-hidden />
           </header>
-            <div className="fixed pointer-events-none z-[95] hidden md:flex flex-row ml-[26%] items-center justify-between max-w-[900px] mx-auto gap-2 mt-[20px] px-4 lg:px-0">
+            <div className="fixed pointer-events-none z-[95] hidden md:flex flex-row items-center justify-center left-1/2 -translate-x-1/2 scale-[0.82] min-[880px]:scale-[0.92] min-[980px]:scale-100 origin-top mt-[20px] px-2 transition-transform duration-200">
               <HeaderDropDownSection />
             </div>
 

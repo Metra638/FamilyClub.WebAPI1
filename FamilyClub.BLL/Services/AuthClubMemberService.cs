@@ -161,6 +161,7 @@ public class AuthClubMemberService : IAuthClubMemberService
             Surname = user.Surname,
             PhoneNumber = user.PhoneNumber,
             AvatarData = user.AvatarData,
+            AvatarUrl = user.AvatarUrl,
             DateOfBirth = user.DateOfBirth,
             Roles = roles.ToList()
         };

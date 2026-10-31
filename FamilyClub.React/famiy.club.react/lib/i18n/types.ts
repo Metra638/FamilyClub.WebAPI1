@@ -87,6 +87,7 @@ export type Dictionary = {
       bookSets: string;
       announcements: string;
       more: string;
+      emptyShelf?: string;
     };
     about: {
       wideChoiceTitle: string;

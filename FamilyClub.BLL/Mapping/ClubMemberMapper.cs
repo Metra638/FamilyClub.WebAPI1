@@ -1,4 +1,4 @@
-﻿using FamilyClub.BLL.DTOs.ClubMember;
+using FamilyClub.BLL.DTOs.ClubMember;
 using FamilyClubLibrary;
 
 namespace FamilyClub.BLL.Mapping;
@@ -16,6 +16,7 @@ public static class ClubMemberMapper
             PhoneNumber = clubMember.PhoneNumber!,
             DateOfBirth = clubMember.DateOfBirth,
             AvatarData = clubMember.AvatarData,
+            AvatarUrl = clubMember.AvatarUrl,
             Roles = roles ?? new List<string>(),
             LockoutEnd = clubMember.LockoutEnd,
             LockedAt = clubMember.LockedAt,

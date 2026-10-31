@@ -21,7 +21,7 @@ export default function ButtonCloseList({ isOpen, onToggle }: ButtonCloseListPro
                 style={{
                     width: 60,
                     height: 360,
-                    transform: isOpen ? "translateY(-300px)" : "translateY(-298px)",
+                    transform: "translateY(-300px)",
                 }}
             >
                 <Image
@@ -50,7 +50,7 @@ export default function ButtonCloseList({ isOpen, onToggle }: ButtonCloseListPro
                         width={24}
                         height={24}
                         className={`absolute transition-transform duration-300 pointer-events-none ${
-                            isOpen ? "rotate-0" : "rotate-180"
+                            isOpen ? "rotate-180" : "rotate-0"
                         }`}
                     />
                 </button>

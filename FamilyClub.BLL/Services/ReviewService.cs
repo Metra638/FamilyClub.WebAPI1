@@ -180,13 +180,14 @@ public class ReviewService : IReviewService
                 AuthorNames = r.Product.Authors.Select(a => a.AuthorName).ToList(),
                 CoverImage = r.Product.ProductImages
                     .OrderBy(i => i.Id)
-                    .Select(i => new { i.Id, i.ImageName })
+                    .Select(i => new { i.Id, i.ImageName, i.ImageUrl })
                     .FirstOrDefault(),
                 MemberName = r.ClubMember != null ? r.ClubMember.Name : null,
                 MemberSurname = r.ClubMember != null ? r.ClubMember.Surname : null,
                 MemberUserName = r.ClubMember != null ? r.ClubMember.UserName : null,
                 MemberEmail = r.ClubMember != null ? r.ClubMember.Email : null,
                 MemberAvatarData = r.ClubMember != null ? r.ClubMember.AvatarData : null,
+                MemberAvatarUrl = r.ClubMember != null ? r.ClubMember.AvatarUrl : null,
             })
             .ToListAsync(cancellationToken);
 
@@ -203,11 +204,13 @@ public class ReviewService : IReviewService
             AuthorNames = r.AuthorNames,
             CoverImageId = r.CoverImage != null ? r.CoverImage.Id : null,
             CoverImageName = r.CoverImage != null ? r.CoverImage.ImageName : null,
+            CoverImageUrl = r.CoverImage != null ? r.CoverImage.ImageUrl : null,
             MemberName = r.MemberName,
             MemberSurname = r.MemberSurname,
             MemberUserName = r.MemberUserName,
             MemberEmail = r.MemberEmail,
             MemberAvatarData = r.MemberAvatarData,
+            MemberAvatarUrl = r.MemberAvatarUrl,
         }).ToList();
     }
 
@@ -219,9 +222,9 @@ public class ReviewService : IReviewService
             ProductId = row.ProductId,
             ProductName = row.ProductName,
             UserId = row.UserId,
-            UserAvatarData = row.MemberAvatarData is { Length: > 0 }
-                ? Convert.ToBase64String(row.MemberAvatarData)
-                : null,
+            UserAvatarData = !string.IsNullOrEmpty(row.MemberAvatarUrl)
+                ? row.MemberAvatarUrl
+                : (row.MemberAvatarData is { Length: > 0 } ? Convert.ToBase64String(row.MemberAvatarData) : null),
             UserName = ResolveDisplayName(
                 row.MemberName,
                 row.MemberSurname,
@@ -243,6 +246,7 @@ public class ReviewService : IReviewService
                         Id = row.CoverImageId.Value,
                         ImageName = row.CoverImageName ?? string.Empty,
                         ImageData = Array.Empty<byte>(),
+                        ImageUrl = row.CoverImageUrl,
                     },
                 },
         };
@@ -256,9 +260,9 @@ public class ReviewService : IReviewService
             ProductId = review.ProductId,
             ProductName = review.Product?.ProductName,
             UserId = review.UserId,
-            UserAvatarData = review.ClubMember?.AvatarData is { Length: > 0 }
-                ? Convert.ToBase64String(review.ClubMember.AvatarData)
-                : null,
+            UserAvatarData = !string.IsNullOrEmpty(review.ClubMember?.AvatarUrl)
+                ? review.ClubMember.AvatarUrl
+                : (review.ClubMember?.AvatarData is { Length: > 0 } ? Convert.ToBase64String(review.ClubMember.AvatarData) : null),
             UserName = ResolveDisplayName(
                 review.ClubMember?.Name,
                 review.ClubMember?.Surname,
@@ -274,8 +278,9 @@ public class ReviewService : IReviewService
             ProductImages = review.Product?.ProductImages?.Select(img => new ProductImageDto
             {
                 Id = img.Id,
-                ImageData = img.ImageData,
-                ImageName = img.ImageName
+                ImageData = img.ImageData ?? Array.Empty<byte>(),
+                ImageName = img.ImageName,
+                ImageUrl = img.ImageUrl
             }).ToList()
         };
     }
@@ -324,10 +329,12 @@ public class ReviewService : IReviewService
         public List<string> AuthorNames { get; init; } = [];
         public int? CoverImageId { get; init; }
         public string? CoverImageName { get; init; }
+        public string? CoverImageUrl { get; init; }
         public string? MemberName { get; init; }
         public string? MemberSurname { get; init; }
         public string? MemberUserName { get; init; }
         public string? MemberEmail { get; init; }
         public byte[]? MemberAvatarData { get; init; }
+        public string? MemberAvatarUrl { get; init; }
     }
 }

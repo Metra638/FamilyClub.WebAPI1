@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BookCard from "@/app/(user-site)/main_page/BookCard";
 import MobileBookCard from "@/app/(user-site)/main_page/mobile/MobileBookCard";
-import { ProductDto } from "@/lib/api/generated";
-import { productService } from "@/lib/api/services";
+import { ProductDto, FormatDto, CategoryDto, ReviewDto, Availability } from "@/lib/api/generated";
+import { productService, formatService, categoriesService, reviewService } from "@/lib/api/services";
 import { getProductCoverUrl } from "@/lib/products/productCoverUrl";
+import { getFormatTags } from "@/lib/recommendations/mapProductToBook";
 import { useLocale, useLocalizedPath, useTranslations } from "@/lib/i18n/LocaleProvider";
+import ShelfCat from "../main_page/ShelfCat";
+import { useMascotShelf } from "@/lib/mascot/MascotShelfContext";
 
 interface CatalogClientProps {
   initialProducts?: ProductDto[];
@@ -57,7 +60,105 @@ function pickShelfDecorsForRows(rowCount: number, seed: number): Array<ShelfDeco
   });
 }
 
+interface CatalogShelfRowProps {
+  rowIndex: number;
+  row: ProductDto[];
+  decor: ShelfDecor | null;
+  lp: (path: string) => string;
+  t: (key: string) => string;
+  getDesktopProductPrice: (p: ProductDto) => string;
+  getProductImage: (p: ProductDto) => string | undefined;
+}
+
+function CatalogShelfRow({
+  rowIndex,
+  row,
+  decor,
+  lp,
+  t,
+  getDesktopProductPrice,
+  getProductImage,
+}: CatalogShelfRowProps) {
+  const { isCatOnShelf, activeShelfIndex, registerShelf } = useMascotShelf();
+
+  useEffect(() => {
+    return registerShelf(rowIndex);
+  }, [rowIndex, registerShelf]);
+
+  const hasCat = isCatOnShelf && activeShelfIndex === rowIndex;
+
+  return (
+    <section
+      key={`catalog-shelf-${rowIndex}`}
+      className="relative w-full overflow-visible pt-0 pb-0"
+      style={{
+        backgroundImage:
+          "linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 12%, transparent) 0.24409%, transparent 17.892%), linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 22%, transparent) 9.5072%, transparent 49.996%), linear-gradient(90deg, var(--background-main) 0%, var(--background-main) 100%)",
+      }}
+    >
+      <div
+        id={`book-shelf-${rowIndex}`}
+        data-shelf-index={rowIndex}
+        className="relative h-[85px] md:h-[95px] w-full overflow-visible"
+      >
+        <img
+          src="/images/userProfile/Group 187.png"
+          alt=""
+          aria-hidden
+          className="absolute inset-0 z-10 w-full h-full object-fill pointer-events-none"
+        />
+
+        {hasCat && (
+          <div className="pointer-events-none absolute inset-0 z-50 mx-auto max-w-[1220px] px-4 lg:px-0">
+            <div className="relative h-full w-full" id="shelf-cat-anchor" data-shelf-cat="true">
+              <ShelfCat />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {decor ? (
+        <div className="pointer-events-none absolute inset-0 z-[15] hidden xl:block overflow-visible">
+          <img
+            src={decor.src}
+            alt=""
+            aria-hidden
+            className={`absolute object-contain ${
+              decor.side === "left" ? "left-0" : "right-0"
+            }`}
+            style={{
+              width: decor.width,
+              height: decor.height,
+              top: `calc(${55}px - ${decor.height}px + 12px + ${decor.offsetY ?? 0}px)`,
+            }}
+          />
+        </div>
+      ) : null}
+
+      <div className="relative mx-auto max-w-[1220px] px-4 lg:px-0">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[60px] pb-12 -mt-[50px]">
+          {row.map((product) => (
+            <Link
+              key={product.id}
+              href={lp(`/products/${product.id}`)}
+              className="flex justify-center"
+            >
+              <BookCard
+                title={product.productName || t("catalog.untitled")}
+                price={getDesktopProductPrice(product)}
+                image={getProductImage(product)}
+                rating={0}
+              />
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function CatalogClient({ initialProducts = [] }: CatalogClientProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations();
   const lp = useLocalizedPath();
@@ -66,6 +167,26 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
   const [allProducts, setAllProducts] = useState<ProductDto[]>(initialProducts);
   const [loading, setLoading] = useState(initialProducts.length === 0);
   const [loadError, setLoadError] = useState(false);
+  const [formats, setFormats] = useState<FormatDto[]>([]);
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [reviews, setReviews] = useState<ReviewDto[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      formatService.apiFormatsGet().catch(() => []),
+      categoriesService.apiCategoriesGet().catch(() => []),
+      reviewService.apiReviewsGet().catch(() => []),
+    ]).then(([formatsRes, categoriesRes, reviewsRes]) => {
+      if (!mounted) return;
+      if (Array.isArray(formatsRes)) setFormats(formatsRes);
+      if (Array.isArray(categoriesRes)) setCategories(categoriesRes);
+      if (Array.isArray(reviewsRes)) setReviews(reviewsRes);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (initialProducts.length > 0) return;
@@ -101,16 +222,27 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
     };
   }, [initialProducts.length]);
 
-  // Reset pagination to page 1 when search filters change
+  const reviewCountByProductId = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const r of reviews) {
+      if (!r.productId || r.approved === false) continue;
+      map.set(r.productId, (map.get(r.productId) ?? 0) + 1);
+    }
+    return map;
+  }, [reviews]);
+
+  const getReviewCountForProduct = (productId?: number) => {
+    if (!productId) return 0;
+    return reviewCountByProductId.get(productId) ?? 0;
+  };
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchParams]);
 
-  // Apply filters when search params or catalog data change
   const filteredProducts = useMemo(() => {
     let products = [...allProducts];
 
-    // Filter by category
     const categoryIds = searchParams.getAll("categoryId").flatMap(v => v.split(',')).map(id => parseInt(id)).filter(id => !isNaN(id));
     if (categoryIds.length > 0) {
       products = products.filter(
@@ -118,7 +250,6 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       );
     }
 
-    // Filter by author
     const authorIds = searchParams.getAll("authorId").flatMap(v => v.split(',')).map(id => parseInt(id)).filter(id => !isNaN(id));
     if (authorIds.length > 0) {
       products = products.filter(
@@ -126,7 +257,6 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       );
     }
 
-    // Filter by language
     const languageIds = searchParams.getAll("languageId").flatMap(v => v.split(',')).map(id => parseInt(id)).filter(id => !isNaN(id));
     if (languageIds.length > 0) {
       products = products.filter(
@@ -134,15 +264,19 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       );
     }
 
-    // Filter by format
     const formatIds = searchParams.getAll("formatId").flatMap(v => v.split(',')).map(id => parseInt(id)).filter(id => !isNaN(id));
-    if (formatIds.length > 0) {
-      products = products.filter(
-        (p) => p.formatIds?.some(id => formatIds.includes(id))
-      );
+    const formatKey = searchParams.get("format") as "paper" | "ebook" | "audio" | null;
+
+    if (formatIds.length > 0 || formatKey) {
+      const formatsMap = new Map<number, FormatDto>();
+      formats.forEach((f) => { if (f.id != null) formatsMap.set(f.id, f); });
+      products = products.filter((p) => {
+        const matchesId = formatIds.length > 0 ? p.formatIds?.some(id => formatIds.includes(id)) : false;
+        const matchesKey = formatKey && formatsMap.size > 0 ? getFormatTags(p.formatIds, formatsMap).includes(formatKey) : false;
+        return matchesId || matchesKey;
+      });
     }
 
-    // Filter by price range
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
     if (minPrice || maxPrice) {
@@ -154,7 +288,6 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       });
     }
 
-    // Filter by age restriction
     const ageRestrictionIds = searchParams.getAll("ageRestrictionId").flatMap(v => v.split(',')).map(id => parseInt(id)).filter(id => !isNaN(id));
     if (ageRestrictionIds.length > 0) {
       products = products.filter(
@@ -162,7 +295,6 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       );
     }
 
-    // Filter by year
     const year = searchParams.get("year");
     if (year) {
       const yearNum = parseInt(year);
@@ -173,7 +305,6 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       });
     }
 
-    // Filter by year range (e.g. yearFrom=2000&yearTo=2010 or yearFrom=0&yearTo=1999)
     const yearFrom = searchParams.get("yearFrom");
     const yearTo = searchParams.get("yearTo");
     if (yearFrom || yearTo) {
@@ -186,7 +317,6 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       });
     }
 
-    // Filter by search query
     const search = searchParams.get("search") || searchParams.get("q");
     if (search && search.trim()) {
       const q = search.trim().toLowerCase();
@@ -197,14 +327,44 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       );
     }
 
-    // Filter by promotion only
     const promoOnly = searchParams.get("promo");
     if (promoOnly === "true") {
       products = products.filter((p) => p.discountPrice != null);
     }
 
+    const setsOnly = searchParams.get("sets");
+    if (setsOnly === "true") {
+      products = products.filter((p) => (p.itemsInSet ?? 0) > 1);
+    }
+
+    const availability = searchParams.get("availability");
+    if (availability === "2" || availability === "announcement") {
+      products = products.filter((p) => p.availability === Availability.NUMBER_2 || (p.availability as unknown) === 2);
+    }
+
+    const sort = searchParams.get("sort");
+    if (sort === "bestsellers" || sort === "hits") {
+      products.sort((a, b) => {
+        const countA = getReviewCountForProduct(a.id);
+        const countB = getReviewCountForProduct(b.id);
+        if (countB !== countA) return countB - countA;
+        return (b.id ?? 0) - (a.id ?? 0);
+      });
+    } else if (sort === "newest" || sort === "new") {
+      products.sort((a, b) => {
+        const timeA = a.publishingDate ? new Date(a.publishingDate).getTime() : 0;
+        const timeB = b.publishingDate ? new Date(b.publishingDate).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.id ?? 0) - (a.id ?? 0);
+      });
+    } else if (sort === "price-asc") {
+      products.sort((a, b) => (a.discountPrice ?? a.price ?? 0) - (b.discountPrice ?? b.price ?? 0));
+    } else if (sort === "price-desc") {
+      products.sort((a, b) => (b.discountPrice ?? b.price ?? 0) - (a.discountPrice ?? a.price ?? 0));
+    }
+
     return products;
-  }, [allProducts, searchParams]);
+  }, [allProducts, searchParams, formats, reviews, reviewCountByProductId]);
 
   const totalProducts = filteredProducts.length;
   const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE);
@@ -263,7 +423,6 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
     return pages;
   }, [currentPage, totalPages]);
 
-  // Formatted user-friendly active filter chips
   const activeFilterChips = useMemo(() => {
     const chips: { id: string; label: string; removeKeys: string[] }[] = [];
     const currency = locale === "en" ? "UAH" : "грн";
@@ -304,9 +463,15 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
 
     const categoryIds = searchParams.getAll("categoryId").flatMap(v => v.split(',')).filter(Boolean);
     if (categoryIds.length > 0) {
+      let catLabel = t("catalog.filters.categoriesSelected").replace("{count}", String(categoryIds.length));
+      if (categoryIds.length === 1) {
+        const targetId = parseInt(categoryIds[0]);
+        const cat = categories.find((c) => c.id === targetId);
+        if (cat?.categoryName) catLabel = cat.categoryName;
+      }
       chips.push({
         id: "categories",
-        label: t("catalog.filters.categoriesSelected").replace("{count}", String(categoryIds.length)),
+        label: catLabel,
         removeKeys: ["categoryId"],
       });
     }
@@ -330,11 +495,17 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
     }
 
     const formatIds = searchParams.getAll("formatId").flatMap(v => v.split(',')).filter(Boolean);
-    if (formatIds.length > 0) {
+    const formatKey = searchParams.get("format");
+    if (formatIds.length > 0 || formatKey) {
+      let label = t("catalog.filters.formatsSelected").replace("{count}", String(formatIds.length || 1));
+      if (formatKey === "paper") label = t("product.formats.paper") || "Паперові книги";
+      else if (formatKey === "ebook") label = t("product.formats.ebook") || "eBook";
+      else if (formatKey === "audio") label = t("product.formats.audio") || "Аудіокниги";
+
       chips.push({
         id: "formats",
-        label: t("catalog.filters.formatsSelected").replace("{count}", String(formatIds.length)),
-        removeKeys: ["formatId"],
+        label,
+        removeKeys: ["formatId", "format"],
       });
     }
 
@@ -361,115 +532,35 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
       chips.push({ id: "promo-tag", label: t("catalog.filters.promo"), removeKeys: ["promo"] });
     }
 
-    return chips;
-  }, [searchParams, t, locale]);
-
-  const desktopActiveFilterChips = useMemo(() => {
-    const chips: { id: string; label: string; removeKeys: string[] }[] = [];
-    const currency = locale === "en" ? "UAH" : "грн";
-
-    const yearFrom = searchParams.get("yearFrom");
-    const yearTo = searchParams.get("yearTo");
-    const year = searchParams.get("year");
-
-    if (yearFrom || yearTo) {
-      let label = t("catalog.filters.publicationYear") + " ";
-      if (yearFrom === "0" && yearTo === "1999") label += t("catalog.filters.before2000");
-      else if (yearFrom === "2000" && yearTo === "2010") label += t("catalog.filters.year2000_2010");
-      else if (yearFrom === "2010" && yearTo === "2020") label += t("catalog.filters.year2010_2020");
-      else if (yearFrom === "2020" && (yearTo === "3000" || yearTo === "9999")) label += t("catalog.filters.from2020");
-      else if (yearFrom && yearTo) label += `${yearFrom}–${yearTo}`;
-      else if (yearFrom) label += t("catalog.filters.from").replace("{value}", yearFrom);
-      else if (yearTo) label += t("catalog.filters.to").replace("{value}", yearTo);
-
-      chips.push({ id: "year-range", label, removeKeys: ["yearFrom", "yearTo"] });
-    } else if (year) {
-      chips.push({
-        id: "year-exact",
-        label: `${t("catalog.filters.publicationYear")} ${year}`,
-        removeKeys: ["year"],
-      });
+    const sort = searchParams.get("sort");
+    if (sort === "bestsellers" || sort === "hits") {
+      chips.push({ id: "sort-bestsellers", label: t("home.sections.bestsellers") || "Хіти продажу", removeKeys: ["sort"] });
+    } else if (sort === "newest" || sort === "new") {
+      chips.push({ id: "sort-newest", label: t("home.sections.newArrivals") || "Новинки", removeKeys: ["sort"] });
     }
 
-    const minPrice = searchParams.get("minPrice");
-    const maxPrice = searchParams.get("maxPrice");
-    if (minPrice || maxPrice) {
-      let label = t("catalog.filters.price") + " ";
-      if (minPrice && maxPrice) label += `${minPrice}–${maxPrice} ${currency}`;
-      else if (minPrice) label += `${t("catalog.filters.from").replace("{value}", minPrice)} ${currency}`;
-      else if (maxPrice) label += `${t("catalog.filters.to").replace("{value}", maxPrice)} ${currency}`;
-
-      chips.push({ id: "price-range", label, removeKeys: ["minPrice", "maxPrice"] });
+    const sets = searchParams.get("sets");
+    if (sets === "true") {
+      chips.push({ id: "sets-tag", label: t("home.sections.bookSets") || "Книжкові комплекти", removeKeys: ["sets"] });
     }
 
-    const categoryIds = searchParams.getAll("categoryId").flatMap(v => v.split(',')).filter(Boolean);
-    if (categoryIds.length > 0) {
-      chips.push({
-        id: "categories",
-        label: t("catalog.filters.categoriesSelected").replace("{count}", String(categoryIds.length)),
-        removeKeys: ["categoryId"],
-      });
-    }
-
-    const authorIds = searchParams.getAll("authorId").flatMap(v => v.split(',')).filter(Boolean);
-    if (authorIds.length > 0) {
-      chips.push({
-        id: "authors",
-        label: t("catalog.filters.authorsSelected").replace("{count}", String(authorIds.length)),
-        removeKeys: ["authorId"],
-      });
-    }
-
-    const languageIds = searchParams.getAll("languageId").flatMap(v => v.split(',')).filter(Boolean);
-    if (languageIds.length > 0) {
-      chips.push({
-        id: "languages",
-        label: t("catalog.filters.languagesSelected").replace("{count}", String(languageIds.length)),
-        removeKeys: ["languageId"],
-      });
-    }
-
-    const formatIds = searchParams.getAll("formatId").flatMap(v => v.split(',')).filter(Boolean);
-    if (formatIds.length > 0) {
-      chips.push({
-        id: "formats",
-        label: t("catalog.filters.formatsSelected").replace("{count}", String(formatIds.length)),
-        removeKeys: ["formatId"],
-      });
-    }
-
-    const ageIds = searchParams.getAll("ageRestrictionId").flatMap(v => v.split(',')).filter(Boolean);
-    if (ageIds.length > 0) {
-      chips.push({
-        id: "age-restrictions",
-        label: t("catalog.filters.ageCategories").replace("{count}", String(ageIds.length)),
-        removeKeys: ["ageRestrictionId"],
-      });
-    }
-
-    const search = searchParams.get("search") || searchParams.get("q");
-    if (search && search.trim()) {
-      chips.push({
-        id: "search-q",
-        label: t("catalog.filters.search").replace("{query}", search.trim()),
-        removeKeys: ["search", "q"],
-      });
-    }
-
-    const promo = searchParams.get("promo");
-    if (promo === "true") {
-      chips.push({ id: "promo-tag", label: t("catalog.filters.promo"), removeKeys: ["promo"] });
+    const availability = searchParams.get("availability");
+    if (availability === "2" || availability === "announcement") {
+      chips.push({ id: "availability-tag", label: t("home.sections.announcements") || "Анонси", removeKeys: ["availability"] });
     }
 
     return chips;
-  }, [searchParams, t, locale]);
+  }, [searchParams, t, locale, categories]);
 
-  const handleRemoveFilterChip = (keysToRemove: string[], localized = false) => {
+  const handleRemoveFilterChip = (keysToRemove: string[]) => {
     const params = new URLSearchParams(searchParams.toString());
     keysToRemove.forEach((key) => params.delete(key));
-    const basePath = localized ? lp("/products") : "/products";
-    const newUrl = params.toString() ? `${basePath}?${params.toString()}` : basePath;
-    window.history.replaceState({}, "", newUrl);
+    const newUrl = params.toString() ? `${lp("/products")}?${params.toString()}` : lp("/products");
+    router.replace(newUrl, { scroll: false });
+  };
+
+  const handleClearAllFilters = () => {
+    router.replace(lp("/products"), { scroll: false });
   };
 
   return (
@@ -496,7 +587,6 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
           </Link>
         </div>
 
-        {/* Mobile Active Filter Chips */}
         {activeFilterChips.length > 0 && (
           <div className="mb-4 flex flex-col gap-2 bg-[color-mix(in_srgb,var(--background-elevated)_92%,transparent)] p-3 rounded-2xl border border-[var(--color-border-warm)] shadow-sm">
             <div className="flex items-center justify-between">
@@ -505,9 +595,7 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  window.history.replaceState({}, "", lp("/products"));
-                }}
+                onClick={handleClearAllFilters}
                 className="text-[12px] font-bold text-[var(--color-green)] hover:underline"
               >
                 {t("catalog.clearAll")}
@@ -624,9 +712,7 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
             <p className="text-[14px] text-[var(--color-muted-fg)] mb-4">{t("catalog.noProductsText")}</p>
             {activeFilterChips.length > 0 && (
               <button
-                onClick={() => {
-                  window.history.replaceState({}, "", lp("/products"));
-                }}
+                onClick={handleClearAllFilters}
                 className="px-4 py-2 rounded-full bg-[var(--color-green)] text-white font-semibold text-[14px] shadow-sm"
               >
                 {t("catalog.clearAllFilters")}
@@ -664,13 +750,12 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
               </div>
             </div>
 
-            {/* Desktop Active Filter Chips */}
-            {desktopActiveFilterChips.length > 0 && (
+            {activeFilterChips.length > 0 && (
               <div className="mt-6 flex flex-wrap items-center gap-2 bg-[color-mix(in_srgb,var(--background-elevated)_92%,transparent)] p-3 rounded-2xl border border-[var(--color-border-warm)] shadow-sm">
                 <span className="text-sm font-semibold text-[var(--foreground-primary)] mr-1">
                   {t("catalog.activeFilters")}
                 </span>
-                {desktopActiveFilterChips.map((chip) => (
+                {activeFilterChips.map((chip) => (
                   <div
                     key={chip.id}
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-[color-mix(in_srgb,var(--color-green)_10%,transparent)] border border-[color-mix(in_srgb,var(--color-green)_20%,transparent)] rounded-full text-xs font-semibold text-[var(--color-green)]"
@@ -678,7 +763,7 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
                     <span>{chip.label}</span>
                     <button
                       type="button"
-                      onClick={() => handleRemoveFilterChip(chip.removeKeys, true)}
+                      onClick={() => handleRemoveFilterChip(chip.removeKeys)}
                       className="text-[var(--color-green)] hover:text-[var(--foreground-primary)] font-bold ml-1 transition-colors"
                       aria-label={t("catalog.removeFilterAria").replace("{label}", chip.label)}
                     >
@@ -688,9 +773,7 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
                 ))}
                 <button
                   type="button"
-                  onClick={() => {
-                    window.history.replaceState({}, "", lp("/products"));
-                  }}
+                  onClick={handleClearAllFilters}
                   className="ml-auto text-xs font-bold text-[var(--color-green)] hover:underline"
                 >
                   {t("catalog.clearAll")}
@@ -722,62 +805,16 @@ export default function CatalogClient({ initialProducts = [] }: CatalogClientPro
                   const row = paginatedProducts.slice(rowIndex * 4, rowIndex * 4 + 4);
                   const decor = shelfDecorByRow[rowIndex];
                   return (
-                    <section
+                    <CatalogShelfRow
                       key={`catalog-shelf-${rowIndex}`}
-                      className="relative w-full overflow-visible pt-0 pb-0"
-                      style={{
-                        backgroundImage:
-                          "linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 12%, transparent) 0.24409%, transparent 17.892%), linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 22%, transparent) 9.5072%, transparent 49.996%), linear-gradient(90deg, var(--background-main) 0%, var(--background-main) 100%)",
-                      }}
-                    >
-                      <div className="relative h-[85px] md:h-[95px] w-full overflow-visible">
-                        <img
-                          src="/images/userProfile/Group 187.png"
-                          alt=""
-                          aria-hidden
-                          className="absolute inset-0 z-10 w-full h-full object-fill pointer-events-none"
-                        />
-                      </div>
-
-                      {/* Side props on shelves — random per row (xl+) */}
-                      {decor ? (
-                        <div className="pointer-events-none absolute inset-0 z-[15] hidden xl:block overflow-visible">
-                          <img
-                            src={decor.src}
-                            alt=""
-                            aria-hidden
-                            className={`absolute object-contain ${
-                              decor.side === "left" ? "left-0" : "right-0"
-                            }`}
-                            style={{
-                              width: decor.width,
-                              height: decor.height,
-                              // низ декору ≈ на поверхні полиці (~85–95px)
-                              top: `calc(${55}px - ${decor.height}px + 12px + ${decor.offsetY ?? 0}px)`,
-                            }}
-                          />
-                        </div>
-                      ) : null}
-
-                      <div className="relative mx-auto max-w-[1220px] px-4 lg:px-0">
-                        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[60px] pb-12 -mt-[50px]">
-                          {row.map((product) => (
-                            <Link
-                              key={product.id}
-                              href={lp(`/products/${product.id}`)}
-                              className="flex justify-center"
-                            >
-                              <BookCard
-                                title={product.productName || t("catalog.untitled")}
-                                price={getDesktopProductPrice(product)}
-                                image={getProductImage(product)}
-                                rating={0}
-                              />
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    </section>
+                      rowIndex={rowIndex}
+                      row={row}
+                      decor={decor}
+                      lp={lp}
+                      t={t}
+                      getDesktopProductPrice={getDesktopProductPrice}
+                      getProductImage={getProductImage}
+                    />
                   );
                 })}
               </div>

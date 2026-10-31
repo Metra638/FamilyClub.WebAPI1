@@ -1,6 +1,6 @@
-﻿using FamilyClub.BLL.DTOs.Complaint;
+using FamilyClub.BLL.DTOs.Complaint;
 using FamilyClub.BLL.Interfaces;
-using FamilyClub.DAL.Interfaces; // Переконайся, що тут є IComplaintRepository та IUnitOfWork
+using FamilyClub.DAL.Interfaces;
 using FamilyClubLibrary;
 using System;
 using System.Collections.Generic;
@@ -15,11 +15,16 @@ namespace FamilyClub.BLL.Services
         private const int MAX_IMAGES = 5;
         private readonly IComplaintRepository _complaintRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IStorageService _storageService;
 
-        public ComplaintService(IComplaintRepository complaintRepository, IUnitOfWork unitOfWork)
+        public ComplaintService(
+            IComplaintRepository complaintRepository,
+            IUnitOfWork unitOfWork,
+            IStorageService storageService)
         {
             _complaintRepository = complaintRepository;
             _unitOfWork = unitOfWork;
+            _storageService = storageService;
         }
 
         public async Task<IEnumerable<ComplaintsReadDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -48,7 +53,7 @@ namespace FamilyClub.BLL.Services
                 ComplaintType = dto.ComplaintType,
                 ClubMemberId = dto.ClubMemberId,
                 IsResolved = false,
-                CreatedAt = DateTime.UtcNow, // Встановлюємо дату створення на бекенді
+                CreatedAt = DateTime.UtcNow,
                 ResolvedAt = null,
                 ResolutionNotes = null
             };
@@ -58,11 +63,31 @@ namespace FamilyClub.BLL.Services
             {
                 foreach (var imageDto in dto.Images)
                 {
+                    string? imageUrl = imageDto.ImageUrl;
+                    string? storageKey = null;
+                    byte[]? imgData = imageDto.ImageData;
+
+                    if (_storageService.IsConfigured && imgData != null && imgData.Length > 0 && string.IsNullOrEmpty(imageUrl))
+                    {
+                        try
+                        {
+                            imageUrl = await _storageService.UploadAsync(imgData, imageDto.ImageName, imageDto.ContentType ?? "image/jpeg", "complaints", cancellationToken);
+                            storageKey = _storageService.ExtractKey(imageUrl);
+                            imgData = Array.Empty<byte>();
+                        }
+                        catch
+                        {
+                            // fallback to database
+                        }
+                    }
+
                     var complaintImage = new ComplaintImage
                     {
-                        ImageData = imageDto.ImageData,
+                        ImageData = imgData,
                         ImageName = imageDto.ImageName,
                         ContentType = imageDto.ContentType,
+                        ImageUrl = imageUrl,
+                        StorageKey = storageKey,
                         UploadedAt = DateTime.UtcNow
                     };
                     complaint.ComplaintImages.Add(complaintImage);
@@ -114,6 +139,18 @@ namespace FamilyClub.BLL.Services
                 return false;
             }
 
+            if (complaint.ComplaintImages != null)
+            {
+                foreach (var img in complaint.ComplaintImages)
+                {
+                    var key = img.StorageKey ?? img.ImageUrl;
+                    if (!string.IsNullOrWhiteSpace(key))
+                    {
+                        await _storageService.DeleteAsync(key, cancellationToken);
+                    }
+                }
+            }
+
             _complaintRepository.Delete(complaint);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -122,7 +159,6 @@ namespace FamilyClub.BLL.Services
 
         public async Task<IEnumerable<ComplaintsReadDto>> GetByClubMemberIdAsync(string clubMemberId, CancellationToken cancellationToken = default)
         {
-            // Припускаємо, що у твоєму репозиторії є відповідний метод
             var complaints = await _complaintRepository.GetByClubMemberIdAsync(clubMemberId, cancellationToken);
             return complaints.Select(MapToReadDto);
         }
@@ -138,11 +174,31 @@ namespace FamilyClub.BLL.Services
             if (complaint.ComplaintImages.Count >= MAX_IMAGES)
                 throw new InvalidOperationException($"Cannot add more than {MAX_IMAGES} images to a complaint.");
 
+            string? imageUrl = imageDto.ImageUrl;
+            string? storageKey = null;
+            byte[]? imgData = imageDto.ImageData;
+
+            if (_storageService.IsConfigured && imgData != null && imgData.Length > 0 && string.IsNullOrEmpty(imageUrl))
+            {
+                try
+                {
+                    imageUrl = await _storageService.UploadAsync(imgData, imageDto.ImageName, imageDto.ContentType ?? "image/jpeg", "complaints", cancellationToken);
+                    storageKey = _storageService.ExtractKey(imageUrl);
+                    imgData = Array.Empty<byte>();
+                }
+                catch
+                {
+                    // fallback to database
+                }
+            }
+
             var complaintImage = new ComplaintImage
             {
-                ImageData = imageDto.ImageData,
+                ImageData = imgData,
                 ImageName = imageDto.ImageName,
                 ContentType = imageDto.ContentType,
+                ImageUrl = imageUrl,
+                StorageKey = storageKey,
                 ComplaintId = complaintId,
                 UploadedAt = DateTime.UtcNow
             };
@@ -163,6 +219,12 @@ namespace FamilyClub.BLL.Services
             var image = complaint.ComplaintImages.FirstOrDefault(img => img.Id == imageId);
             if (image == null)
                 return false;
+
+            var key = image.StorageKey ?? image.ImageUrl;
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                await _storageService.DeleteAsync(key, cancellationToken);
+            }
 
             complaint.ComplaintImages.Remove(image);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -205,7 +267,8 @@ namespace FamilyClub.BLL.Services
                 ImageName = image.ImageName,
                 ContentType = image.ContentType,
                 UploadedAt = image.UploadedAt,
-                ImageData = image.ImageData
+                ImageData = image.ImageData,
+                ImageUrl = image.ImageUrl
             };
         }
     }

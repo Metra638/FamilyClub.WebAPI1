@@ -483,6 +483,14 @@ namespace FamilyClub.DAL.Migrations
                         .HasColumnType("bytea")
                         .HasColumnName("avatar_data");
 
+                    b.Property<string>("AvatarStorageKey")
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_storage_key");
+
+                    b.Property<string>("AvatarUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_url");
+
                     b.Property<int?>("BlockReasonId")
                         .HasColumnType("integer")
                         .HasColumnName("block_reason_id");
@@ -655,7 +663,6 @@ namespace FamilyClub.DAL.Migrations
                         .HasColumnName("content_type");
 
                     b.Property<byte[]>("ImageData")
-                        .IsRequired()
                         .HasColumnType("bytea")
                         .HasColumnName("image_data");
 
@@ -664,6 +671,14 @@ namespace FamilyClub.DAL.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("image_name");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
+
+                    b.Property<string>("StorageKey")
+                        .HasColumnType("text")
+                        .HasColumnName("storage_key");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1103,7 +1118,6 @@ namespace FamilyClub.DAL.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<byte[]>("ImageData")
-                        .IsRequired()
                         .HasColumnType("bytea")
                         .HasColumnName("image_data");
 
@@ -1113,9 +1127,17 @@ namespace FamilyClub.DAL.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("image_name");
 
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
+
                     b.Property<int>("ProductId")
                         .HasColumnType("integer")
                         .HasColumnName("product_id");
+
+                    b.Property<string>("StorageKey")
+                        .HasColumnType("text")
+                        .HasColumnName("storage_key");
 
                     b.HasKey("Id")
                         .HasName("pk_product_image");

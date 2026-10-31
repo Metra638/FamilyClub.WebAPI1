@@ -1,10 +1,7 @@
 using FamilyClub.BLL.DTOs.Author;
 using FamilyClub.BLL.Interfaces;
-using FamilyClub.BLL.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace FamilyClub.WebAPI.Controllers
 {
@@ -13,10 +10,12 @@ namespace FamilyClub.WebAPI.Controllers
 	public class AuthorsController : ControllerBase
 	{
 		private readonly IAuthorService _authorService;
+		private readonly IStorageService _storageService;
 
-		public AuthorsController(IAuthorService authorService)
+		public AuthorsController(IAuthorService authorService, IStorageService storageService)
 		{
 			_authorService = authorService;
+			_storageService = storageService;
 		}
 
 		// GET: api/<AuthorsController>
@@ -76,6 +75,17 @@ namespace FamilyClub.WebAPI.Controllers
 		[HttpDelete("{id:int}")]
 		public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
 		{
+			var author = await _authorService.GetByIdAsync(id, cancellationToken);
+			if (author is null)
+			{
+				return NotFound();
+			}
+
+			if (!string.IsNullOrWhiteSpace(author.PhotoUrl))
+			{
+				await _storageService.DeleteAsync(author.PhotoUrl, cancellationToken);
+			}
+
 			var deleted = await _authorService.DeleteAsync(id, cancellationToken);
 			if (!deleted)
 			{
@@ -97,18 +107,31 @@ namespace FamilyClub.WebAPI.Controllers
 			if (author is null)
 				return NotFound();
 
-			var uploadsFolder = Path.Combine("wwwroot", "images", "authors");
-			Directory.CreateDirectory(uploadsFolder);
-
-			var fileName = $"{id}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
-			var filePath = Path.Combine(uploadsFolder, fileName);
-
-			using (var stream = new FileStream(filePath, FileMode.Create))
+			string photoUrl;
+			if (_storageService.IsConfigured)
 			{
-				await photo.CopyToAsync(stream, cancellationToken);
-			}
+				if (!string.IsNullOrWhiteSpace(author.PhotoUrl))
+				{
+					await _storageService.DeleteAsync(author.PhotoUrl, cancellationToken);
+				}
 
-			var photoUrl = $"/images/authors/{fileName}";
+				photoUrl = await _storageService.UploadFileAsync(photo, "authors", cancellationToken);
+			}
+			else
+			{
+				var uploadsFolder = Path.Combine("wwwroot", "images", "authors");
+				Directory.CreateDirectory(uploadsFolder);
+
+				var fileName = $"{id}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+				var filePath = Path.Combine(uploadsFolder, fileName);
+
+				using (var stream = new FileStream(filePath, FileMode.Create))
+				{
+					await photo.CopyToAsync(stream, cancellationToken);
+				}
+
+				photoUrl = $"/images/authors/{fileName}";
+			}
 
 			author.PhotoUrl = photoUrl;
 			await _authorService.UpdateAsync(id, author, cancellationToken);

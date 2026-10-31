@@ -102,16 +102,21 @@ export default function UpNavigation() {
   };
   return (
     <>
-      <div className="max-w-[1100px] mx-auto flex items-center h-full ml-[92px] relative flex-nowrap justify-between">
-        <Logo />
-        <div className="flex items-center w-[800px] relative ml-[140px] gap-1 mt-[2px]">
-          <div className="flex h-[50px] items-center justify-center gap-1">
+      <div className="w-full flex items-center justify-between h-full relative flex-nowrap">
+        {/* Left: Logo */}
+        <div className="w-[120px] h-[65px] shrink-0 relative">
+          <Logo />
+        </div>
+
+        {/* Center: Language + Theme + Search bar */}
+        <div className="flex items-center justify-center flex-1 min-w-0 max-w-[480px] mx-2 lg:mx-4 gap-2">
+          <div className="flex h-[50px] items-center justify-center gap-1 shrink-0">
             <UaCircle />
             <ThemeToggle />
           </div>
-          <div className="group flex items-center justify-center">
+          <div className="group flex items-center justify-center flex-1 min-w-[140px] max-w-[320px]">
             <div
-              className="flex items-center bg-[var(--color-white)] relative left-[8px] rounded-[25px] px-2 h-[36px] w-[290px] shadow-[0px_0px_10px_0px_#24242466] transition-all
+              className="flex items-center bg-[var(--color-white)] rounded-[25px] px-2 h-[36px] w-full shadow-[0px_0px_10px_0px_#24242466] transition-all
           duration-300
           group-hover:bg-[var(--color-white)]
           group-hover:shadow-[0px_0px_15px_0px_#242424CC]"
@@ -119,52 +124,54 @@ export default function UpNavigation() {
               <SearchIco />
             </div>
           </div>
-          <div className="flex relative items-center gap-4 h-[50px] w-[384px] left-[2vw] ">
-            <div className="flex items-center h-[50px] w-[170px] mt-[4px] gap-[8px]">
-              <div className=" relative w-[40px] h-[40px] ">
-                <Link href={localizedPath("/community", locale)}>
-                  <IcoPeople />
-                </Link>
-              </div>
-              <div className=" relative w-[40px] h-[40px] ">
-                <Link href={localizedPath("/userProfile?tab=favorite", locale)}>
-                  <FavoriteButton />
-                </Link>
-              </div>
-              <div className=" relative w-[40px] h-[40px] ">
-                <Link href={localizedPath("/cart", locale)}>
-                  <ShoppingCartButton />
-                </Link>
-              </div>
+        </div>
+
+        {/* Right: Community, Favorites, Cart + User Dropdown / Auth */}
+        <div className="flex items-center gap-2 lg:gap-4 shrink-0">
+          <div className="flex items-center h-[50px] gap-2 shrink-0">
+            <div className="relative w-[40px] h-[40px]">
+              <Link href={localizedPath("/community", locale)}>
+                <IcoPeople />
+              </Link>
             </div>
-            <div className="flex relative mt-1 -ml-5 items-center h-[40px] w-[144px]">
-              {isAuthenticated ? (
-                <UserMenuDrop
-                  member={{
-                    fullName: `${member?.name} ${member?.surname}`,
-                    email: member?.email,
-                    avatarData: member?.avatarData,
-                  }}
-                  notificationCount={notificationCount}
-                  onCabinet={() => router.push(localizedPath("/userProfile", locale))}
-                  onNotifications={() => router.push(localizedPath("/notifications", locale))}
-                  onOrders={() => router.push(localizedPath("/orders", locale))}
-                  onLibrary={() => router.push(localizedPath("/library", locale))}
-                  showAdminPanel={showAdminPanel}
-                  onAdminPanel={() => router.push("/admin/desktop")}
-                  onLogout={handleLogout}
-                />
-              ) : (
-                <div className="flex w-[196px] items-center gap-1">
-                  <Link href={localizedPath("/login", locale)}>
-                    <UserLoginButton />
-                  </Link>
-                  <Link href={localizedPath("/register", locale)}>
-                    <UserAuthorizationButton />
-                  </Link>
-                </div>
-              )}
+            <div className="relative w-[40px] h-[40px]">
+              <Link href={localizedPath("/userProfile?tab=favorite", locale)}>
+                <FavoriteButton />
+              </Link>
             </div>
+            <div className="relative w-[40px] h-[40px]">
+              <Link href={localizedPath("/cart", locale)}>
+                <ShoppingCartButton />
+              </Link>
+            </div>
+          </div>
+          <div className="flex items-center h-[40px] shrink-0">
+            {isAuthenticated ? (
+              <UserMenuDrop
+                member={{
+                  fullName: `${member?.name} ${member?.surname}`,
+                  email: member?.email,
+                  avatarData: member?.avatarData,
+                }}
+                notificationCount={notificationCount}
+                onCabinet={() => router.push(localizedPath("/userProfile", locale))}
+                onNotifications={() => router.push(localizedPath("/notifications", locale))}
+                onOrders={() => router.push(localizedPath("/orders", locale))}
+                onLibrary={() => router.push(localizedPath("/library", locale))}
+                showAdminPanel={showAdminPanel}
+                onAdminPanel={() => router.push("/admin/desktop")}
+                onLogout={handleLogout}
+              />
+            ) : (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Link href={localizedPath("/login", locale)}>
+                  <UserLoginButton />
+                </Link>
+                <Link href={localizedPath("/register", locale)}>
+                  <UserAuthorizationButton />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

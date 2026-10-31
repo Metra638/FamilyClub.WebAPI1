@@ -8,6 +8,7 @@ namespace FamilyClub.BLL.DTOs.Complaint
         public string ImageName { get; set; } = string.Empty;
         public string? ContentType { get; set; }
         public DateTime UploadedAt { get; set; }
-        public byte[] ImageData { get; set; } = null!;
+        public byte[]? ImageData { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }

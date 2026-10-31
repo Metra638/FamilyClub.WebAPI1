@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace FamilyClubLibrary
@@ -7,7 +7,7 @@ namespace FamilyClubLibrary
     {
         public int Id { get; set; }
 
-        public required byte[] ImageData { get; set; }
+        public byte[]? ImageData { get; set; } = Array.Empty<byte>();
 
         [MaxLength(255)]
         public string ImageName { get; set; } = string.Empty;
@@ -17,6 +17,9 @@ namespace FamilyClubLibrary
         public string? ContentType { get; set; }
 
         public DateTime UploadedAt { get; set; }
+
+        public string? ImageUrl { get; set; }
+        public string? StorageKey { get; set; }
 
         // Foreign key to Complaint
         public int ComplaintId { get; set; }

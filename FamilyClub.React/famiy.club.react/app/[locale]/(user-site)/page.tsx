@@ -1,32 +1,3 @@
-// import Image from "next/image";
-//
-//
-// export default async function Home() {
-// /////////////////////////////////////////////////////
-// // Added to test connection between backend and frontend
-//   let message = "Loading...";
-//   try {
-//     const response = await fetch('https://localhost:7069/api/Home', {
-//       cache: 'no-store' // This ensures we get fresh data every time
-//     });
-//
-//     if (response.ok) {
-//       message = await response.text(); // We use .text() because the API returns a string
-//     } else {
-//       message = "Error: Backend reached but returned " + response.status;
-//     }
-//   } catch (error) {
-//     console.log("REAL ERROR:", error);
-//     message = "Connection Failed: Is the Backend running?";
-//   }
-// /////////////////////////////////////////////////////
-//
-//   return (
-//     <h1>Our amazing `main_page`.</h1>
-//
-//   );
-// }
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -36,7 +7,7 @@ import InkSection from "@/app/(user-site)/main_page/InkSection";
 import AboutSection from "@/app/(user-site)/main_page/AboutSection";
 import AdvantagesSection from "@/app/(user-site)/main_page/AdvantagesSection";
 import ReviewsSection from "@/app/(user-site)/main_page/ReviewsSection";
-import FormatSection from "@/app/(user-site)/main_page/FormatSection";
+import FormatSection, { type FormatKind } from "@/app/(user-site)/main_page/FormatSection";
 import PromoBanner from "@/app/(user-site)/main_page/PromoBanner";
 import MobileHome from "@/app/(user-site)/main_page/mobile/MobileHome";
 import {
@@ -119,6 +90,7 @@ export default function Home() {
     const [authors, setAuthors] = useState<AuthorDTO[]>([]);
     const [formats, setFormats] = useState<FormatDto[]>([]);
     const [orders, setOrders] = useState<OrderDTO[]>([]);
+    const [selectedFormat, setSelectedFormat] = useState<FormatKind | null>(null);
     const { user } = useCurrentUser();
     const { favorites, toggleFavorite } = useFavorites(user?.id);
     const isFav = (id?: number) => !!id && favorites.some((f) => f.id === id);
@@ -252,12 +224,19 @@ export default function Home() {
     const getFormatTags = (formatIds?: Array<number> | null) =>
         buildFormatTags(formatIds, formatById);
 
-    const resolveCategoryId = (name: string) => {
-        const normalized = name.trim().toLowerCase();
-        const direct = categoryByName.get(normalized);
-        if (direct != null) return direct;
-        const fuzzy = categories.find((category) => category.categoryName?.toLowerCase().includes(normalized));
-        return fuzzy?.id;
+    const resolveCategoryId = (candidates: string[]) => {
+        for (const candidate of candidates) {
+            const normalized = candidate.trim().toLowerCase();
+            const direct = categoryByName.get(normalized);
+            if (direct != null) return direct;
+            const fuzzy = categories.find((cat) => {
+                const name = cat.categoryName?.trim().toLowerCase();
+                if (!name) return false;
+                return name.includes(normalized) || normalized.includes(name);
+            });
+            if (fuzzy?.id != null) return fuzzy.id;
+        }
+        return undefined;
     };
 
     const mapProductsToBooks = (items: ProductDto[], localizeHref?: (path: string) => string) =>
@@ -296,61 +275,107 @@ export default function Home() {
         ? t("home.sections.recommendationsForYou")
         : t("home.sections.newForYou");
 
-    const romanceCategoryId = resolveCategoryId("Романи") ?? resolveCategoryId("Роман");
-    const thrillerCategoryId = resolveCategoryId("Триллери");
-    const scienceCategoryId = resolveCategoryId("Наукові");
-    const fantasyCategoryId = resolveCategoryId("Фантастика");
+    const romanceCategoryId = resolveCategoryId(["роман", "романи", "романтика", "любовн", "romance"]);
+    const thrillerCategoryId = resolveCategoryId(["трилер", "трилери", "триллер", "триллери", "детектив", "детективи", "thriller", "detective"]);
+    const scienceCategoryId = resolveCategoryId(["наук", "наукова", "нон-фікшн", "нонфікшн", "science", "non-fiction"]);
+    const fantasyCategoryId = resolveCategoryId(["фентезі", "фентазі", "фантастик", "фантастика", "fantasy"]);
 
-    const romanceBooks = romanceCategoryId
-        ? mapProductsToBooks(
-            products.filter((product) => product.categoryIds?.includes(romanceCategoryId)),
-            lp,
-        ).slice(0, 4)
-        : [];
-    const thrillerBooks = thrillerCategoryId
-        ? mapProductsToBooks(
-            products.filter((product) => product.categoryIds?.includes(thrillerCategoryId)),
-            lp,
-        ).slice(0, 4)
-        : [];
-    const scienceBooks = scienceCategoryId
-        ? mapProductsToBooks(
-            products.filter((product) => product.categoryIds?.includes(scienceCategoryId)),
-            lp,
-        ).slice(0, 4)
-        : [];
-    const fantasyBooks = fantasyCategoryId
-        ? mapProductsToBooks(
-            products.filter((product) => product.categoryIds?.includes(fantasyCategoryId)),
-            lp,
-        ).slice(0, 4)
-        : [];
+    const selectedFormatIds = useMemo(() => {
+        if (!selectedFormat) return [];
+        const ids: number[] = [];
+        for (const format of formats) {
+            if (format.id == null) continue;
+            const label = `${format.name ?? ""} ${format.code ?? ""}`.toLowerCase();
+            if (selectedFormat === "audio" && (label.includes("audio") || label.includes("аудіо"))) {
+                ids.push(format.id);
+            } else if (
+                selectedFormat === "ebook" &&
+                (label.includes("ebook") || label.includes("e-book") || label.includes("електрон"))
+            ) {
+                ids.push(format.id);
+            } else if (
+                selectedFormat === "paper" &&
+                (label.includes("paper") || label.includes("print") || label.includes("папер"))
+            ) {
+                ids.push(format.id);
+            }
+        }
+        return ids;
+    }, [selectedFormat, formats]);
+
+    const filterBySelectedFormat = (items: ProductDto[]) => {
+        if (!selectedFormat) return items;
+        return items.filter((product) => getFormatTags(product.formatIds).includes(selectedFormat));
+    };
+
+    const getCategoryBooks = (categoryId?: number) => {
+        if (!categoryId) return [];
+        let items = products.filter((product) => product.categoryIds?.includes(categoryId));
+        if (selectedFormat) {
+            items = filterBySelectedFormat(items);
+        }
+        return mapProductsToBooks(items, lp).slice(0, 4);
+    };
+
+    const romanceBooks = getCategoryBooks(romanceCategoryId);
+    const thrillerBooks = getCategoryBooks(thrillerCategoryId);
+    const scienceBooks = getCategoryBooks(scienceCategoryId);
+    const fantasyBooks = getCategoryBooks(fantasyCategoryId);
+
+    const buildShelfMoreHref = (options: {
+        categoryId?: number;
+        sort?: "bestsellers" | "newest";
+        sets?: boolean;
+        availability?: number;
+    }) => {
+        const params = new URLSearchParams();
+        if (options.categoryId) {
+            params.set("categoryId", String(options.categoryId));
+        }
+        if (options.sort) {
+            params.set("sort", options.sort);
+        }
+        if (options.sets) {
+            params.set("sets", "true");
+        }
+        if (options.availability !== undefined) {
+            params.set("availability", String(options.availability));
+        }
+        if (selectedFormatIds.length > 0) {
+            params.set("formatId", selectedFormatIds.join(","));
+        }
+        if (selectedFormat) {
+            params.set("format", selectedFormat);
+        }
+        const query = params.toString();
+        return lp(query ? `/products?${query}` : "/products");
+    };
 
     const hitsBooks = mapProductsToBooks(
-        [...products].sort(
+        [...filterBySelectedFormat(products)].sort(
             (a, b) => getReviewCountForProduct(b.id) - getReviewCountForProduct(a.id),
         ),
     ).slice(0, 4);
     const desktopHitsBooks = mapProductsToBooks(
-        [...products].sort(
+        [...filterBySelectedFormat(products)].sort(
             (a, b) => getReviewCountForProduct(b.id) - getReviewCountForProduct(a.id),
         ),
         lp,
     ).slice(0, 4);
 
-    const newBooks = mapProductsToBooks(getNewBooks(products, 4));
-    const desktopNewBooks = mapProductsToBooks(getNewBooks(products, 4), lp);
+    const newBooks = mapProductsToBooks(getNewBooks(filterBySelectedFormat(products), 4));
+    const desktopNewBooks = mapProductsToBooks(getNewBooks(filterBySelectedFormat(products), 4), lp);
 
     const setBooks = mapProductsToBooks(
-        products.filter((product) => (product.itemsInSet ?? 0) > 1),
+        filterBySelectedFormat(products).filter((product) => (product.itemsInSet ?? 0) > 1),
         lp,
     ).slice(0, 4);
 
     const announcementBooks = mapProductsToBooks(
-        products.filter((product) => product.availability === Availability.NUMBER_2),
+        filterBySelectedFormat(products).filter((product) => product.availability === Availability.NUMBER_2),
     ).slice(0, 4);
     const desktopAnnouncementBooks = mapProductsToBooks(
-        products.filter((product) => product.availability === Availability.NUMBER_2),
+        filterBySelectedFormat(products).filter((product) => product.availability === Availability.NUMBER_2),
         lp,
     ).slice(0, 4);
 
@@ -438,111 +463,94 @@ export default function Home() {
 
                 <ReviewsSection reviews={desktopReviewCards} />
 
-                <FormatSection />
+                <FormatSection
+                    selectedFormat={selectedFormat}
+                    onSelectFormat={setSelectedFormat}
+                />
 
-                {romanceBooks.length > 0 ? (
-                    <BookSection
-                        title={t("home.sections.romance")}
-                        books={romanceBooks}
-                        showMore
-                        showMoreHref={
-                        romanceCategoryId
-                            ? lp(`/products?categoryId=${romanceCategoryId}`)
-                            : lp("/products")
-                        }
-                        pillWidth={206}
-                        isFav={isFav}
-                        onToggleFavorite={toggleFavorite}
-                        shelfIndex={1}
-                    />
-                ) : null}
-                {thrillerBooks.length > 0 ? (
-                    <BookSection
-                        title={t("home.sections.thrillers")}
-                        books={thrillerBooks}
-                        pillWidth={253}
-                        isFav={isFav}
-                        onToggleFavorite={toggleFavorite}
-                        shelfIndex={2}
-                    />
-                ) : null}
-                {scienceBooks.length > 0 ? (
-                    <BookSection
-                        title={t("home.sections.science")}
-                        books={scienceBooks}
-                        showMore
-                        showMoreHref={
-                        fantasyCategoryId
-                            ? lp(`/products?categoryId=${scienceCategoryId}`)
-                            : lp("/products")
-                        }
-                        pillWidth={211}
-                        isFav={isFav}
-                        onToggleFavorite={toggleFavorite}
-                        shelfIndex={3}
-                    />
-                ) : null}
-                {fantasyBooks.length > 0 ? (
-                    <BookSection
-                        title={t("home.sections.fantasy")}
-                        books={fantasyBooks}
-                        showMore
-                        showMoreHref={
-                        fantasyCategoryId
-                            ? lp(`/products?categoryId=${fantasyCategoryId}`)
-                            : lp("/products")
-                        }
-                        pillWidth={292}
-                        isFav={isFav}
-                        onToggleFavorite={toggleFavorite}
-                        shelfIndex={4}
-                    />
-                ) : null}
+                <BookSection
+                    title={t("home.sections.romance")}
+                    books={romanceBooks}
+                    showMore
+                    showMoreHref={buildShelfMoreHref({ categoryId: romanceCategoryId })}
+                    pillWidth={206}
+                    isFav={isFav}
+                    onToggleFavorite={toggleFavorite}
+                    shelfIndex={1}
+                />
+                <BookSection
+                    title={t("home.sections.thrillers")}
+                    books={thrillerBooks}
+                    showMore
+                    showMoreHref={buildShelfMoreHref({ categoryId: thrillerCategoryId })}
+                    pillWidth={253}
+                    isFav={isFav}
+                    onToggleFavorite={toggleFavorite}
+                    shelfIndex={2}
+                />
+                <BookSection
+                    title={t("home.sections.science")}
+                    books={scienceBooks}
+                    showMore
+                    showMoreHref={buildShelfMoreHref({ categoryId: scienceCategoryId })}
+                    pillWidth={211}
+                    isFav={isFav}
+                    onToggleFavorite={toggleFavorite}
+                    shelfIndex={3}
+                />
+                <BookSection
+                    title={t("home.sections.fantasy")}
+                    books={fantasyBooks}
+                    showMore
+                    showMoreHref={buildShelfMoreHref({ categoryId: fantasyCategoryId })}
+                    pillWidth={292}
+                    isFav={isFav}
+                    onToggleFavorite={toggleFavorite}
+                    shelfIndex={4}
+                />
 
                 <PromoBanner />
 
-                {desktopHitsBooks.length > 0 ? (
-                    <BookSection
-                        title={t("home.sections.bestsellers")}
-                        books={desktopHitsBooks}
-                        showMore
-                        showMoreHref={lp("/products?sort=newest")}  // поки каталог це ще не обробляє
-                        pillWidth={355}
-                        isFav={isFav}
-                        onToggleFavorite={toggleFavorite}
-                        shelfIndex={5}
-                    />
-                ) : null}
-                {desktopNewBooks.length > 0 && pickResult.basedOnPreferences ? (
-                    <BookSection
-                        title={t("home.sections.newArrivals")}
-                        books={desktopNewBooks}
-                        pillWidth={237}
-                        isFav={isFav}
-                        onToggleFavorite={toggleFavorite}
-                        shelfIndex={6}
-                    />
-                ) : null}
-                {setBooks.length > 0 ? (
-                    <BookSection
-                        title={t("home.sections.bookSets")}
-                        books={setBooks}
-                        pillWidth={472}
-                        isFav={isFav}
-                        onToggleFavorite={toggleFavorite}
-                        shelfIndex={7}
-                    />
-                ) : null}
-                {desktopAnnouncementBooks.length > 0 ? (
-                    <BookSection
-                        title={t("home.sections.announcements")}
-                        books={desktopAnnouncementBooks}
-                        pillWidth={204}
-                        isFav={isFav}
-                        onToggleFavorite={toggleFavorite}
-                        shelfIndex={8}
-                    />
-                ) : null}
+                <BookSection
+                    title={t("home.sections.bestsellers")}
+                    books={desktopHitsBooks}
+                    showMore
+                    showMoreHref={buildShelfMoreHref({ sort: "bestsellers" })}
+                    pillWidth={355}
+                    isFav={isFav}
+                    onToggleFavorite={toggleFavorite}
+                    shelfIndex={5}
+                />
+                <BookSection
+                    title={t("home.sections.newArrivals")}
+                    books={desktopNewBooks}
+                    showMore
+                    showMoreHref={buildShelfMoreHref({ sort: "newest" })}
+                    pillWidth={237}
+                    isFav={isFav}
+                    onToggleFavorite={toggleFavorite}
+                    shelfIndex={6}
+                />
+                <BookSection
+                    title={t("home.sections.bookSets")}
+                    books={setBooks}
+                    showMore
+                    showMoreHref={buildShelfMoreHref({ sets: true })}
+                    pillWidth={472}
+                    isFav={isFav}
+                    onToggleFavorite={toggleFavorite}
+                    shelfIndex={7}
+                />
+                <BookSection
+                    title={t("home.sections.announcements")}
+                    books={desktopAnnouncementBooks}
+                    showMore
+                    showMoreHref={buildShelfMoreHref({ availability: Availability.NUMBER_2 })}
+                    pillWidth={204}
+                    isFav={isFav}
+                    onToggleFavorite={toggleFavorite}
+                    shelfIndex={8}
+                />
             </div>
         </main>
     );

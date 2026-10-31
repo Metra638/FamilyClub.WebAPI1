@@ -59,6 +59,14 @@ namespace FamilyClub.DAL.EF.DB
                 {
                     await creator.CreateTablesAsync();
                 }
+                else
+                {
+                    var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+                    if (pendingMigrations.Any())
+                    {
+                        await context.Database.MigrateAsync();
+                    }
+                }
 
             }
 

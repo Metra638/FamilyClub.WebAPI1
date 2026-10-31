@@ -13,7 +13,7 @@ export default function HeaderDropDownSection() {
 
             <div
                 className={`transition-transform duration-300 ease-in-out ${
-                    isOpen ? "translate-y-0" : "-translate-y-[120px]"
+                    isOpen ? "translate-y-0" : "-translate-y-[150px]"
                 }`}
             >
                 <DropDownList />

@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { INK_ASSETS } from "../components/ink-assistant/inkAssets";
 import { useMascotShelf } from "@/lib/mascot/MascotShelfContext";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-type CatBehaviorState = "walking" | "napping" | "happy";
+type CatBehaviorState = "walking" | "napping" | "happy" | "jumping" | "landing";
 
 const HOVER_PHRASES_UK = [
   "Мурр... 🐾",
@@ -40,9 +40,11 @@ export default function ShelfCat() {
   const isUk = locale === "uk";
   const { returnCatToHouse, switchShelf, availableShelves } = useMascotShelf();
 
-  const [xPos, setXPos] = useState<number>(25);
-  const [direction, setDirection] = useState<1 | -1>(1); // 1 = вправо, -1 = вліво
-  const [catState, setCatState] = useState<CatBehaviorState>("walking");
+  const [xPos, setXPos] = useState<number>(() => Math.floor(22 + Math.random() * 45));
+  const [direction, setDirection] = useState<1 | -1>(() => (Math.random() > 0.5 ? 1 : -1));
+  const [catState, setCatState] = useState<CatBehaviorState>("landing");
+  const [jumpFrame, setJumpFrame] = useState<number>(0);
+  const [landingFrame, setLandingFrame] = useState<number>(3);
   const [walkFrameIndex, setWalkFrameIndex] = useState<number>(0);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [bubbleText, setBubbleText] = useState<string | null>(null);
@@ -57,6 +59,53 @@ export default function ShelfCat() {
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  // Анімація приземлення кота на нову поличку при появі
+  useEffect(() => {
+    if (reducedMotion) {
+      setCatState("walking");
+      return;
+    }
+    const t1 = setTimeout(() => {
+      setLandingFrame(4);
+    }, 160);
+    const t2 = setTimeout(() => {
+      setCatState("walking");
+    }, 340);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [reducedMotion]);
+
+  const jumpTimersRef = useRef<NodeJS.Timeout[]>([]);
+
+  useEffect(() => {
+    return () => {
+      jumpTimersRef.current.forEach(clearTimeout);
+    };
+  }, []);
+
+  // Функція красивого стрибка на іншу поличку
+  const triggerJump = useCallback(() => {
+    if (catState === "jumping" || availableShelves.length <= 1) return;
+    setCatState("jumping");
+    setJumpFrame(0);
+    setBubbleText(isUk ? "Стриб! 🐾" : "Hop! 🐾");
+
+    jumpTimersRef.current.forEach(clearTimeout);
+    jumpTimersRef.current = [
+      setTimeout(() => {
+        setJumpFrame(1);
+      }, 140),
+      setTimeout(() => {
+        setJumpFrame(2);
+      }, 280),
+      setTimeout(() => {
+        switchShelf();
+      }, 450),
+    ];
+  }, [catState, availableShelves.length, isUk, switchShelf]);
 
   // Покадрова анімація ходьби (walk0000 -> walk0003)
   useEffect(() => {
@@ -93,33 +142,42 @@ export default function ShelfCat() {
     return () => clearInterval(moveInterval);
   }, [catState, direction, isHovered, reducedMotion]);
 
-  // Чергування ходьби та дрімання
+  // Чергування ходьби, дрімання та самостійних стрибків між поличками
   useEffect(() => {
-    if (isHovered || catState === "happy" || reducedMotion) return;
+    if (isHovered || catState === "happy" || catState === "jumping" || catState === "landing" || reducedMotion) return;
 
     let timer: NodeJS.Timeout;
 
     if (catState === "walking") {
-      const walkDuration = 20000 + Math.random() * 10000;
+      const walkDuration = 18000 + Math.random() * 10000;
       timer = setTimeout(() => {
-        setCatState("napping");
+        // З 50% ймовірністю стрибає на іншу поличку, інакше лягає подрімати
+        if (availableShelves.length > 1 && Math.random() > 0.45) {
+          triggerJump();
+        } else {
+          setCatState("napping");
+        }
       }, walkDuration);
     } else if (catState === "napping") {
-      const napDuration = 8000 + Math.random() * 4000;
+      const napDuration = 7000 + Math.random() * 5000;
       timer = setTimeout(() => {
         if (Math.random() > 0.5) {
           setDirection((d) => (d === 1 ? -1 : 1));
         }
-        setCatState("walking");
+        if (availableShelves.length > 1 && Math.random() > 0.5) {
+          triggerJump();
+        } else {
+          setCatState("walking");
+        }
       }, napDuration);
     }
 
     return () => clearTimeout(timer);
-  }, [catState, isHovered, reducedMotion]);
+  }, [catState, isHovered, reducedMotion, availableShelves.length, triggerJump]);
 
   const handleMouseEnter = () => {
     setIsHovered(true);
-    if (catState !== "happy") {
+    if (catState !== "happy" && catState !== "jumping") {
       const phrases = isUk ? HOVER_PHRASES_UK : HOVER_PHRASES_EN;
       const pick = phrases[Math.floor(Math.random() * phrases.length)];
       setBubbleText(pick);
@@ -128,13 +186,14 @@ export default function ShelfCat() {
 
   const handleMouseLeave = () => {
     setIsHovered(false);
-    if (catState !== "happy") {
+    if (catState !== "happy" && catState !== "jumping") {
       setBubbleText(null);
     }
   };
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (catState === "jumping" || catState === "landing") return;
     setCatState("happy");
 
     const phrases = isUk ? CLICK_PHRASES_UK : CLICK_PHRASES_EN;
@@ -160,11 +219,22 @@ export default function ShelfCat() {
     if (reducedMotion) return INK_ASSETS.lying;
     if (catState === "happy") return INK_ASSETS.game.catHappy;
     if (catState === "napping") return INK_ASSETS.lying;
+    if (catState === "jumping") return INK_ASSETS.jumpDown[jumpFrame] || INK_ASSETS.jumpDown[0];
+    if (catState === "landing") return INK_ASSETS.jumpDown[landingFrame] || INK_ASSETS.jumpDown[3];
     return INK_ASSETS.walk[walkFrameIndex] || INK_ASSETS.walk[0];
   })();
 
   const spriteTransform = (() => {
     if (catState === "happy") return "none";
+    if (catState === "jumping") {
+      const yOffset = jumpFrame === 1 ? -18 : jumpFrame === 2 ? 22 : 0;
+      const xOffset = direction * (jumpFrame === 1 ? 14 : jumpFrame === 2 ? 32 : 0);
+      const scaleX = direction === -1 ? "scaleX(-1)" : "scaleX(1)";
+      return `translate(${xOffset}px, ${yOffset}px) ${scaleX}`;
+    }
+    if (catState === "landing") {
+      return direction === -1 ? "scaleX(-1)" : "scaleX(1)";
+    }
     if (catState === "napping" || reducedMotion) {
       return direction === 1 ? "scaleX(-1)" : "scaleX(1)";
     }
@@ -201,7 +271,7 @@ export default function ShelfCat() {
         >
           <span>{bubbleText || (isUk ? "Мурр... 🐾" : "Purr... 🐾")}</span>
 
-          {catState === "happy" && (
+          {(catState === "happy" || isHovered) && catState !== "jumping" && (
             <div className="flex items-center gap-2 pt-1 border-t border-[var(--color-green)]/20 text-[10px]">
               <button
                 type="button"
@@ -218,11 +288,11 @@ export default function ShelfCat() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    switchShelf();
+                    triggerJump();
                   }}
                   className="cursor-pointer rounded-full bg-amber-700/80 px-2 py-0.5 text-white font-sans hover:opacity-90 transition-opacity"
                 >
-                  {isUk ? "Інша полиця 🐾" : "Next shelf 🐾"}
+                  {isUk ? "Стрибнути 🐾" : "Jump shelf 🐾"}
                 </button>
               )}
             </div>
@@ -263,11 +333,16 @@ export default function ShelfCat() {
         </span>
       )}
 
-      {/* Контейнер спрайта кота — збільшений до 195×365px */}
+      {/* Контейнер спрайта кота — 225×395px */}
       <div
-        className="relative h-[225px] w-[395px] drop-shadow-[0_6px_10px_rgba(0,0,0,0.4)] transition-transform duration-200"
+        className="relative h-[225px] w-[395px] drop-shadow-[0_6px_10px_rgba(0,0,0,0.4)]"
         style={{
           transform: spriteTransform,
+          opacity: catState === "jumping" && jumpFrame === 2 ? 0 : 1,
+          transition:
+            catState === "jumping"
+              ? "transform 0.14s ease-out, opacity 0.14s ease-out"
+              : "transform 0.2s ease-out, opacity 0.2s ease-out",
         }}
       >
         <img

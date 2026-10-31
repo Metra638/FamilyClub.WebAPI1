@@ -62,7 +62,6 @@ export default function BookSection({
                     "linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 12%, transparent) 0.24409%, transparent 17.892%), linear-gradient(180.074deg, color-mix(in srgb, var(--foreground-primary) 22%, transparent) 9.5072%, transparent 49.996%), linear-gradient(90deg, var(--background-main) 0%, var(--background-main) 100%)",
             }}
         >
-            {/* Акуратна дерев'яна поличка з дизайну (Group 187.png з userProfile) */}
             <div
                 id={shelfIndex !== undefined ? `book-shelf-${shelfIndex}` : undefined}
                 data-shelf-index={shelfIndex}
@@ -75,7 +74,6 @@ export default function BookSection({
                     className="absolute inset-0 z-10 w-full h-full object-fill pointer-events-none"
                 />
 
-                {/* Кіт Інк на поличці */}
                 {hasCat && (
                     <div className="pointer-events-none absolute inset-0 z-50 mx-auto max-w-[1220px] px-4 lg:px-0">
                         <div className="relative h-full w-full" id="shelf-cat-anchor" data-shelf-cat="true">
@@ -85,7 +83,6 @@ export default function BookSection({
                 )}
             </div>
 
-            {/* Контейнер книг та плашки назви */}
             <div className="relative mx-auto max-w-[1220px] px-4 lg:px-0">
                 <div className="absolute top-[36px] md:top-[14px] left-0 right-0 z-30 flex flex-wrap items-start justify-between gap-4 pointer-events-none px-4 lg:px-0">
                     <div
@@ -96,20 +93,27 @@ export default function BookSection({
                             {title}
                         </h2>
                     </div>
-                    {/* `More` button */}
                     {showMore ? <MoreShelfButton href={moreHref} /> : null}
                 </div>
 
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[60px] pb-12 -mt-[50px]">
-                    {books.map((book, index) => (
-                        <BookCard
-                            key={`${book.title}-${index}`}
-                            {...book}
-                            isFavorite={isFav?.(book.productId)}
-                            onToggleFavorite={onToggleFavorite}
-                        />
-                    ))}
-                </div>
+                {books.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[60px] pb-12 -mt-[50px]">
+                        {books.map((book, index) => (
+                            <BookCard
+                                key={`${book.title}-${index}`}
+                                {...book}
+                                isFavorite={isFav?.(book.productId)}
+                                onToggleFavorite={onToggleFavorite}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="h-[120px] md:h-[140px] flex items-center justify-center pb-4">
+                        <span className="text-[var(--color-muted-fg)] font-mono text-[14px] md:text-[15px] opacity-70">
+                            {t("home.sections.emptyShelf") || "Поки що немає книг у цьому форматі"}
+                        </span>
+                    </div>
+                )}
             </div>
         </section>
     );

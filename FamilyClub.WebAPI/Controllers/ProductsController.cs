@@ -36,6 +36,12 @@ public class ProductsController : ControllerBase
     [ResponseCache(Duration = 604800, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetImage(int productId, int imageId, CancellationToken cancellationToken)
     {
+        var imageUrl = await _productService.GetProductImageUrlAsync(productId, imageId, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(imageUrl))
+        {
+            return Redirect(imageUrl);
+        }
+
         var image = await _productService.GetProductImageAsync(productId, imageId, cancellationToken);
         if (image is null)
         {

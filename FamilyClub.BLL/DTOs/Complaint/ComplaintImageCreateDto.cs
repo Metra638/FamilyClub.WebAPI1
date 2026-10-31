@@ -4,8 +4,9 @@ namespace FamilyClub.BLL.DTOs.Complaint
 {
     public class ComplaintImageCreateDto
     {
-        [Required]
-        public byte[] ImageData { get; set; } = null!;
+        public byte[]? ImageData { get; set; }
+
+        public string? ImageUrl { get; set; }
 
         [MaxLength(255)]
         public string ImageName { get; set; } = string.Empty;

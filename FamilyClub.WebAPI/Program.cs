@@ -187,6 +187,11 @@ builder.Services.AddScoped<IBlockReasonService, BlockReasonService>();
 builder.Services.AddScoped<IBlockedIpRepository, BlockedIpRepository>();
 builder.Services.AddScoped<IBlockedIpService, BlockedIpService>();
 
+// Cloudflare R2 / S3 Object Storage
+builder.Services.Configure<FamilyClub.BLL.Options.CloudflareR2Options>(
+    builder.Configuration.GetSection(FamilyClub.BLL.Options.CloudflareR2Options.SectionName));
+builder.Services.AddSingleton<IStorageService, CloudflareR2StorageService>();
+
 // Platform settings
 builder.Services.AddScoped<IPlatformSettingsRepository, PlatformSettingsRepository>();
 builder.Services.AddScoped<IPlatformSettingsService, PlatformSettingsService>();

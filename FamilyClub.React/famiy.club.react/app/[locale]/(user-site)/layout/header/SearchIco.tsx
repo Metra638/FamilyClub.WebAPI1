@@ -61,7 +61,7 @@ export default function SearchIco() {
   const hasResults = filteredAuthors.length > 0 || filteredProducts.length > 0;
 
   return (
-    <div ref={containerRef} className="relative flex items-center">
+    <div ref={containerRef} className="relative flex items-center w-full">
       {/* INPUT */}
       <input
         type="text"
@@ -73,8 +73,9 @@ export default function SearchIco() {
         onClick={(e) => e.stopPropagation()}
         placeholder=""
         className="
-          w-[268px]
-          px-4
+          w-full
+          pl-4
+          pr-8
           h-[36px]
           bg-[var(--color-white)]
           rounded-full
@@ -92,8 +93,8 @@ export default function SearchIco() {
           setOpen((v) => !v);
         }}
         className="
-          relative
-          right-[1vw]
+          absolute
+          right-2
           w-[22px]
           h-[22px]
           flex
@@ -113,7 +114,7 @@ export default function SearchIco() {
 
       {/* RESULTS */}
       {open && hasResults && (
-        <div className="absolute top-[45px] left-0 w-[calc(100%-20px)] max-h-[260px] 
+        <div className="absolute top-[45px] left-0 w-full max-h-[260px] 
   rounded-[20px] bg-[var(--color-menu-bg)] shadow-[0px_0px_15px_0px_#24242433] overflow-hidden z-50">
           <div className="custom-scrollbar max-h-[260px] overflow-y-auto p-2">
 

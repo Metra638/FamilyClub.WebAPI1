@@ -42,14 +42,27 @@ export function MascotShelfProvider({ children }: { children: React.ReactNode })
   const availableShelvesRef = useRef<number[]>([]);
   availableShelvesRef.current = availableShelves;
 
-  // При кожному поверненні на головну сторінку кіт знову гуляє
+  // При кожному поверненні на головну сторінку або в каталог кіт знову гуляє
   useEffect(() => {
     const normalized = (pathname || "").replace(/\/+$/, "");
     const isHome = normalized === "" || normalized === "/uk" || normalized === "/en";
-    if (isHome) {
+    const isCatalog =
+      normalized === "/products" ||
+      normalized === "/uk/products" ||
+      normalized === "/en/products" ||
+      normalized.endsWith("/products");
+
+    if (isHome || isCatalog) {
       setIsCatOnShelf(true);
     }
   }, [pathname]);
+
+  // Якщо активна поличка більше не існує серед зареєстрованих поличок — переносимо кота на першу доступну
+  useEffect(() => {
+    if (availableShelves.length > 0 && !availableShelves.includes(activeShelfIndex)) {
+      setActiveShelfIndex(availableShelves[0]);
+    }
+  }, [availableShelves, activeShelfIndex]);
 
   const registerShelf = useCallback((index: number) => {
     setAvailableShelves((prev) => {
@@ -62,19 +75,6 @@ export function MascotShelfProvider({ children }: { children: React.ReactNode })
     };
   }, []);
 
-  const scrollToShelf = useCallback((shelfIdx: number) => {
-    // Delay slightly to let DOM mount or stabilize
-    setTimeout(() => {
-      const el =
-        document.getElementById(`book-shelf-${shelfIdx}`) ||
-        document.querySelector(`[data-shelf-index="${shelfIdx}"]`) ||
-        document.getElementById("shelf-cat-anchor");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }, 120);
-  }, []);
-
   const releaseCatToShelf = useCallback(() => {
     const list = availableShelvesRef.current;
     const targetShelf =
@@ -82,8 +82,8 @@ export function MascotShelfProvider({ children }: { children: React.ReactNode })
 
     setActiveShelfIndex(targetShelf);
     setIsCatOnShelf(true);
-    scrollToShelf(targetShelf);
-  }, [scrollToShelf]);
+    // Користувача не перекидаємо — скрол залишається на місці
+  }, []);
 
   const switchShelf = useCallback(() => {
     const list = availableShelvesRef.current;

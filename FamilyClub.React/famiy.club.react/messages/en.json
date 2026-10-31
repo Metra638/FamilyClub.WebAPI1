@@ -70,7 +70,8 @@
       "newArrivals": "New arrivals",
       "bookSets": "Book sets",
       "announcements": "Coming soon",
-      "more": "More"
+      "more": "More",
+      "emptyShelf": "No books in this format yet"
     },
     "about": {
       "wideChoiceTitle": "A wide selection",

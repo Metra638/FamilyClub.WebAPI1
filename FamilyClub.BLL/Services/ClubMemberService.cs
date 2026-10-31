@@ -21,19 +21,22 @@ public class ClubMemberService : IClubMemberService
     private readonly UserManager<ClubMember> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IActionLogService _actionLog;
+    private readonly IStorageService _storageService;
 
     public ClubMemberService(
         IUnitOfWork unitOfWork,
         UserManager<ClubMember> userManager,
         RoleManager<IdentityRole> roleManager,
         FamilyClubContext context,
-        IActionLogService actionLog)
+        IActionLogService actionLog,
+        IStorageService storageService)
     {
         _unitOfWork = unitOfWork;
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
         _actionLog = actionLog;
+        _storageService = storageService;
     }
 
     public async Task<IEnumerable<ClubMemberReadDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -72,10 +75,28 @@ public class ClubMemberService : IClubMemberService
 
     public async Task<ClubMemberReadDto> CreateAsync(RegisterClubMemberDto dto, CancellationToken cancellationToken = default, IFormFile? avatar = null)
     {
-        byte[] avatarData = null;
+        byte[]? avatarData = null;
+        string? avatarUrl = null;
+        string? avatarStorageKey = null;
+
         if (avatar != null)
         {
-            avatarData = await UploadImageAsync(avatar);
+            if (_storageService.IsConfigured)
+            {
+                try
+                {
+                    avatarUrl = await _storageService.UploadFileAsync(avatar, "avatars", cancellationToken);
+                    avatarStorageKey = _storageService.ExtractKey(avatarUrl);
+                }
+                catch
+                {
+                    avatarData = await UploadImageAsync(avatar);
+                }
+            }
+            else
+            {
+                avatarData = await UploadImageAsync(avatar);
+            }
         }
         var clubMember = new ClubMember
         {
@@ -85,7 +106,9 @@ public class ClubMemberService : IClubMemberService
             Surname = dto.Surname,
             PhoneNumber = dto.PhoneNumber,
             DateOfBirth = dto.DateOfBirth,
-            AvatarData = avatarData
+            AvatarData = avatarData,
+            AvatarUrl = avatarUrl,
+            AvatarStorageKey = avatarStorageKey
         };
 
 
@@ -140,7 +163,28 @@ public class ClubMemberService : IClubMemberService
         clubMember.DateOfBirth = dto.DateOfBirth;
 		if (avatar != null)
 		{
-			clubMember.AvatarData = await UploadImageAsync(avatar);
+			if (_storageService.IsConfigured)
+			{
+				try
+				{
+					var oldKey = clubMember.AvatarStorageKey ?? clubMember.AvatarUrl;
+					if (!string.IsNullOrWhiteSpace(oldKey))
+					{
+						await _storageService.DeleteAsync(oldKey, cancellationToken);
+					}
+					clubMember.AvatarUrl = await _storageService.UploadFileAsync(avatar, "avatars", cancellationToken);
+					clubMember.AvatarStorageKey = _storageService.ExtractKey(clubMember.AvatarUrl);
+					clubMember.AvatarData = null;
+				}
+				catch
+				{
+					clubMember.AvatarData = await UploadImageAsync(avatar);
+				}
+			}
+			else
+			{
+				clubMember.AvatarData = await UploadImageAsync(avatar);
+			}
 		}
 
 		cancellationToken.ThrowIfCancellationRequested(); // Checking for cancellation before starting the update operation
@@ -166,6 +210,12 @@ public class ClubMemberService : IClubMemberService
         if (clubMember is null)
         {
             return false;
+        }
+
+        var avatarKey = clubMember.AvatarStorageKey ?? clubMember.AvatarUrl;
+        if (!string.IsNullOrWhiteSpace(avatarKey))
+        {
+            await _storageService.DeleteAsync(avatarKey, cancellationToken);
         }
 
         var email = clubMember.Email;

@@ -10,6 +10,10 @@ public interface IProductService
         int productId,
         int imageId,
         CancellationToken cancellationToken = default);
+    Task<string?> GetProductImageUrlAsync(
+        int productId,
+        int imageId,
+        CancellationToken cancellationToken = default);
     Task<ProductDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<ProductDto> CreateAsync(ProductDto dto, List<IFormFile> productImageFiles, CancellationToken cancellationToken = default);
     Task<bool> UpdateAsync(int id, ProductDto dto, List<IFormFile> productImageFiles, CancellationToken cancellationToken = default);

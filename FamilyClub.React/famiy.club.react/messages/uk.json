@@ -70,7 +70,8 @@
       "newArrivals": "Новинки",
       "bookSets": "Книжкові комплекти",
       "announcements": "Анонси",
-      "more": "Більше"
+      "more": "Більше",
+      "emptyShelf": "Поки що немає книг у цьому форматі"
     },
     "about": {
       "wideChoiceTitle": "Великий вибір",

@@ -5,6 +5,7 @@ type ProductImageLike = {
   id?: number;
   imageData?: string | null;
   imageName?: string | null;
+  imageUrl?: string | null;
 };
 
 /** URL for lazy-loaded cover via API (no base64 in catalog list). */
@@ -18,6 +19,10 @@ export function getProductCoverApiUrl(
 }
 
 export function resolveEmbeddedImageData(image: ProductImageLike): string | null {
+  if (image.imageUrl?.trim()) {
+    return image.imageUrl.trim();
+  }
+
   const normalizedData = image.imageData?.trim();
   if (!normalizedData || normalizedData === "AA==" || normalizedData === "AAA=") {
     return null;
