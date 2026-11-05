@@ -1,0 +1,14 @@
+[analysis]
+ignore_dirs = [
+    ".venv-archmap",
+    ".nuget-packages",
+    "FamilyClub.DAL/Migrations",
+    "FamilyClub.React/famiy.club.react/lib/api/generated",
+    "FamilyClub.BLL.Tests",
+    "FamilyClub.WebAPI.Tests"
+]
+
+ignore_globs = [
+    "**/*.Designer.cs",
+    "**/FamilyClubContextModelSnapshot.cs"
+]
