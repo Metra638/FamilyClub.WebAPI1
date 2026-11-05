@@ -7,14 +7,14 @@ stages:
   - frontend-checks
   - build-frontend
   - scan-frontend
-  - sbom-frontend          # [ADDED] новый этап для генерации SBOM frontend
+  - sbom-frontend
   - dast-frontend
   - push-frontend
   - backend-checks
   - test-backend
   - build-backend
   - scan-backend
-  - sbom-backend           # [ADDED] новый этап для генерации SBOM backend
+  - sbom-backend
   - dast-backend
   - push-backend
   - update-frontend-manifests
@@ -138,6 +138,30 @@ frontend-checks:
       when: always
     - when: never
 
+# ==========================================
+# [ADDED] Новый джоб: OSV-Scanner для Frontend
+# ==========================================
+osv-scanner-frontend:
+  stage: frontend-checks
+  image:
+    name: ghcr.io/google/osv-scanner:latest
+    entrypoint: [""]
+  script:
+    - echo "Запуск OSV-Scanner для поиска уязвимостей в зависимостях Frontend"
+    - cd FamilyClub.React/famiy.club.react
+    # Сканируем рекурсивно (-r) lock-файлы и выводим результат в SARIF для GitLab
+    - /osv-scanner scan source -r --format sarif --output ../../osv-frontend.sarif . || true
+  artifacts:
+    paths:
+      - osv-frontend.sarif
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
 build-frontend:
   stage: build-frontend
   script:
@@ -192,10 +216,9 @@ scan-frontend:
       when: always
     - when: never
 
-# [ADDED] Новый джоб для генерации SBOM frontend
 sbom-frontend:
   stage: sbom-frontend
-  image: anchore/syft:latest   # [ADDED] используем готовый образ Syft
+  image: anchore/syft:latest
   script:
     - |
       echo "Генерация SBOM для frontend образа"
@@ -364,6 +387,29 @@ backend-checks:
       when: always
     - when: never
 
+# ==========================================
+# [ADDED] Новый джоб: OSV-Scanner для Backend
+# ==========================================
+osv-scanner-backend:
+  stage: backend-checks
+  image:
+    name: ghcr.io/google/osv-scanner:latest
+    entrypoint: [""]
+  script:
+    - echo "Запуск OSV-Scanner для поиска уязвимостей в зависимостях Backend"
+    # Сканируем корень репозитория, но исключаем папку фронтенда, чтобы не дублировать работу
+    - /osv-scanner scan source -r --format sarif --output osv-backend.sarif . --exclude FamilyClub.React/ || true
+  artifacts:
+    paths:
+      - osv-backend.sarif
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
 test-backend:
   stage: test-backend
   script:
@@ -428,10 +474,9 @@ scan-backend:
       when: always
     - when: never
 
-# [ADDED] Новый джоб для генерации SBOM backend
 sbom-backend:
   stage: sbom-backend
-  image: anchore/syft:latest   # [ADDED] используем готовый образ Syft
+  image: anchore/syft:latest
   script:
     - |
       echo "Генерация SBOM для backend образа"
@@ -734,7 +779,8 @@ convert-sarif-to-codequality:
 
     - |
       SARIF_FILES=""
-      for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif npm-audit.sarif eslint-security.sarif trivy-frontend.sarif trivy-backend.sarif; do
+      # [MODIFIED] В список файлов для конвертации добавлены osv-frontend.sarif и osv-backend.sarif
+      for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif npm-audit.sarif eslint-security.sarif trivy-frontend.sarif trivy-backend.sarif osv-frontend.sarif osv-backend.sarif; do
         if [ -f "$f" ]; then
           echo "  Найден: $f"
           SARIF_FILES="$SARIF_FILES $f"
@@ -819,6 +865,13 @@ convert-sarif-to-codequality:
       artifacts: true
       optional: true
     - job: scan-backend
+      artifacts: true
+      optional: true
+    # [MODIFIED] Добавлены зависимости от артефактов новых джобов OSV-Scanner
+    - job: osv-scanner-frontend
+      artifacts: true
+      optional: true
+    - job: osv-scanner-backend
       artifacts: true
       optional: true
   rules:
