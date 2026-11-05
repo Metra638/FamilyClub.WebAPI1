@@ -488,10 +488,9 @@ archmap-analysis:
     - echo "Запуск ArchMAP"
     - python3 -m venv .venv-archmap
     - .venv-archmap/bin/pip install KG-ARCHMAP
-    # Запускаем БЕЗ перенаправления в файл, чтобы логи шли в консоль GitLab
     - .venv-archmap/bin/archmap analyze .
-    # Копируем настоящий JSON из скрытой папки туда, где его ждут артефакты
-    - cp .codetelas/graph.json archmap-report.json || true
+    # Исправлено на .codeatlas
+    - cp .codeatlas/graph.json archmap-report.json || true
   artifacts:
     paths:
       - archmap-report.json
