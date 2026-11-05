@@ -3063,6 +3063,79 @@
         }
       }
     },
+    "/api/Images/upload": {
+      "post": {
+        "tags": [
+          "Images"
+        ],
+        "parameters": [
+          {
+            "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "uploads"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Images": {
+      "delete": {
+        "tags": [
+          "Images"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteImageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteImageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteImageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/InkAssistant/reindex-embeddings": {
       "post": {
         "tags": [
@@ -6624,6 +6697,14 @@
             "format": "byte",
             "nullable": true
           },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarStorageKey": {
+            "type": "string",
+            "nullable": true
+          },
           "favoriteProducts": {
             "type": "array",
             "items": {
@@ -6685,6 +6766,10 @@
             "format": "byte",
             "nullable": true
           },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "name": {
             "type": "string",
             "nullable": true
@@ -6731,14 +6816,16 @@
         "additionalProperties": false
       },
       "ComplaintImageCreateDto": {
-        "required": [
-          "imageData"
-        ],
         "type": "object",
         "properties": {
           "imageData": {
             "type": "string",
-            "format": "byte"
+            "format": "byte",
+            "nullable": true
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
           },
           "imageName": {
             "maxLength": 255,
@@ -6775,6 +6862,10 @@
           "imageData": {
             "type": "string",
             "format": "byte",
+            "nullable": true
+          },
+          "imageUrl": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -6875,6 +6966,16 @@
             "nullable": true
           },
           "senderId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeleteImageRequest": {
+        "type": "object",
+        "properties": {
+          "urlOrKey": {
             "type": "string",
             "nullable": true
           }
@@ -7800,7 +7901,6 @@
       },
       "ProductImage": {
         "required": [
-          "imageData",
           "imageName"
         ],
         "type": "object",
@@ -7825,6 +7925,14 @@
           },
           "product": {
             "$ref": "#/components/schemas/Product"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "storageKey": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -7842,6 +7950,10 @@
             "nullable": true
           },
           "imageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageUrl": {
             "type": "string",
             "nullable": true
           }
@@ -8338,6 +8450,9 @@
     },
     {
       "name": "Home"
+    },
+    {
+      "name": "Images"
     },
     {
       "name": "InkAssistant"
