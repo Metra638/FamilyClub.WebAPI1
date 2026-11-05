@@ -156,12 +156,12 @@ osv-scanner-frontend:
       when: always
     - when: never
 
-# [FIXED] jscpd: неверный формат "html". Заменён на "htmlmixed" для корректного парсинга HTML.
+# [FIXED] jscpd: формат HTML в jscpd называется "markup", а не "html" или "htmlmixed".
 jscpd:
   stage: frontend-checks
   script:
     - echo "Запуск jscpd для поиска дублирования кода"
-    - npx jscpd@latest --reporters sarif --output ./jscpd-report --format "javascript,typescript,tsx,jsx,css,scss,htmlmixed,csharp" --ignore "**/node_modules/**,**/*.min.js,**/vendor/**,**/lib/api/generated/**" . || true
+    - npx jscpd@latest --reporters sarif --output ./jscpd-report --format "javascript,typescript,tsx,jsx,css,scss,markup,csharp" --ignore "**/node_modules/**,**/*.min.js,**/vendor/**,**/lib/api/generated/**" . || true
     - mv ./jscpd-report/sarif.json ./jscpd.sarif || true
   artifacts:
     paths:
@@ -174,8 +174,8 @@ jscpd:
       when: always
     - when: never
 
-# [FIXED] archlint: пакет @danolez/arch-lint предоставляет команду `arch-lint`.
-# Исправлена команда на `npx arch-lint arch --format gitlab`.
+# [MODIFIED] archlint: пакет @danolez/arch-lint, судя по логам, отсутствует в npm (404).
+# Джоб оставлен как есть (с allow_failure), чтобы не ломать пайплайн, но артефакт будет пустым.
 archlint-frontend:
   stage: frontend-checks
   script:
@@ -418,12 +418,13 @@ backend-checks:
       when: always
     - when: never
 
-# [FIXED] OSV-Scanner для Backend: аналогично фронтенду, запускаем через docker run.
+# [FIXED] OSV-Scanner для Backend: флаг --exclude не существует.
+# Используем --x-exclude (актуальное имя). Путь задан относительно рабочей директории контейнера (/src).
 osv-scanner-backend:
   stage: backend-checks
   script:
     - echo "Запуск OSV-Scanner для поиска уязвимостей в зависимостях Backend"
-    - docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:latest scan source -r --format sarif --output /src/osv-backend.sarif . --exclude /src/FamilyClub.React/ || true
+    - docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:latest scan source -r --format sarif --output /src/osv-backend.sarif . --x-exclude /src/FamilyClub.React/ || true
   artifacts:
     paths:
       - osv-backend.sarif
@@ -454,13 +455,14 @@ code-metrics-backend:
       when: always
     - when: never
 
-# [FIXED] ArchMAP: пакет устанавливается как `KG-ARCHMAP`, команда `archmap`.
+# [FIXED] ArchMAP: системный pip заблокирован (PEP 668). Создаём venv и работаем через него.
 archmap-analysis:
   stage: backend-checks
   script:
     - echo "Запуск ArchMAP для анализа архитектуры"
-    - pip install KG-ARCHMAP
-    - archmap analyze . --format json --output archmap-report.json || true
+    - python3 -m venv .venv-archmap
+    - .venv-archmap/bin/pip install KG-ARCHMAP
+    - .venv-archmap/bin/archmap analyze . --format json --output archmap-report.json || true
   artifacts:
     paths:
       - archmap-report.json
