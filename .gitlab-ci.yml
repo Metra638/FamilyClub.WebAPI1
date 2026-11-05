@@ -488,7 +488,7 @@ archmap-analysis:
     - echo "Запуск ArchMAP"
     - python3 -m venv .venv-archmap
     - .venv-archmap/bin/pip install KG-ARCHMAP
-    - .venv-archmap/bin/archmap analyze . --format json --output archmap-report.json || true
+    - .venv-archmap/bin/archmap analyze . --format json > archmap-report.json
   artifacts:
     paths:
       - archmap-report.json
