@@ -4,12 +4,6 @@ stages:
   - hadolint
   - npm-audit
   - eslint-security
-  - frontend-checks
-  - build-frontend
-  - scan-frontend
-  - sbom-frontend
-  - dast-frontend
-  - push-frontend
   - backend-checks
   - test-backend
   - build-backend
@@ -17,6 +11,12 @@ stages:
   - sbom-backend
   - dast-backend
   - push-backend
+  - frontend-checks
+  - build-frontend
+  - scan-frontend
+  - sbom-frontend
+  - dast-frontend
+  - push-frontend
   - update-frontend-manifests
   - update-backend-manifests
   - convert-sarif-to-codequality
@@ -167,249 +167,6 @@ eslint-security:
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-# ────────────────────────────────────────────────────────────────
-# FRONTEND CHECKS
-# ────────────────────────────────────────────────────────────────
-frontend-checks:
-  stage: frontend-checks
-  script:
-    - cd FamilyClub.React/famiy.club.react
-    - npm ci || npm install
-    - npm run lint   > ../../frontend-lint.log 2>&1 || true
-    - npx tsc --noEmit > ../../frontend-tsc.log 2>&1 || true
-    - npm run build || true
-  artifacts:
-    when: always
-    paths:
-      - frontend-lint.log
-      - frontend-tsc.log
-    expire_in: 1 week
-  allow_failure: false
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-# FIX: block scalar — иначе `\` уходит в shell как аргумент
-osv-scanner-frontend:
-  stage: frontend-checks
-  script:
-    - |
-      docker run --rm \
-        -v "$PWD:/src" \
-        -w /src/FamilyClub.React/famiy.club.react \
-        ghcr.io/google/osv-scanner:latest \
-        scan source -r \
-          --format sarif \
-          --output-file /src/osv-frontend.sarif \
-          . || true
-  artifacts:
-    paths:
-      - osv-frontend.sarif
-    when: always
-    expire_in: 1 week
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-# FIX: block scalar + правильное имя файла (jscpd-report.sarif, не sarif.json)
-jscpd:
-  stage: frontend-checks
-  script:
-    - |
-      npx jscpd@latest \
-        --reporters sarif \
-        --output ./jscpd-report \
-        --format "javascript,typescript,tsx,jsx,css,scss,markup,csharp" \
-        --ignore "**/node_modules/**,**/*.min.js,**/vendor/**,**/lib/api/generated/**" \
-        . || true
-    - mv ./jscpd-report/jscpd-report.sarif ./jscpd.sarif || true
-    - test -f jscpd.sarif || echo '{"version":"2.1.0","runs":[]}' > jscpd.sarif
-  artifacts:
-    paths:
-      - jscpd.sarif
-    when: always
-    expire_in: 1 week
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-# ────────────────────────────────────────────────────────────────
-# FRONTEND BUILD / SCAN / SBOM / DAST / PUSH
-# ────────────────────────────────────────────────────────────────
-build-frontend:
-  stage: build-frontend
-  script:
-    - |
-      export BUILDKIT_NO_CLIENT_IPV6=1
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      docker buildx use default
-      for ARCH in arm64 amd64; do
-        echo "Сборка для $ARCH"
-        docker buildx build \
-          --platform linux/$ARCH \
-          --no-cache \
-          -f dockerfile.frontend \
-          -o type=docker,dest=frontend-$ARCH.tar \
-          --build-arg BUILD_DATE=$(date -Iseconds) \
-          --build-arg VCS_REF=$CI_COMMIT_SHA \
-          --build-arg VERSION=$CI_PIPELINE_ID \
-          .
-        LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
-        IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
-        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
-        docker tag $IMAGE_ID $FULL_TAG
-        rm -f frontend-$ARCH.tar
-      done
-      DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
-      echo "frontendArm64Digest=$DIGEST" > frontend.env
-  artifacts:
-    reports:
-      dotenv: frontend.env
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-scan-frontend:
-  stage: scan-frontend
-  script:
-    - |
-      trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress \
-        --format sarif --output trivy-frontend.sarif \
-        "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64" || true
-  artifacts:
-    paths:
-      - trivy-frontend.sarif
-    when: always
-    expire_in: 1 week
-  allow_failure: true
-  needs:
-    - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-sbom-frontend:
-  stage: sbom-frontend
-  image: anchore/syft:latest
-  script:
-    - |
-      echo "Генерация SBOM для frontend образа"
-      IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
-      syft "$IMAGE" -o spdx-json=sbom-frontend.spdx.json
-      syft "$IMAGE" -o cyclonedx-json=sbom-frontend.cdx.json
-      ls -lh sbom-frontend.*
-  artifacts:
-    paths:
-      - sbom-frontend.spdx.json
-      - sbom-frontend.cdx.json
-    when: always
-    expire_in: 1 week
-  needs:
-    - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-dast-frontend:
-  stage: dast-frontend
-  script:
-    - |
-      set +e
-      IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
-      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
-        echo "Frontend image not found locally" > zap_report_frontend.html
-        echo '{"error":"image not found"}' > zap_report_frontend.json
-        exit 0
-      fi
-      docker network create dast-frontend-net || true
-      docker run -d --name frontend-test --network dast-frontend-net \
-        --entrypoint node $IMAGE node_modules/.bin/next start || {
-          echo '{"error":"start failed"}' > zap_report_frontend.json
-          exit 0
-        }
-      sleep 40
-      docker ps | grep frontend-test || {
-        docker logs frontend-test
-        docker rm -f frontend-test
-        exit 0
-      }
-      mkdir -p zap_reports_frontend && chmod 777 zap_reports_frontend
-      docker run --rm --network dast-frontend-net \
-        -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw zaproxy/zap-stable \
-        zap-baseline.py -t http://frontend-test:3000 \
-        -r zap_report_frontend.html -J zap_report_frontend.json \
-        2>&1 | tee zap_frontend_output.log || true
-      if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
-        cp zap_reports_frontend/zap_report_frontend.html .
-        cp zap_reports_frontend/zap_report_frontend.json .
-      else
-        echo '{"error":"scan failed"}' > zap_report_frontend.json
-      fi
-      docker rm -f frontend-test || true
-      docker network rm dast-frontend-net || true
-      exit 0
-  artifacts:
-    paths:
-      - zap_report_frontend.html
-      - zap_report_frontend.json
-    when: always
-    expire_in: 1 week
-  allow_failure: true
-  needs:
-    - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
-
-push-frontend:
-  stage: push-frontend
-  script:
-    - |
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      for ARCH in arm64 amd64; do
-        docker push "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" | tee push-frontend-$ARCH.log
-      done
-      docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
-        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
-        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
-      OUT=$(docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} 2>&1)
-      echo "$OUT"
-      DIGEST=$(echo "$OUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
-      echo "frontendArm64Digest=$DIGEST" > frontend.env
-      TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
-        -H "Content-Type: application/json" \
-        -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_PASSWORD}\"}" \
-        | jq -r '.token')
-      if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
-        for SUFFIX in arm64 amd64; do
-          curl -s -o /dev/null -w "delete frontend-${CI_PIPELINE_ID}-$SUFFIX: %{http_code}\n" -X DELETE \
-            -H "Authorization: Bearer ${TOKEN}" \
-            "https://hub.docker.com/v2/repositories/${dockerId}/${repoName}/tags/frontend-${CI_PIPELINE_ID}-${SUFFIX}/"
-        done
-      fi
-  artifacts:
-    reports:
-      dotenv: frontend.env
-  needs:
-    - job: build-frontend
-      artifacts: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
@@ -701,6 +458,249 @@ push-backend:
       dotenv: backend.env
   needs:
     - job: build-backend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# ────────────────────────────────────────────────────────────────
+# FRONTEND CHECKS
+# ────────────────────────────────────────────────────────────────
+frontend-checks:
+  stage: frontend-checks
+  script:
+    - cd FamilyClub.React/famiy.club.react
+    - npm ci || npm install
+    - npm run lint   > ../../frontend-lint.log 2>&1 || true
+    - npx tsc --noEmit > ../../frontend-tsc.log 2>&1 || true
+    - npm run build || true
+  artifacts:
+    when: always
+    paths:
+      - frontend-lint.log
+      - frontend-tsc.log
+    expire_in: 1 week
+  allow_failure: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# FIX: block scalar — иначе `\` уходит в shell как аргумент
+osv-scanner-frontend:
+  stage: frontend-checks
+  script:
+    - |
+      docker run --rm \
+        -v "$PWD:/src" \
+        -w /src/FamilyClub.React/famiy.club.react \
+        ghcr.io/google/osv-scanner:latest \
+        scan source -r \
+          --format sarif \
+          --output-file /src/osv-frontend.sarif \
+          . || true
+  artifacts:
+    paths:
+      - osv-frontend.sarif
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# FIX: block scalar + правильное имя файла (jscpd-report.sarif, не sarif.json)
+jscpd:
+  stage: frontend-checks
+  script:
+    - |
+      npx jscpd@latest \
+        --reporters sarif \
+        --output ./jscpd-report \
+        --format "javascript,typescript,tsx,jsx,css,scss,markup,csharp" \
+        --ignore "**/node_modules/**,**/*.min.js,**/vendor/**,**/lib/api/generated/**" \
+        . || true
+    - mv ./jscpd-report/jscpd-report.sarif ./jscpd.sarif || true
+    - test -f jscpd.sarif || echo '{"version":"2.1.0","runs":[]}' > jscpd.sarif
+  artifacts:
+    paths:
+      - jscpd.sarif
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# ────────────────────────────────────────────────────────────────
+# FRONTEND BUILD / SCAN / SBOM / DAST / PUSH
+# ────────────────────────────────────────────────────────────────
+build-frontend:
+  stage: build-frontend
+  script:
+    - |
+      export BUILDKIT_NO_CLIENT_IPV6=1
+      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      docker buildx use default
+      for ARCH in arm64 amd64; do
+        echo "Сборка для $ARCH"
+        docker buildx build \
+          --platform linux/$ARCH \
+          --no-cache \
+          -f dockerfile.frontend \
+          -o type=docker,dest=frontend-$ARCH.tar \
+          --build-arg BUILD_DATE=$(date -Iseconds) \
+          --build-arg VCS_REF=$CI_COMMIT_SHA \
+          --build-arg VERSION=$CI_PIPELINE_ID \
+          .
+        LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
+        IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
+        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
+        docker tag $IMAGE_ID $FULL_TAG
+        rm -f frontend-$ARCH.tar
+      done
+      DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
+      echo "frontendArm64Digest=$DIGEST" > frontend.env
+  artifacts:
+    reports:
+      dotenv: frontend.env
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+scan-frontend:
+  stage: scan-frontend
+  script:
+    - |
+      trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress \
+        --format sarif --output trivy-frontend.sarif \
+        "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64" || true
+  artifacts:
+    paths:
+      - trivy-frontend.sarif
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  needs:
+    - job: build-frontend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+sbom-frontend:
+  stage: sbom-frontend
+  image: anchore/syft:latest
+  script:
+    - |
+      echo "Генерация SBOM для frontend образа"
+      IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
+      syft "$IMAGE" -o spdx-json=sbom-frontend.spdx.json
+      syft "$IMAGE" -o cyclonedx-json=sbom-frontend.cdx.json
+      ls -lh sbom-frontend.*
+  artifacts:
+    paths:
+      - sbom-frontend.spdx.json
+      - sbom-frontend.cdx.json
+    when: always
+    expire_in: 1 week
+  needs:
+    - job: build-frontend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+dast-frontend:
+  stage: dast-frontend
+  script:
+    - |
+      set +e
+      IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
+      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
+        echo "Frontend image not found locally" > zap_report_frontend.html
+        echo '{"error":"image not found"}' > zap_report_frontend.json
+        exit 0
+      fi
+      docker network create dast-frontend-net || true
+      docker run -d --name frontend-test --network dast-frontend-net \
+        --entrypoint node $IMAGE node_modules/.bin/next start || {
+          echo '{"error":"start failed"}' > zap_report_frontend.json
+          exit 0
+        }
+      sleep 40
+      docker ps | grep frontend-test || {
+        docker logs frontend-test
+        docker rm -f frontend-test
+        exit 0
+      }
+      mkdir -p zap_reports_frontend && chmod 777 zap_reports_frontend
+      docker run --rm --network dast-frontend-net \
+        -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw zaproxy/zap-stable \
+        zap-baseline.py -t http://frontend-test:3000 \
+        -r zap_report_frontend.html -J zap_report_frontend.json \
+        2>&1 | tee zap_frontend_output.log || true
+      if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
+        cp zap_reports_frontend/zap_report_frontend.html .
+        cp zap_reports_frontend/zap_report_frontend.json .
+      else
+        echo '{"error":"scan failed"}' > zap_report_frontend.json
+      fi
+      docker rm -f frontend-test || true
+      docker network rm dast-frontend-net || true
+      exit 0
+  artifacts:
+    paths:
+      - zap_report_frontend.html
+      - zap_report_frontend.json
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  needs:
+    - job: build-frontend
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+push-frontend:
+  stage: push-frontend
+  script:
+    - |
+      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      for ARCH in arm64 amd64; do
+        docker push "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" | tee push-frontend-$ARCH.log
+      done
+      docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
+        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
+        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
+      OUT=$(docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} 2>&1)
+      echo "$OUT"
+      DIGEST=$(echo "$OUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
+      echo "frontendArm64Digest=$DIGEST" > frontend.env
+      TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
+        -H "Content-Type: application/json" \
+        -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_PASSWORD}\"}" \
+        | jq -r '.token')
+      if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+        for SUFFIX in arm64 amd64; do
+          curl -s -o /dev/null -w "delete frontend-${CI_PIPELINE_ID}-$SUFFIX: %{http_code}\n" -X DELETE \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "https://hub.docker.com/v2/repositories/${dockerId}/${repoName}/tags/frontend-${CI_PIPELINE_ID}-${SUFFIX}/"
+        done
+      fi
+  artifacts:
+    reports:
+      dotenv: frontend.env
+  needs:
+    - job: build-frontend
       artifacts: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
