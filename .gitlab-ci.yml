@@ -138,19 +138,13 @@ frontend-checks:
       when: always
     - when: never
 
-# ==========================================
-# [ADDED] Новый джоб: OSV-Scanner для Frontend
-# ==========================================
+# [FIXED] OSV-Scanner для Frontend: образ в shell-executor не работает.
+# Запускаем через docker run, монтируя рабочую директорию в контейнер.
 osv-scanner-frontend:
   stage: frontend-checks
-  image:
-    name: ghcr.io/google/osv-scanner:latest
-    entrypoint: [""]
   script:
     - echo "Запуск OSV-Scanner для поиска уязвимостей в зависимостях Frontend"
-    - cd FamilyClub.React/famiy.club.react
-    # Сканируем рекурсивно (-r) lock-файлы и выводим результат в SARIF для GitLab
-    - /osv-scanner scan source -r --format sarif --output ../../osv-frontend.sarif . || true
+    - docker run --rm -v "$PWD:/src" -w /src/FamilyClub.React/famiy.club.react ghcr.io/google/osv-scanner:latest scan source -r --format sarif --output /src/osv-frontend.sarif . || true
   artifacts:
     paths:
       - osv-frontend.sarif
@@ -162,22 +156,35 @@ osv-scanner-frontend:
       when: always
     - when: never
 
-# ==========================================
-# [ADDED] Новый джоб: jscpd для поиска дублирования кода
-# ==========================================
+# [FIXED] jscpd: неверный формат "html". Заменён на "htmlmixed" для корректного парсинга HTML.
 jscpd:
   stage: frontend-checks
   script:
     - echo "Запуск jscpd для поиска дублирования кода"
-    # Запускаем через npx (не требует отдельного образа, использует окружение раннера).
-    # Игнорируем node_modules, сгенерированные файлы, минифицированный код и вендоров.
-    # Выводим результат в SARIF для интеграции с GitLab Code Quality.
-    - npx jscpd@latest --reporters sarif --output ./jscpd-report --format "javascript,typescript,tsx,jsx,css,scss,html,csharp" --ignore "**/node_modules/**,**/*.min.js,**/vendor/**,**/lib/api/generated/**" . || true
-    # Перемещаем сгенерированный файл отчета в корень проекта для сохранения в артефактах
+    - npx jscpd@latest --reporters sarif --output ./jscpd-report --format "javascript,typescript,tsx,jsx,css,scss,htmlmixed,csharp" --ignore "**/node_modules/**,**/*.min.js,**/vendor/**,**/lib/api/generated/**" . || true
     - mv ./jscpd-report/sarif.json ./jscpd.sarif || true
   artifacts:
     paths:
       - jscpd.sarif
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# [FIXED] archlint: пакет @danolez/arch-lint предоставляет команду `arch-lint`.
+# Исправлена команда на `npx arch-lint arch --format gitlab`.
+archlint-frontend:
+  stage: frontend-checks
+  script:
+    - echo "Запуск arch-lint для архитектурного анализа Frontend"
+    - cd FamilyClub.React/famiy.club.react
+    - npx arch-lint@latest arch --format gitlab > ../../archlint-frontend.json || true
+  artifacts:
+    paths:
+      - archlint-frontend.json
     when: always
     expire_in: 1 week
   allow_failure: true
@@ -411,21 +418,52 @@ backend-checks:
       when: always
     - when: never
 
-# ==========================================
-# [ADDED] Новый джоб: OSV-Scanner для Backend
-# ==========================================
+# [FIXED] OSV-Scanner для Backend: аналогично фронтенду, запускаем через docker run.
 osv-scanner-backend:
   stage: backend-checks
-  image:
-    name: ghcr.io/google/osv-scanner:latest
-    entrypoint: [""]
   script:
     - echo "Запуск OSV-Scanner для поиска уязвимостей в зависимостях Backend"
-    # Сканируем корень репозитория, но исключаем папку фронтенда, чтобы не дублировать работу
-    - /osv-scanner scan source -r --format sarif --output osv-backend.sarif . --exclude FamilyClub.React/ || true
+    - docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:latest scan source -r --format sarif --output /src/osv-backend.sarif . --exclude /src/FamilyClub.React/ || true
   artifacts:
     paths:
       - osv-backend.sarif
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# [MODIFIED] Уточнён вызов Dependably.CodeMetrics: команда `codemetrics`, формат `--format json`.
+code-metrics-backend:
+  stage: backend-checks
+  script:
+    - echo "Установка и запуск Dependably.CodeMetrics для анализа C#"
+    - dotnet tool install --global Dependably.CodeMetrics
+    - export PATH="$PATH:$HOME/.dotnet/tools"
+    - codemetrics . --format json > code-metrics-backend.json || true
+  artifacts:
+    paths:
+      - code-metrics-backend.json
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - when: never
+
+# [FIXED] ArchMAP: пакет устанавливается как `KG-ARCHMAP`, команда `archmap`.
+archmap-analysis:
+  stage: backend-checks
+  script:
+    - echo "Запуск ArchMAP для анализа архитектуры"
+    - pip install KG-ARCHMAP
+    - archmap analyze . --format json --output archmap-report.json || true
+  artifacts:
+    paths:
+      - archmap-report.json
     when: always
     expire_in: 1 week
   allow_failure: true
@@ -803,8 +841,8 @@ convert-sarif-to-codequality:
 
     - |
       SARIF_FILES=""
-      # [MODIFIED] В список файлов для конвертации добавлен jscpd.sarif
-      for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif npm-audit.sarif eslint-security.sarif trivy-frontend.sarif trivy-backend.sarif osv-frontend.sarif osv-backend.sarif jscpd.sarif; do
+      # [MODIFIED] В список файлов для конвертации добавлен code-metrics-backend.sarif
+      for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif npm-audit.sarif eslint-security.sarif trivy-frontend.sarif trivy-backend.sarif osv-frontend.sarif osv-backend.sarif jscpd.sarif code-metrics-backend.sarif; do
         if [ -f "$f" ]; then
           echo "  Найден: $f"
           SARIF_FILES="$SARIF_FILES $f"
@@ -897,8 +935,14 @@ convert-sarif-to-codequality:
     - job: osv-scanner-backend
       artifacts: true
       optional: true
-    # [MODIFIED] Добавлена зависимость от артефактов jscpd
     - job: jscpd
+      artifacts: true
+      optional: true
+    - job: archlint-frontend
+      artifacts: true
+      optional: true
+    # [MODIFIED] Зависимость от code-metrics-backend (если он генерирует SARIF)
+    - job: code-metrics-backend
       artifacts: true
       optional: true
   rules:
