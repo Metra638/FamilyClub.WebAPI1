@@ -1,0 +1,11 @@
+# OSV-Scanner configuration
+# https://google.github.io/osv-scanner/configuration/
+
+[[IgnoredVulns]]
+id = "MAL-2025-6239"
+reason = "False positive: Next.js internal stub in node_modules/next/dist/compiled/scheduler/package.json, not the malicious npm package"
+
+[[IgnoredVulns]]
+id = "MAL-2025-6309"
+reason = "False positive: Next.js internal stub in node_modules/next/dist/compiled/scheduler-experimental/package.json, not the malicious npm package"
+
