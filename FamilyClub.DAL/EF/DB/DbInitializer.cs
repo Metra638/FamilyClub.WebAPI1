@@ -51,20 +51,59 @@ namespace FamilyClub.DAL.EF.DB
                     }
                     catch (PostgresException ex) when (ex.SqlState == "42P04")
                     {
-                        // БД уже створена (інший под / Exists брехнув) — ігноруємо
                         Console.WriteLine("[DbInitializer] Database already exists (42P04) — continue.");
                     }
                 }
                 if (!await creator.HasTablesAsync())
                 {
-                    await creator.CreateTablesAsync();
+                    // Порожня база даних — накатуємо всі міграції зі збереженням історії
+                    await context.Database.MigrateAsync();
                 }
                 else
                 {
-                    var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-                    if (pendingMigrations.Any())
+                    // База даних уже містить таблиці. Переконуємося, що існує таблиця __EFMigrationsHistory
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                            ""MigrationId"" character varying(150) NOT NULL,
+                            ""ProductVersion"" character varying(32) NOT NULL,
+                            CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY (""MigrationId"")
+                        );
+                    ");
+
+                    var appliedMigrations = (await context.Database.GetAppliedMigrationsAsync()).ToHashSet();
+
+                    // Перевіряємо, чи існує вже таблиця AspNetRoles
+                    var hasAspNetRoles = false;
+                    await using (var cmd = context.Database.GetDbConnection().CreateCommand())
                     {
-                        await context.Database.MigrateAsync();
+                        await context.Database.OpenConnectionAsync();
+                        cmd.CommandText = "SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'AspNetRoles';";
+                        var scalar = await cmd.ExecuteScalarAsync();
+                        hasAspNetRoles = scalar != null && scalar != DBNull.Value;
+                    }
+
+                    // Якщо таблиці (AspNetRoles) уже створені раніше через EnsureCreated/CreateTables, але в __EFMigrationsHistory немає першої міграції:
+                    // це база без історії міграцій. Фіксуємо вже наявні міграції в __EFMigrationsHistory, щоб MigrateAsync не пробував повторно робити CREATE TABLE.
+                    if (hasAspNetRoles && !appliedMigrations.Contains("20260329193507_FamilyClubMigration1"))
+                    {
+                        Console.WriteLine("[DbInitializer] Виявлено існуючі таблиці без історії міграцій. Синхронізуємо __EFMigrationsHistory...");
+                        var allMigrations = context.Database.GetMigrations();
+                        foreach (var mig in allMigrations)
+                        {
+                            await context.Database.ExecuteSqlRawAsync(
+                                @"INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") 
+                                  VALUES ({0}, {1}) 
+                                  ON CONFLICT (""MigrationId"") DO NOTHING;",
+                                mig, "10.0.7");
+                        }
+                    }
+                    else
+                    {
+                        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+                        if (pendingMigrations.Any())
+                        {
+                            await context.Database.MigrateAsync();
+                        }
                     }
                 }
 

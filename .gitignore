@@ -413,3 +413,10 @@ FodyWeavers.xsd
 *next-env.d.ts
 
 .idea/
+
+# Continue extension
+continue/
+.continue/
+
+# Temporary / reports
+помилки/

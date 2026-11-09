@@ -1,0 +1,18 @@
+{
+  "threshold": 0,
+  "reporters": ["sarif"],
+  "output": "./jscpd-report",
+  "ignore": [
+    "**/node_modules/**",
+    "**/*.min.js",
+    "**/vendor/**",
+    "**/lib/api/generated/**",
+    "**/FamilyClub.DAL/Migrations/**",
+    "**/*.Designer.cs",
+    "**/*Snapshot.cs",
+    "**/.next/**",
+    "**/obj/**",
+    "**/bin/**"
+  ]
+}
+
