@@ -129,7 +129,27 @@ spec:
               value: "{{ .Values.ollama.model }}"
             - name: InkAssistant__EmbeddingModel
               value: "{{ .Values.ollama.embeddingModel }}"
-              
+
+            - name: CloudflareR2__AccountId
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-r2-secrets
+                  key: AccountId
+            - name: CloudflareR2__BucketName
+              value: "librellis"
+            - name: CloudflareR2__AccessKeyId
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-r2-secrets
+                  key: AccessKeyId
+            - name: CloudflareR2__SecretAccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-r2-secrets
+                  key: SecretAccessKey
+            - name: CloudflareR2__PublicUrl
+              value: "https://pub-71406afa69934926ab19cddb2fb23867.r2.dev"
+
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
