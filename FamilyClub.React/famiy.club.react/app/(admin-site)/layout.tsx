@@ -101,6 +101,8 @@ import AdminSidebarUserCard from "./layout/AdminSidebarUserCard";
 import AdminAccessGuard from "./layout/AdminAccessGuard";
 import AdminProviders from "./layout/AdminProviders";
 
+export const dynamic = "force-dynamic";
+
 const sourceSans = Source_Sans_3({
   subsets: ["cyrillic", "latin"],
   variable: "--font-sans",

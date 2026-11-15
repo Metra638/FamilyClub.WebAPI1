@@ -15,6 +15,9 @@ import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 import "../../../styles/register-flags.css";
+
+export const dynamic = "force-dynamic"; 
+
 const sourceSans = Source_Sans_3({
   subsets: ['cyrillic', 'latin'],
   variable: '--font-source-sans',
