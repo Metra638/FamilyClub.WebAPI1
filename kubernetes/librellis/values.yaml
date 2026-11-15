@@ -1,11 +1,11 @@
 backend:
   replicaCount: 1
-  tag: "187"
+  tag: "188"
   image:
     repository: metra638/test1
-    digest: "sha256:d6d497bde82a49f5c45bd1d2cbbbbbc72819a9005de70ed9b97324d3033f5717"
-    buildDate: "2026-11-09T22:19:35+00:00"
-    commitHash: "f98fe9bb4f5aced6d3495a183b03ee3b00ba6d19"
+    digest: "sha256:a7cca6f26e4df0dfe38d25422d02135af139cb32100679cdda09fb63d37b9b40"
+    buildDate: "2026-11-15T12:18:38+00:00"
+    commitHash: "6b9ade595e4638b04d23a1f1ff87ad58f6676130"
     branch: "Final"
 frontend:
   replicaCount: 1
