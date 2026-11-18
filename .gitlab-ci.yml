@@ -716,25 +716,26 @@ push-nexus-backend:
   script:
     - |
       echo "=== Дублирование бэкенда в Nexus ==="
-      # Авторизация в Docker Hub, чтобы забрать образы оттуда (так надежнее)
       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      # Авторизация в Nexus
+      
+      # Логинимся в Nexus
       echo "$NEXUS_PASSWORD" | docker login -u "$NEXUS_USER" --password-stdin $NEXUS_URL
       
       for ARCH in arm64 amd64; do
         SRC_TAG="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-$ARCH"
-        DEST_TAG="${NEXUS_URL}/docker-hosted:backend-${CI_PIPELINE_ID}-$ARCH"
+        # ВАЖНО: используем /docker-hosted/ как путь репозитория
+        DEST_TAG="${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID}-$ARCH"
         
         docker pull $SRC_TAG
         docker tag $SRC_TAG $DEST_TAG
         docker push $DEST_TAG
       done
       
-      # Создаем мультиарх-манифест в Nexus
-      docker manifest create ${NEXUS_URL}/docker-hosted:backend-${CI_PIPELINE_ID} \
-        --amend ${NEXUS_URL}/docker-hosted:backend-${CI_PIPELINE_ID}-arm64 \
-        --amend ${NEXUS_URL}/docker-hosted:backend-${CI_PIPELINE_ID}-amd64
-      docker manifest push ${NEXUS_URL}/docker-hosted:backend-${CI_PIPELINE_ID}
+      # Создаем мультиарх-манифест
+      docker manifest create ${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID} \
+        --amend ${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID}-arm64 \
+        --amend ${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID}-amd64
+      docker manifest push ${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID}
   needs:
     - job: push-backend
   rules:
@@ -748,21 +749,23 @@ push-nexus-frontend:
     - |
       echo "=== Дублирование фронтенда в Nexus ==="
       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      
       echo "$NEXUS_PASSWORD" | docker login -u "$NEXUS_USER" --password-stdin $NEXUS_URL
       
       for ARCH in arm64 amd64; do
         SRC_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
-        DEST_TAG="${NEXUS_URL}/docker-hosted:frontend-${CI_PIPELINE_ID}-$ARCH"
+        # ВАЖНО: используем /docker-hosted/ как путь репозитория
+        DEST_TAG="${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID}-$ARCH"
         
         docker pull $SRC_TAG
         docker tag $SRC_TAG $DEST_TAG
         docker push $DEST_TAG
       done
       
-      docker manifest create ${NEXUS_URL}/docker-hosted:frontend-${CI_PIPELINE_ID} \
-        --amend ${NEXUS_URL}/docker-hosted:frontend-${CI_PIPELINE_ID}-arm64 \
-        --amend ${NEXUS_URL}/docker-hosted:frontend-${CI_PIPELINE_ID}-amd64
-      docker manifest push ${NEXUS_URL}/docker-hosted:frontend-${CI_PIPELINE_ID}
+      docker manifest create ${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID} \
+        --amend ${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID}-arm64 \
+        --amend ${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID}-amd64
+      docker manifest push ${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID}
   needs:
     - job: push-frontend
   rules:
