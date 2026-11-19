@@ -1,3 +1,4 @@
+
 stages:
   - sync
   - gitleaks
@@ -17,38 +18,44 @@ stages:
   - sbom-frontend
   - dast-frontend
   - push-frontend
-  - push-nexus # <--- ДОБАВЛЕНО: Новый этап для выгрузки в Nexus
+  - push-nexus
   - update-frontend-manifests
   - update-backend-manifests
   - convert-sarif-to-codequality
   - sync2
 
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - when: never
+
 variables:
   UPSTREAM_URL: "https://github.com/Metra638/FamilyClub.WebAPI1.git"
   dockerId: "metra638"
   repoName: "test1"
+  NEXUS_URL: "192.168.1.89:8081"
+  NEXUS_USER: "admin"
 
-# ────────────────────────────────────────────────────────────────
+# ================================================================
 # SYNC
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+
 sync-repo:
   stage: sync
   script:
     - git config --global user.email "ci@gitlab.local"
     - git config --global user.name "GitLab CI"
     - rm -rf /tmp/repo
-    - git clone --branch Final $UPSTREAM_URL /tmp/repo
+    - git clone --branch Final "$UPSTREAM_URL" /tmp/repo
     - cd /tmp/repo
-    - git remote set-url origin http://root:${GITLAB_PUSH_TOKEN}@localhost/root/librellis1.git
+    - git remote set-url origin "http://root:${GITLAB_PUSH_TOKEN}@localhost/root/librellis1.git"
     - git push origin Final --force
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# ────────────────────────────────────────────────────────────────
-# SECRETS / LINT / AUDIT
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+# GITLEAKS
+# ================================================================
+
 gitleaks:
   stage: gitleaks
   script:
@@ -59,16 +66,16 @@ gitleaks:
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# HADOLINT
+# ================================================================
 
 hadolint:
   stage: hadolint
   script:
     - hadolint --format sarif dockerfile.frontend > hadolint-frontend.sarif || true
-    - hadolint --format sarif dockerfile.backend  > hadolint-backend.sarif  || true
+    - hadolint --format sarif dockerfile.backend > hadolint-backend.sarif || true
   artifacts:
     paths:
       - hadolint-frontend.sarif
@@ -76,10 +83,10 @@ hadolint:
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# NPM AUDIT
+# ================================================================
 
 npm-audit:
   stage: npm-audit
@@ -93,7 +100,12 @@ npm-audit:
           "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
           "version": "2.1.0",
           "runs": [{
-            "tool": { "driver": { "name": "npm-audit", "informationUri": "https://docs.npmjs.com/cli/v10/commands/npm-audit" } },
+            "tool": {
+              "driver": {
+                "name": "npm-audit",
+                "informationUri": "https://docs.npmjs.com/cli/v10/commands/npm-audit"
+              }
+            },
             "results": ($audit[0].vulnerabilities // {} | to_entries | map({
               "ruleId": ("NPM-AUDIT-" + (.value.severity | ascii_upcase)),
               "level": (
@@ -101,25 +113,31 @@ npm-audit:
                 elif .value.severity == "moderate" then "warning"
                 else "note" end
               ),
-              "message": { "text": (
-                .key + ": " + (
-                  if (.value.via | type) == "array"
-                  then ([.value.via[] | if type == "object" then .title else . end] | join("; "))
-                  else (.value.via | tostring) end
-                ) + "  [severity=" + .value.severity + ", range=" + (.value.range // "?") + "]"
-              )},
+              "message": {
+                "text": (
+                  .key + ": " +
+                  (if (.value.via | type) == "array"
+                   then ([.value.via[] | if type == "object" then .title else . end] | join("; "))
+                   else (.value.via | tostring) end)
+                  + " [severity=" + .value.severity + ", range=" + (.value.range // "?") + "]"
+                )
+              },
               "locations": [{
                 "physicalLocation": {
-                  "artifactLocation": { "uri": "FamilyClub.React/famiy.club.react/package.json" },
-                  "region": { "startLine": 1 }
+                  "artifactLocation": {
+                    "uri": "FamilyClub.React/famiy.club.react/package.json"
+                  },
+                  "region": {"startLine": 1}
                 }
               }],
-              "properties": { "security-severity": (
-                if .value.severity == "critical" then "9.5"
-                elif .value.severity == "high" then "8.0"
-                elif .value.severity == "moderate" then "5.0"
-                else "2.0" end
-              )}
+              "properties": {
+                "security-severity": (
+                  if .value.severity == "critical" then "9.5"
+                  elif .value.severity == "high" then "8.0"
+                  elif .value.severity == "moderate" then "5.0"
+                  else "2.0" end
+                )
+              }
             }))
           }]
         }' > npm-audit.sarif
@@ -132,10 +150,10 @@ npm-audit:
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# ESLINT SECURITY
+# ================================================================
 
 eslint-security:
   stage: eslint-security
@@ -168,20 +186,17 @@ eslint-security:
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# ────────────────────────────────────────────────────────────────
+# ================================================================
 # BACKEND CHECKS
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+
 backend-checks:
   stage: backend-checks
   script:
-    - echo "NuGet vulnerable → nuget-vulnerable.log"
+    - echo "NuGet vulnerable -> nuget-vulnerable.log"
     - dotnet list package --vulnerable --include-transitive > nuget-vulnerable.log 2>&1 || true
-    - echo "Formatting → format-check.log"
+    - echo "Formatting -> format-check.log"
     - dotnet format --verify-no-changes --verbosity minimal > format-check.log 2>&1 || true
     - dotnet restore
     - dotnet build --no-restore -c Release /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true
@@ -192,12 +207,7 @@ backend-checks:
       - format-check.log
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# FIX: block scalar + -w /src (иначе сканировался / в контейнере)
 osv-scanner-backend:
   stage: backend-checks
   script:
@@ -207,20 +217,16 @@ osv-scanner-backend:
         -w /src \
         ghcr.io/google/osv-scanner:latest \
         scan source -r \
-          --format sarif \
-          --output-file /src/osv-backend.sarif \
-          . \
-          --x-exclude /src/FamilyClub.React/ || true
+        --format sarif \
+        --output-file /src/osv-backend.sarif \
+        . \
+        --x-exclude /src/FamilyClub.React/ || true
   artifacts:
     paths:
       - osv-backend.sarif
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
 code-metrics-backend:
   stage: backend-checks
@@ -235,10 +241,6 @@ code-metrics-backend:
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
 archmap-analysis:
   stage: backend-checks
@@ -247,7 +249,6 @@ archmap-analysis:
     - python3 -m venv .venv-archmap
     - .venv-archmap/bin/pip install KG-ARCHMAP
     - .venv-archmap/bin/archmap analyze .
-    # Исправлено на .codeatlas
     - cp .codeatlas/graph.json archmap-report.json || true
   artifacts:
     paths:
@@ -255,20 +256,18 @@ archmap-analysis:
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# ────────────────────────────────────────────────────────────────
-# BACKEND TEST / BUILD / SCAN / SBOM / DAST / PUSH
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+# BACKEND TEST
+# ================================================================
+
 test-backend:
   stage: test-backend
   script:
     - |
       dotnet test FamilyClub.WebAPI.Tests/FamilyClub.WebAPI.Tests.csproj \
         --logger "trx;LogFileName=webapi.trx" || true
+
       dotnet test FamilyClub.BLL.Tests/FamilyClub.BLL.Tests.csproj \
         --logger "trx;LogFileName=bll.trx" || true
   artifacts:
@@ -276,51 +275,67 @@ test-backend:
     paths:
       - "**/*.trx"
     expire_in: 1 week
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# BACKEND BUILD
+# ================================================================
 
 build-backend:
   stage: build-backend
   script:
     - |
+      set -e
+
       export BUILDKIT_NO_CLIENT_IPV6=1
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+      echo "$DOCKERHUB_PASSWORD" | docker login \
+        -u "$DOCKERHUB_USERNAME" --password-stdin
+
       docker buildx use default
+      docker buildx inspect --bootstrap
+
       for ARCH in arm64 amd64; do
-        echo "Сборка для $ARCH"
+
+        echo "===================================="
+        echo "Сборка Backend для $ARCH"
+        echo "===================================="
+
+        FULL_TAG="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-${ARCH}"
+
         docker buildx build \
-          --platform linux/$ARCH \
+          --platform "linux/${ARCH}" \
           --no-cache \
+          --load \
+          -t "$FULL_TAG" \
           -f dockerfile.backend \
-          -o type=docker,dest=backend-$ARCH.tar \
-          --build-arg BUILD_DATE=$(date -Iseconds) \
-          --build-arg VCS_REF=$CI_COMMIT_SHA \
-          --build-arg VERSION=$CI_PIPELINE_ID \
+          --build-arg BUILD_DATE="$(date -Iseconds)" \
+          --build-arg VCS_REF="$CI_COMMIT_SHA" \
+          --build-arg VERSION="$CI_PIPELINE_ID" \
           .
-        LOAD_OUTPUT=$(docker load --quiet < backend-$ARCH.tar)
-        IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
-        FULL_TAG="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-$ARCH"
-        docker tag $IMAGE_ID $FULL_TAG
-        rm -f backend-$ARCH.tar
+
+        docker image inspect "$FULL_TAG" > /dev/null
+
       done
-      DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-arm64")
-      echo "BackendArm64Digest=$DIGEST" > backend.env
-  artifacts:
-    reports:
-      dotenv: backend.env
+
+      echo "Backend images successfully built."
+
   rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+    - when: on_success
+
+# ================================================================
+# BACKEND SCAN
+# ================================================================
 
 scan-backend:
   stage: scan-backend
   script:
     - |
-      trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress \
-        --format sarif --output trivy-backend.sarif \
+      trivy image \
+        --severity HIGH,CRITICAL \
+        --exit-code 0 \
+        --no-progress \
+        --format sarif \
+        --output trivy-backend.sarif \
         "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64" || true
   artifacts:
     paths:
@@ -330,20 +345,33 @@ scan-backend:
   allow_failure: true
   needs:
     - job: build-backend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# BACKEND SBOM
+# ================================================================
 
 sbom-backend:
   stage: sbom-backend
-  image: anchore/syft:latest
   script:
     - |
+      set -e
+
       IMAGE="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64"
-      syft "$IMAGE" -o spdx-json=sbom-backend.spdx.json
-      syft "$IMAGE" -o cyclonedx-json=sbom-backend.cdx.json
+
+      docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "$PWD:/out" \
+        anchore/syft:latest \
+        "$IMAGE" \
+        -o spdx-json=/out/sbom-backend.spdx.json
+
+      docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "$PWD:/out" \
+        anchore/syft:latest \
+        "$IMAGE" \
+        -o cyclonedx-json=/out/sbom-backend.cdx.json
+
       ls -lh sbom-backend.*
   artifacts:
     paths:
@@ -353,63 +381,101 @@ sbom-backend:
     expire_in: 1 week
   needs:
     - job: build-backend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# BACKEND DAST
+# ================================================================
 
 dast-backend:
   stage: dast-backend
   script:
     - |
       set +e
+
       IMAGE="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64"
+
       docker rm -f backend-test db-test 2>/dev/null || true
       docker network rm dast-backend-net 2>/dev/null || true
-      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
+
+      if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
         echo '{"error":"image not found"}' > zap_report_backend.json
         echo '{"error":"image not found"}' > openapi.json
         exit 0
       fi
+
       docker network create dast-backend-net || true
-      docker run -d --name db-test --network dast-backend-net \
-        -e POSTGRES_PASSWORD=MyStrongPass123! -e POSTGRES_DB=familyclub_db postgres:15
+
+      docker run -d \
+        --name db-test \
+        --network dast-backend-net \
+        -e POSTGRES_PASSWORD=MyStrongPass123! \
+        -e POSTGRES_DB=familyclub_db \
+        postgres:15
+
       sleep 30
+
       DB="Host=db-test;Database=familyclub_db;Username=postgres;Password=MyStrongPass123!"
-      docker run -d --name backend-test --network dast-backend-net \
+
+      docker run -d \
+        --name backend-test \
+        --network dast-backend-net \
         -e ASPNETCORE_ENVIRONMENT=Development \
-        -e Jwt__Key="${JWT_KEY}" -e Jwt__Issuer="${JWT_ISSUER}" -e Jwt__Audience="${JWT_AUDIENCE}" \
-        -e ConnectionStrings__FamilyClub_DB="${DB}" $IMAGE || {
+        -e Jwt__Key="${JWT_KEY}" \
+        -e Jwt__Issuer="${JWT_ISSUER}" \
+        -e Jwt__Audience="${JWT_AUDIENCE}" \
+        -e ConnectionStrings__FamilyClub_DB="${DB}" \
+        "$IMAGE" || {
           echo '{"error":"start failed"}' > zap_report_backend.json
           exit 0
         }
+
       sleep 40
+
       docker ps | grep backend-test || {
         docker logs backend-test
         docker rm -f backend-test db-test
         exit 0
       }
+
       for i in $(seq 1 30); do
-        docker exec backend-test wget -qO- http://localhost:8080/swagger/v1/swagger.json > openapi.json 2>/dev/null && \
-          [ -s openapi.json ] && head -c1 openapi.json | grep -q "{" && break
+        docker exec backend-test \
+          wget -qO- http://localhost:8080/swagger/v1/swagger.json \
+          > openapi.json 2>/dev/null && \
+          [ -s openapi.json ] && \
+          head -c1 openapi.json | grep -q "{" && break
+
         sleep 10
       done
-      docker run --rm -v $(pwd):/spec redocly/cli:1.34.5 build-docs /spec/openapi.json -o /spec/index.html || true
-      mkdir -p zap_reports_backend && chmod 777 zap_reports_backend
-      docker run --rm --network dast-backend-net \
-        -v $(pwd)/zap_reports_backend:/zap/wrk/:rw zaproxy/zap-stable \
-        zap-baseline.py -t http://backend-test:8080 \
-        -r zap_report_backend.html -J zap_report_backend.json \
+
+      docker run --rm \
+        -v "$PWD:/spec" \
+        redocly/cli:1.34.5 \
+        build-docs /spec/openapi.json \
+        -o /spec/index.html || true
+
+      mkdir -p zap_reports_backend
+      chmod 777 zap_reports_backend
+
+      docker run --rm \
+        --network dast-backend-net \
+        -v "$PWD/zap_reports_backend:/zap/wrk/:rw" \
+        zaproxy/zap-stable \
+        zap-baseline.py \
+        -t http://backend-test:8080 \
+        -r zap_report_backend.html \
+        -J zap_report_backend.json \
         2>&1 | tee zap_backend_output.log || true
+
       if [ -f zap_reports_backend/zap_report_backend.html ]; then
         cp zap_reports_backend/zap_report_backend.html .
         cp zap_reports_backend/zap_report_backend.json .
       else
         echo '{"error":"scan failed"}' > zap_report_backend.json
       fi
+
       docker rm -f backend-test db-test || true
       docker network rm dast-backend-net || true
+
       exit 0
   artifacts:
     paths:
@@ -422,73 +488,81 @@ dast-backend:
   allow_failure: true
   needs:
     - job: build-backend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# BACKEND PUSH TO DOCKER HUB
+# ================================================================
 
 push-backend:
   stage: push-backend
   script:
     - |
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      set -e
+
+      echo "$DOCKERHUB_PASSWORD" | docker login \
+        -u "$DOCKERHUB_USERNAME" --password-stdin
+
       for ARCH in arm64 amd64; do
-        docker push "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-$ARCH" | tee push-backend-$ARCH.log
+
+        TAG="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-${ARCH}"
+
+        echo "Pushing $TAG"
+        docker push "$TAG"
+
       done
-      docker manifest create ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID} \
-        --amend ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-arm64 \
-        --amend ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64
-      OUT=$(docker manifest push ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID} 2>&1)
+
+      MANIFEST="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}"
+
+      docker manifest create "$MANIFEST" \
+        --amend "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-arm64" \
+        --amend "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64"
+
+      OUT=$(docker manifest push "$MANIFEST" 2>&1)
+
       echo "$OUT"
+
       DIGEST=$(echo "$OUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
-      echo "BackendArm64Digest=$DIGEST" > backend.env
-      TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
-        -H "Content-Type: application/json" \
-        -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_PASSWORD}\"}" \
-        | jq -r '.token')
-      if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
-        for SUFFIX in arm64 amd64; do
-          curl -s -o /dev/null -w "delete backend-${CI_PIPELINE_ID}-$SUFFIX: %{http_code}\n" -X DELETE \
-            -H "Authorization: Bearer ${TOKEN}" \
-            "https://hub.docker.com/v2/repositories/${dockerId}/${repoName}/tags/backend-${CI_PIPELINE_ID}-${SUFFIX}/"
-        done
+
+      if [ -z "$DIGEST" ]; then
+        echo "ERROR: Backend manifest digest not found."
+        exit 1
       fi
+
+      echo "BackendArm64Digest=$DIGEST" > backend.env
+
+      echo "Backend multi-platform image successfully pushed."
+
+      # ВАЖНО:
+      # Архитектурные теги НЕ УДАЛЯЕМ.
+      # Они необходимы следующему этапу push-nexus-backend.
+
   artifacts:
     reports:
       dotenv: backend.env
-  needs:
-    - job: build-backend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+    paths:
+      - backend.env
+    expire_in: 1 week
 
-# ────────────────────────────────────────────────────────────────
+# ================================================================
 # FRONTEND CHECKS
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+
 frontend-checks:
   stage: frontend-checks
   script:
     - cd FamilyClub.React/famiy.club.react
     - npm ci || npm install
-    - npm run lint   > ../../frontend-lint.log 2>&1 || true
+    - npm run lint > ../../frontend-lint.log 2>&1 || true
     - npx tsc --noEmit > ../../frontend-tsc.log 2>&1 || true
-    - npm run build || true
+    - npm run build
   artifacts:
     when: always
     paths:
       - frontend-lint.log
       - frontend-tsc.log
     expire_in: 1 week
-  allow_failure: false
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+  allow_failure: true
 
-# FIX: block scalar — иначе `\` уходит в shell как аргумент
 osv-scanner-frontend:
   stage: frontend-checks
   script:
@@ -498,21 +572,16 @@ osv-scanner-frontend:
         -w /src/FamilyClub.React/famiy.club.react \
         ghcr.io/google/osv-scanner:latest \
         scan source -r \
-          --format sarif \
-          --output-file /src/osv-frontend.sarif \
-          . || true
+        --format sarif \
+        --output-file /src/osv-frontend.sarif \
+        . || true
   artifacts:
     paths:
       - osv-frontend.sarif
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# FIX: block scalar + правильное имя файла (jscpd-report.sarif, не sarif.json)
 jscpd:
   stage: frontend-checks
   script:
@@ -531,54 +600,64 @@ jscpd:
     when: always
     expire_in: 1 week
   allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# ────────────────────────────────────────────────────────────────
-# FRONTEND BUILD / SCAN / SBOM / DAST / PUSH
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+# FRONTEND BUILD
+# ================================================================
+
 build-frontend:
   stage: build-frontend
   script:
     - |
+      set -e
+
       export BUILDKIT_NO_CLIENT_IPV6=1
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+      echo "$DOCKERHUB_PASSWORD" | docker login \
+        -u "$DOCKERHUB_USERNAME" --password-stdin
+
       docker buildx use default
+      docker buildx inspect --bootstrap
+
       for ARCH in arm64 amd64; do
-        echo "Сборка для $ARCH"
+
+        echo "===================================="
+        echo "Сборка Frontend для $ARCH"
+        echo "===================================="
+
+        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-${ARCH}"
+
         docker buildx build \
-          --platform linux/$ARCH \
+          --platform "linux/${ARCH}" \
           --no-cache \
+          --load \
+          -t "$FULL_TAG" \
           -f dockerfile.frontend \
-          -o type=docker,dest=frontend-$ARCH.tar \
-          --build-arg BUILD_DATE=$(date -Iseconds) \
-          --build-arg VCS_REF=$CI_COMMIT_SHA \
-          --build-arg VERSION=$CI_PIPELINE_ID \
+          --build-arg BUILD_DATE="$(date -Iseconds)" \
+          --build-arg VCS_REF="$CI_COMMIT_SHA" \
+          --build-arg VERSION="$CI_PIPELINE_ID" \
           .
-        LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
-        IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
-        FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
-        docker tag $IMAGE_ID $FULL_TAG
-        rm -f frontend-$ARCH.tar
+
+        docker image inspect "$FULL_TAG" > /dev/null
+
       done
-      DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
-      echo "frontendArm64Digest=$DIGEST" > frontend.env
-  artifacts:
-    reports:
-      dotenv: frontend.env
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+      echo "Frontend images successfully built."
+
+# ================================================================
+# FRONTEND SCAN
+# ================================================================
 
 scan-frontend:
   stage: scan-frontend
   script:
     - |
-      trivy image --severity HIGH,CRITICAL --exit-code 0 --no-progress \
-        --format sarif --output trivy-frontend.sarif \
+      trivy image \
+        --severity HIGH,CRITICAL \
+        --exit-code 0 \
+        --no-progress \
+        --format sarif \
+        --output trivy-frontend.sarif \
         "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64" || true
   artifacts:
     paths:
@@ -588,21 +667,33 @@ scan-frontend:
   allow_failure: true
   needs:
     - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# FRONTEND SBOM
+# ================================================================
 
 sbom-frontend:
   stage: sbom-frontend
-  image: anchore/syft:latest
   script:
     - |
-      echo "Генерация SBOM для frontend образа"
+      set -e
+
       IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
-      syft "$IMAGE" -o spdx-json=sbom-frontend.spdx.json
-      syft "$IMAGE" -o cyclonedx-json=sbom-frontend.cdx.json
+
+      docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "$PWD:/out" \
+        anchore/syft:latest \
+        "$IMAGE" \
+        -o spdx-json=/out/sbom-frontend.spdx.json
+
+      docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "$PWD:/out" \
+        anchore/syft:latest \
+        "$IMAGE" \
+        -o cyclonedx-json=/out/sbom-frontend.cdx.json
+
       ls -lh sbom-frontend.*
   artifacts:
     paths:
@@ -612,49 +703,71 @@ sbom-frontend:
     expire_in: 1 week
   needs:
     - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# FRONTEND DAST
+# ================================================================
 
 dast-frontend:
   stage: dast-frontend
   script:
     - |
       set +e
+
       IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
-      if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
+
+      docker rm -f frontend-test 2>/dev/null || true
+      docker network rm dast-frontend-net 2>/dev/null || true
+
+      if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
         echo "Frontend image not found locally" > zap_report_frontend.html
         echo '{"error":"image not found"}' > zap_report_frontend.json
         exit 0
       fi
+
       docker network create dast-frontend-net || true
-      docker run -d --name frontend-test --network dast-frontend-net \
-        --entrypoint node $IMAGE node_modules/.bin/next start || {
+
+      docker run -d \
+        --name frontend-test \
+        --network dast-frontend-net \
+        --entrypoint node \
+        "$IMAGE" \
+        node_modules/.bin/next start || {
           echo '{"error":"start failed"}' > zap_report_frontend.json
           exit 0
         }
+
       sleep 40
+
       docker ps | grep frontend-test || {
         docker logs frontend-test
         docker rm -f frontend-test
         exit 0
       }
-      mkdir -p zap_reports_frontend && chmod 777 zap_reports_frontend
-      docker run --rm --network dast-frontend-net \
-        -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw zaproxy/zap-stable \
-        zap-baseline.py -t http://frontend-test:3000 \
-        -r zap_report_frontend.html -J zap_report_frontend.json \
+
+      mkdir -p zap_reports_frontend
+      chmod 777 zap_reports_frontend
+
+      docker run --rm \
+        --network dast-frontend-net \
+        -v "$PWD/zap_reports_frontend:/zap/wrk/:rw" \
+        zaproxy/zap-stable \
+        zap-baseline.py \
+        -t http://frontend-test:3000 \
+        -r zap_report_frontend.html \
+        -J zap_report_frontend.json \
         2>&1 | tee zap_frontend_output.log || true
+
       if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
         cp zap_reports_frontend/zap_report_frontend.html .
         cp zap_reports_frontend/zap_report_frontend.json .
       else
         echo '{"error":"scan failed"}' > zap_report_frontend.json
       fi
+
       docker rm -f frontend-test || true
       docker network rm dast-frontend-net || true
+
       exit 0
   artifacts:
     paths:
@@ -665,204 +778,319 @@ dast-frontend:
   allow_failure: true
   needs:
     - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# FRONTEND PUSH TO DOCKER HUB
+# ================================================================
 
 push-frontend:
   stage: push-frontend
   script:
     - |
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      set -e
+
+      echo "$DOCKERHUB_PASSWORD" | docker login \
+        -u "$DOCKERHUB_USERNAME" --password-stdin
+
       for ARCH in arm64 amd64; do
-        docker push "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" | tee push-frontend-$ARCH.log
+
+        TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-${ARCH}"
+
+        echo "Pushing $TAG"
+        docker push "$TAG"
+
       done
-      docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
-        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
-        --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
-      OUT=$(docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} 2>&1)
+
+      MANIFEST="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}"
+
+      docker manifest create "$MANIFEST" \
+        --amend "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64" \
+        --amend "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
+
+      OUT=$(docker manifest push "$MANIFEST" 2>&1)
+
       echo "$OUT"
+
       DIGEST=$(echo "$OUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
-      echo "frontendArm64Digest=$DIGEST" > frontend.env
-      TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
-        -H "Content-Type: application/json" \
-        -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_PASSWORD}\"}" \
-        | jq -r '.token')
-      if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
-        for SUFFIX in arm64 amd64; do
-          curl -s -o /dev/null -w "delete frontend-${CI_PIPELINE_ID}-$SUFFIX: %{http_code}\n" -X DELETE \
-            -H "Authorization: Bearer ${TOKEN}" \
-            "https://hub.docker.com/v2/repositories/${dockerId}/${repoName}/tags/frontend-${CI_PIPELINE_ID}-${SUFFIX}/"
-        done
+
+      if [ -z "$DIGEST" ]; then
+        echo "ERROR: Frontend manifest digest not found."
+        exit 1
       fi
+
+      echo "frontendArm64Digest=$DIGEST" > frontend.env
+
+      echo "Frontend multi-platform image successfully pushed."
+
+      # Архитектурные теги НЕ УДАЛЯЕМ.
+      # Они необходимы следующему этапу push-nexus-frontend.
+
   artifacts:
     reports:
       dotenv: frontend.env
-  needs:
-    - job: build-frontend
-      artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+    paths:
+      - frontend.env
+    expire_in: 1 week
 
-# ────────────────────────────────────────────────────────────────
-# NEXUS UPLOAD (НОВЫЙ БЛОК - ДОБАВЛЕНО)
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+# NEXUS - BACKEND
+# ================================================================
+
 push-nexus-backend:
   stage: push-nexus
   script:
     - |
-      echo "=== Дублирование бэкенда в Nexus ==="
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      
-      # Логинимся в Nexus
-      echo "$NEXUS_PASSWORD" | docker login -u "$NEXUS_USER" --password-stdin $NEXUS_URL
-      
+      set -e
+
+      echo "===================================="
+      echo "Дублирование Backend в Nexus"
+      echo "===================================="
+
+      echo "$DOCKERHUB_PASSWORD" | docker login \
+        -u "$DOCKERHUB_USERNAME" --password-stdin
+
+      echo "$NEXUS_PASSWORD" | docker login \
+        "$NEXUS_URL" \
+        -u "$NEXUS_USER" \
+        --password-stdin
+
       for ARCH in arm64 amd64; do
-        SRC_TAG="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-$ARCH"
-        # ВАЖНО: используем /docker-hosted/ как путь репозитория
-        DEST_TAG="${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID}-$ARCH"
-        
-        docker pull $SRC_TAG
-        docker tag $SRC_TAG $DEST_TAG
-        docker push $DEST_TAG
+
+        SRC_TAG="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-${ARCH}"
+
+        DEST_TAG="${NEXUS_URL}/backend:${CI_PIPELINE_ID}-${ARCH}"
+
+        echo "===================================="
+        echo "Source: $SRC_TAG"
+        echo "Destination: $DEST_TAG"
+        echo "===================================="
+
+        docker pull "$SRC_TAG"
+
+        docker tag "$SRC_TAG" "$DEST_TAG"
+
+        docker push "$DEST_TAG"
+
       done
-      
-      # Создаем мультиарх-манифест
-      docker manifest create ${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID} \
-        --amend ${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID}-arm64 \
-        --amend ${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID}-amd64
-      docker manifest push ${NEXUS_URL}/docker-hosted/backend:${CI_PIPELINE_ID}
+
+      NEXUS_MANIFEST="${NEXUS_URL}/backend:${CI_PIPELINE_ID}"
+
+      docker manifest create "$NEXUS_MANIFEST" \
+        --amend "${NEXUS_URL}/backend:${CI_PIPELINE_ID}-arm64" \
+        --amend "${NEXUS_URL}/backend:${CI_PIPELINE_ID}-amd64"
+
+      docker manifest push "$NEXUS_MANIFEST"
+
+      echo "===================================="
+      echo "Backend successfully uploaded to Nexus"
+      echo "===================================="
+
   needs:
     - job: push-backend
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# NEXUS - FRONTEND
+# ================================================================
 
 push-nexus-frontend:
   stage: push-nexus
   script:
     - |
-      echo "=== Дублирование фронтенда в Nexus ==="
-      echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      
-      echo "$NEXUS_PASSWORD" | docker login -u "$NEXUS_USER" --password-stdin $NEXUS_URL
-      
+      set -e
+
+      echo "===================================="
+      echo "Дублирование Frontend в Nexus"
+      echo "===================================="
+
+      echo "$DOCKERHUB_PASSWORD" | docker login \
+        -u "$DOCKERHUB_USERNAME" --password-stdin
+
+      echo "$NEXUS_PASSWORD" | docker login \
+        "$NEXUS_URL" \
+        -u "$NEXUS_USER" \
+        --password-stdin
+
       for ARCH in arm64 amd64; do
-        SRC_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
-        # ВАЖНО: используем /docker-hosted/ как путь репозитория
-        DEST_TAG="${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID}-$ARCH"
-        
-        docker pull $SRC_TAG
-        docker tag $SRC_TAG $DEST_TAG
-        docker push $DEST_TAG
+
+        SRC_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-${ARCH}"
+
+        DEST_TAG="${NEXUS_URL}/frontend:${CI_PIPELINE_ID}-${ARCH}"
+
+        echo "===================================="
+        echo "Source: $SRC_TAG"
+        echo "Destination: $DEST_TAG"
+        echo "===================================="
+
+        docker pull "$SRC_TAG"
+
+        docker tag "$SRC_TAG" "$DEST_TAG"
+
+        docker push "$DEST_TAG"
+
       done
-      
-      docker manifest create ${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID} \
-        --amend ${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID}-arm64 \
-        --amend ${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID}-amd64
-      docker manifest push ${NEXUS_URL}/docker-hosted/frontend:${CI_PIPELINE_ID}
+
+      NEXUS_MANIFEST="${NEXUS_URL}/frontend:${CI_PIPELINE_ID}"
+
+      docker manifest create "$NEXUS_MANIFEST" \
+        --amend "${NEXUS_URL}/frontend:${CI_PIPELINE_ID}-arm64" \
+        --amend "${NEXUS_URL}/frontend:${CI_PIPELINE_ID}-amd64"
+
+      docker manifest push "$NEXUS_MANIFEST"
+
+      echo "===================================="
+      echo "Frontend successfully uploaded to Nexus"
+      echo "===================================="
+
   needs:
     - job: push-frontend
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# ────────────────────────────────────────────────────────────────
-# MANIFESTS
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+# UPDATE FRONTEND MANIFESTS
+# ================================================================
+
 update-frontend-manifests:
   stage: update-frontend-manifests
   script:
     - |
       set -e
-      [ -f frontend.env ] && export $(cat frontend.env | xargs) || true
+
       mkdir -p .bin
-      curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o .bin/yq
+
+      curl -fsSL \
+        https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+        -o .bin/yq
+
       chmod +x .bin/yq
       export PATH="$PWD/.bin:$PATH"
+
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
-      git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-      git fetch origin $CI_COMMIT_BRANCH
-      git reset --hard origin/$CI_COMMIT_BRANCH
-      export BUILD_DATE=$(date -Iseconds)
-      yq -i '.frontend.image.digest     = strenv(frontendArm64Digest)' kubernetes/librellis/values.yaml
-      yq -i '.frontend.image.buildDate  = strenv(BUILD_DATE)'          kubernetes/librellis/values.yaml
-      yq -i '.frontend.image.commitHash = strenv(CI_COMMIT_SHA)'       kubernetes/librellis/values.yaml
-      yq -i '.frontend.image.branch     = strenv(CI_COMMIT_BRANCH)'    kubernetes/librellis/values.yaml
-      yq -i '.frontend.tag              = strenv(CI_PIPELINE_ID)'      kubernetes/librellis/values.yaml
+
+      git checkout "$CI_COMMIT_BRANCH" || git checkout -b "$CI_COMMIT_BRANCH"
+
+      git remote set-url origin \
+        "https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git"
+
+      git fetch origin "$CI_COMMIT_BRANCH"
+      git reset --hard "origin/$CI_COMMIT_BRANCH"
+
+      export BUILD_DATE="$(date -Iseconds)"
+
+      yq -i '.frontend.image.digest = strenv(frontendArm64Digest)' \
+        kubernetes/librellis/values.yaml
+
+      yq -i '.frontend.image.buildDate = strenv(BUILD_DATE)' \
+        kubernetes/librellis/values.yaml
+
+      yq -i '.frontend.image.commitHash = strenv(CI_COMMIT_SHA)' \
+        kubernetes/librellis/values.yaml
+
+      yq -i '.frontend.image.branch = strenv(CI_COMMIT_BRANCH)' \
+        kubernetes/librellis/values.yaml
+
+      yq -i '.frontend.tag = strenv(CI_PIPELINE_ID)' \
+        kubernetes/librellis/values.yaml
+
       git add kubernetes/librellis/values.yaml
+
       git commit -m "Update frontend values: $CI_COMMIT_BRANCH" || echo "No changes"
-      git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
+
+      git push --force-with-lease origin "HEAD:$CI_COMMIT_BRANCH"
+
   needs:
     - job: push-frontend
       artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# UPDATE BACKEND MANIFESTS
+# ================================================================
 
 update-backend-manifests:
   stage: update-backend-manifests
   script:
     - |
       set -e
-      [ -f backend.env ] && export $(cat backend.env | xargs) || true
+
       mkdir -p .bin
-      curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o .bin/yq
+
+      curl -fsSL \
+        https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+        -o .bin/yq
+
       chmod +x .bin/yq
       export PATH="$PWD/.bin:$PATH"
+
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
-      git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-      git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-      git fetch origin $CI_COMMIT_BRANCH
-      git reset --hard origin/$CI_COMMIT_BRANCH
-      export BUILD_DATE=$(date -Iseconds)
-      yq -i '.backend.image.digest     = strenv(BackendArm64Digest)' kubernetes/librellis/values.yaml
-      yq -i '.backend.image.buildDate  = strenv(BUILD_DATE)'         kubernetes/librellis/values.yaml
-      yq -i '.backend.image.commitHash = strenv(CI_COMMIT_SHA)'      kubernetes/librellis/values.yaml
-      yq -i '.backend.image.branch     = strenv(CI_COMMIT_BRANCH)'   kubernetes/librellis/values.yaml
-      yq -i '.backend.tag              = strenv(CI_PIPELINE_ID)'     kubernetes/librellis/values.yaml
+
+      git checkout "$CI_COMMIT_BRANCH" || git checkout -b "$CI_COMMIT_BRANCH"
+
+      git remote set-url origin \
+        "https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git"
+
+      git fetch origin "$CI_COMMIT_BRANCH"
+      git reset --hard "origin/$CI_COMMIT_BRANCH"
+
+      export BUILD_DATE="$(date -Iseconds)"
+
+      yq -i '.backend.image.digest = strenv(BackendArm64Digest)' \
+        kubernetes/librellis/values.yaml
+
+      yq -i '.backend.image.buildDate = strenv(BUILD_DATE)' \
+        kubernetes/librellis/values.yaml
+
+      yq -i '.backend.image.commitHash = strenv(CI_COMMIT_SHA)' \
+        kubernetes/librellis/values.yaml
+
+      yq -i '.backend.image.branch = strenv(CI_COMMIT_BRANCH)' \
+        kubernetes/librellis/values.yaml
+
+      yq -i '.backend.tag = strenv(CI_PIPELINE_ID)' \
+        kubernetes/librellis/values.yaml
+
       git add kubernetes/librellis/values.yaml
+
       git commit -m "Update backend values: $CI_COMMIT_BRANCH" || echo "No changes"
-      git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
+
+      git push --force-with-lease origin "HEAD:$CI_COMMIT_BRANCH"
+
   needs:
     - job: push-backend
       artifacts: true
     - job: update-frontend-manifests
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# ────────────────────────────────────────────────────────────────
-# CONVERTER (SARIF + codemetrics → codequality)
-# ────────────────────────────────────────────────────────────────
+# ================================================================
+# SARIF + CODE METRICS -> GITLAB CODE QUALITY
+# ================================================================
+
 convert-sarif-to-codequality:
   stage: convert-sarif-to-codequality
   script:
     - |
       SARIF_FILES=""
-      for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif \
-               npm-audit.sarif eslint-security.sarif \
-               trivy-frontend.sarif trivy-backend.sarif \
-               osv-frontend.sarif osv-backend.sarif jscpd.sarif; do
+
+      for f in gitleaks.sarif \
+               hadolint-frontend.sarif \
+               hadolint-backend.sarif \
+               npm-audit.sarif \
+               eslint-security.sarif \
+               trivy-frontend.sarif \
+               trivy-backend.sarif \
+               osv-frontend.sarif \
+               osv-backend.sarif \
+               jscpd.sarif; do
+
         if [ -f "$f" ]; then
-          echo "  Found: $f"
+          echo "Found: $f"
           SARIF_FILES="$SARIF_FILES $f"
         fi
+
       done
+
       if [ -z "$SARIF_FILES" ]; then
         echo "[]" > gl-code-quality-report-sarif.json
       else
+
         jq -s '
           def map_sev:
             if ((.ruleId // "") | test("^(CVE-|GHSA-)"; "i")) then "critical"
@@ -875,35 +1103,47 @@ convert-sarif-to-codequality:
               else "info" end
             elif .level == "error" then "major"
             elif .level == "warning" then "minor"
-            else "info" end
-          ;
+            else "info" end;
+
           [
-            .[]? | .runs[]? | .results[]?
-            | {
-                description: (.message.text // .message.markdown // "No description"),
-                check_name: (.ruleId // "unknown"),
-                fingerprint: (
-                  ((.locations[0].physicalLocation.artifactLocation.uri // "unknown")
-                   + ":" + ((.locations[0].physicalLocation.region.startLine // 0) | tostring)
-                   + ":" + (.ruleId // "unknown"))
-                ),
-                severity: map_sev,
-                location: {
-                  path: (.locations[0].physicalLocation.artifactLocation.uri // "unknown"),
-                  lines: { begin: (.locations[0].physicalLocation.region.startLine // 1) }
+            .[]? | .runs[]? | .results[]? |
+            {
+              description: (.message.text // .message.markdown // "No description"),
+              check_name: (.ruleId // "unknown"),
+              fingerprint: (
+                ((.locations[0].physicalLocation.artifactLocation.uri // "unknown")
+                + ":" +
+                ((.locations[0].physicalLocation.region.startLine // 0) | tostring)
+                + ":" + (.ruleId // "unknown"))
+              ),
+              severity: map_sev,
+              location: {
+                path: (.locations[0].physicalLocation.artifactLocation.uri // "unknown"),
+                lines: {
+                  begin: (.locations[0].physicalLocation.region.startLine // 1)
                 }
               }
+            }
           ]
-        ' $SARIF_FILES > gl-code-quality-report-sarif.json || echo "[]" > gl-code-quality-report-sarif.json
+        ' $SARIF_FILES > gl-code-quality-report-sarif.json || \
+          echo "[]" > gl-code-quality-report-sarif.json
+
       fi
 
     - |
       if [ -f code-metrics-backend.json ]; then
+
         jq '
-          [ .findings[]? | select(.suppressed != true) | {
+          [
+            .findings[]? |
+            select(.suppressed != true) |
+            {
               description: .message,
               check_name: .ruleId,
-              fingerprint: ((.location.file // "unknown") + ":" + ((.location.line // 0) | tostring) + ":" + .ruleId),
+              fingerprint: (
+                (.location.file // "unknown") + ":" +
+                ((.location.line // 0) | tostring) + ":" + .ruleId
+              ),
               severity: (
                 if .severity == "critical" then "critical"
                 elif .severity == "high" then "major"
@@ -911,22 +1151,36 @@ convert-sarif-to-codequality:
                 elif .severity == "low" then "info"
                 else "info" end
               ),
-              location: { path: .location.file, lines: { begin: (.location.line // 1) } }
+              location: {
+                path: .location.file,
+                lines: {
+                  begin: (.location.line // 1)
+                }
+              }
             }
           ]
         ' code-metrics-backend.json > gl-code-quality-report-codemetrics.json \
           || echo "[]" > gl-code-quality-report-codemetrics.json
+
       else
+
         echo "[]" > gl-code-quality-report-codemetrics.json
+
       fi
 
     - jq -s 'add' gl-code-quality-report-sarif.json gl-code-quality-report-codemetrics.json > gl-code-quality-report.json
 
     - |
-      sed -i "s|file://$CI_PROJECT_DIR/||g; s|$CI_PROJECT_DIR/||g" gl-code-quality-report.json || true
+      sed -i "s|file://$CI_PROJECT_DIR/||g; s|$CI_PROJECT_DIR/||g" \
+        gl-code-quality-report.json || true
+
       ls -lh gl-code-quality-report.json
-      echo "Всего проблем: $(jq 'length' gl-code-quality-report.json 2>/dev/null || echo '?')"
-      jq -r 'group_by(.severity) | map("\(.[0].severity): \(length)")[]' gl-code-quality-report.json 2>/dev/null || true
+
+      echo "Всего проблем: $(jq 'length' gl-code-quality-report.json)"
+
+      jq -r 'group_by(.severity) | map("\(.[0].severity): \(length)")[]' \
+        gl-code-quality-report.json || true
+
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
@@ -934,48 +1188,66 @@ convert-sarif-to-codequality:
       - gl-code-quality-report.json
     expire_in: 1 week
     when: always
-  needs:
-    - { job: gitleaks,               artifacts: true, optional: true }
-    - { job: hadolint,               artifacts: true, optional: true }
-    - { job: npm-audit,              artifacts: true, optional: true }
-    - { job: eslint-security,        artifacts: true, optional: true }
-    - { job: scan-frontend,          artifacts: true, optional: true }
-    - { job: scan-backend,           artifacts: true, optional: true }
-    - { job: osv-scanner-frontend,   artifacts: true, optional: true }
-    - { job: osv-scanner-backend,    artifacts: true, optional: true }
-    - { job: jscpd,                  artifacts: true, optional: true }
-    - { job: code-metrics-backend,   artifacts: true, optional: true }
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
 
-# ────────────────────────────────────────────────────────────────
-# DOCS + SYNC2
-# ────────────────────────────────────────────────────────────────
+  needs:
+    - job: gitleaks
+      artifacts: true
+      optional: true
+    - job: hadolint
+      artifacts: true
+      optional: true
+    - job: npm-audit
+      artifacts: true
+      optional: true
+    - job: eslint-security
+      artifacts: true
+      optional: true
+    - job: scan-frontend
+      artifacts: true
+      optional: true
+    - job: scan-backend
+      artifacts: true
+      optional: true
+    - job: osv-scanner-frontend
+      artifacts: true
+      optional: true
+    - job: osv-scanner-backend
+      artifacts: true
+      optional: true
+    - job: jscpd
+      artifacts: true
+      optional: true
+    - job: code-metrics-backend
+      artifacts: true
+      optional: true
+
+# ================================================================
+# UPDATE DOCS
+# ================================================================
+
 update-docs:
   stage: sync2
   script:
     - git config user.email "apofeoz638@gmail.com"
     - git config user.name "Artem Malashevskyi"
-    - git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
-    - git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
-    - git fetch origin $CI_COMMIT_BRANCH
-    - git reset --hard origin/$CI_COMMIT_BRANCH
+    - git checkout "$CI_COMMIT_BRANCH" || git checkout -b "$CI_COMMIT_BRANCH"
+    - git remote set-url origin "https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git"
+    - git fetch origin "$CI_COMMIT_BRANCH"
+    - git reset --hard "origin/$CI_COMMIT_BRANCH"
     - mkdir -p docs
     - cp index.html docs/ || echo "index.html not found"
     - cp openapi.json docs/ || echo "openapi.json not found"
     - touch docs/.nojekyll
     - git add docs/
     - git commit -m "Update API documentation [skip ci]" || echo "No changes"
-    - git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
+    - git push --force-with-lease origin "HEAD:$CI_COMMIT_BRANCH"
   needs:
     - job: dast-backend
       artifacts: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
+
+# ================================================================
+# FINAL SYNC
+# ================================================================
 
 sync-repo2:
   stage: sync2
@@ -983,11 +1255,7 @@ sync-repo2:
     - git config --global user.email "ci@gitlab.local"
     - git config --global user.name "GitLab CI"
     - rm -rf /tmp/repo
-    - git clone --branch Final $UPSTREAM_URL /tmp/repo
+    - git clone --branch Final "$UPSTREAM_URL" /tmp/repo
     - cd /tmp/repo
-    - git remote set-url origin http://root:${GITLAB_PUSH_TOKEN}@localhost/root/librellis1.git
+    - git remote set-url origin "http://root:${GITLAB_PUSH_TOKEN}@localhost/root/librellis1.git"
     - git push origin Final --force
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
-      when: always
-    - when: never
