@@ -1,4 +1,3 @@
-
 stages:
   - sync
   - gitleaks
@@ -30,8 +29,9 @@ variables:
   dockerId: "metra638"
   repoName: "test1"
 
-  # ДОБАВЛЕНО: настройки Nexus
+  # ИЗМЕНЕНО: настройки Nexus для Path based routing
   NEXUS_URL: "192.168.1.89:8081"
+  NEXUS_REPOSITORY: "docker-hosted"
   NEXUS_USER: "admin"
   # NEXUS_PASSWORD задаётся в GitLab CI/CD Variables
 
@@ -304,8 +304,10 @@ build-backend:
       export BUILDKIT_NO_CLIENT_IPV6=1
       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
       docker buildx use default
+
       for ARCH in arm64 amd64; do
         echo "Сборка для $ARCH"
+
         docker buildx build \
           --platform linux/$ARCH \
           --no-cache \
@@ -315,12 +317,14 @@ build-backend:
           --build-arg VCS_REF=$CI_COMMIT_SHA \
           --build-arg VERSION=$CI_PIPELINE_ID \
           .
+
         LOAD_OUTPUT=$(docker load --quiet < backend-$ARCH.tar)
         IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
         FULL_TAG="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-$ARCH"
         docker tag $IMAGE_ID $FULL_TAG
         rm -f backend-$ARCH.tar
       done
+
       DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-arm64")
       echo "BackendArm64Digest=$DIGEST" > backend.env
   artifacts:
@@ -384,49 +388,67 @@ dast-backend:
     - |
       set +e
       IMAGE="${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64"
+
       docker rm -f backend-test db-test 2>/dev/null || true
       docker network rm dast-backend-net 2>/dev/null || true
+
       if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
         echo '{"error":"image not found"}' > zap_report_backend.json
         echo '{"error":"image not found"}' > openapi.json
         exit 0
       fi
+
       docker network create dast-backend-net || true
+
       docker run -d --name db-test --network dast-backend-net \
-        -e POSTGRES_PASSWORD=MyStrongPass123! -e POSTGRES_DB=familyclub_db postgres:15
+        -e POSTGRES_PASSWORD=MyStrongPass123! \
+        -e POSTGRES_DB=familyclub_db postgres:15
+
       sleep 30
+
       DB="Host=db-test;Database=familyclub_db;Username=postgres;Password=MyStrongPass123!"
+
       docker run -d --name backend-test --network dast-backend-net \
         -e ASPNETCORE_ENVIRONMENT=Development \
-        -e Jwt__Key="${JWT_KEY}" -e Jwt__Issuer="${JWT_ISSUER}" -e Jwt__Audience="${JWT_AUDIENCE}" \
+        -e Jwt__Key="${JWT_KEY}" \
+        -e Jwt__Issuer="${JWT_ISSUER}" \
+        -e Jwt__Audience="${JWT_AUDIENCE}" \
         -e ConnectionStrings__FamilyClub_DB="${DB}" $IMAGE || {
           echo '{"error":"start failed"}' > zap_report_backend.json
           exit 0
         }
+
       sleep 40
+
       docker ps | grep backend-test || {
         docker logs backend-test
         docker rm -f backend-test db-test
         exit 0
       }
+
       for i in $(seq 1 30); do
-        docker exec backend-test wget -qO- http://localhost:8080/swagger/v1/swagger.json > openapi.json 2>/dev/null && \
+        docker exec backend-test wget -qO- http://localhost:8080/swagger/v1/swagger.json > openapi.json 2>/dev/null &&
           [ -s openapi.json ] && head -c1 openapi.json | grep -q "{" && break
         sleep 10
       done
+
       docker run --rm -v $(pwd):/spec redocly/cli:1.34.5 build-docs /spec/openapi.json -o /spec/index.html || true
+
       mkdir -p zap_reports_backend && chmod 777 zap_reports_backend
+
       docker run --rm --network dast-backend-net \
         -v $(pwd)/zap_reports_backend:/zap/wrk/:rw zaproxy/zap-stable \
         zap-baseline.py -t http://backend-test:8080 \
         -r zap_report_backend.html -J zap_report_backend.json \
         2>&1 | tee zap_backend_output.log || true
+
       if [ -f zap_reports_backend/zap_report_backend.html ]; then
         cp zap_reports_backend/zap_report_backend.html .
         cp zap_reports_backend/zap_report_backend.json .
       else
         echo '{"error":"scan failed"}' > zap_report_backend.json
       fi
+
       docker rm -f backend-test db-test || true
       docker network rm dast-backend-net || true
       exit 0
@@ -453,20 +475,26 @@ push-backend:
   script:
     - |
       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
       for ARCH in arm64 amd64; do
         docker push "${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-$ARCH" | tee push-backend-$ARCH.log
       done
+
       docker manifest create ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID} \
         --amend ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-arm64 \
         --amend ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID}-amd64
+
       OUT=$(docker manifest push ${dockerId}/${repoName}:backend-${CI_PIPELINE_ID} 2>&1)
       echo "$OUT"
+
       DIGEST=$(echo "$OUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
       echo "BackendArm64Digest=$DIGEST" > backend.env
+
       TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
         -H "Content-Type: application/json" \
         -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_PASSWORD}\"}" \
         | jq -r '.token')
+
       if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
         for SUFFIX in arm64 amd64; do
           curl -s -o /dev/null -w "delete backend-${CI_PIPELINE_ID}-$SUFFIX: %{http_code}\n" -X DELETE \
@@ -568,8 +596,10 @@ build-frontend:
       export BUILDKIT_NO_CLIENT_IPV6=1
       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
       docker buildx use default
+
       for ARCH in arm64 amd64; do
         echo "Сборка для $ARCH"
+
         docker buildx build \
           --platform linux/$ARCH \
           --no-cache \
@@ -579,12 +609,14 @@ build-frontend:
           --build-arg VCS_REF=$CI_COMMIT_SHA \
           --build-arg VERSION=$CI_PIPELINE_ID \
           .
+
         LOAD_OUTPUT=$(docker load --quiet < frontend-$ARCH.tar)
         IMAGE_ID=$(echo $LOAD_OUTPUT | grep -o 'sha256:[a-f0-9]*')
         FULL_TAG="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH"
         docker tag $IMAGE_ID $FULL_TAG
         rm -f frontend-$ARCH.tar
       done
+
       DIGEST=$(docker inspect --format='{{.Id}}' "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64")
       echo "frontendArm64Digest=$DIGEST" > frontend.env
   artifacts:
@@ -649,35 +681,44 @@ dast-frontend:
     - |
       set +e
       IMAGE="${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64"
+
       if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$IMAGE"; then
         echo "Frontend image not found locally" > zap_report_frontend.html
         echo '{"error":"image not found"}' > zap_report_frontend.json
         exit 0
       fi
+
       docker network create dast-frontend-net || true
+
       docker run -d --name frontend-test --network dast-frontend-net \
         --entrypoint node $IMAGE node_modules/.bin/next start || {
           echo '{"error":"start failed"}' > zap_report_frontend.json
           exit 0
         }
+
       sleep 40
+
       docker ps | grep frontend-test || {
         docker logs frontend-test
         docker rm -f frontend-test
         exit 0
       }
+
       mkdir -p zap_reports_frontend && chmod 777 zap_reports_frontend
+
       docker run --rm --network dast-frontend-net \
         -v $(pwd)/zap_reports_frontend:/zap/wrk/:rw zaproxy/zap-stable \
         zap-baseline.py -t http://frontend-test:3000 \
         -r zap_report_frontend.html -J zap_report_frontend.json \
         2>&1 | tee zap_frontend_output.log || true
+
       if [ -f zap_reports_frontend/zap_report_frontend.html ]; then
         cp zap_reports_frontend/zap_report_frontend.html .
         cp zap_reports_frontend/zap_report_frontend.json .
       else
         echo '{"error":"scan failed"}' > zap_report_frontend.json
       fi
+
       docker rm -f frontend-test || true
       docker network rm dast-frontend-net || true
       exit 0
@@ -702,20 +743,26 @@ push-frontend:
   script:
     - |
       echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
       for ARCH in arm64 amd64; do
         docker push "${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-$ARCH" | tee push-frontend-$ARCH.log
       done
+
       docker manifest create ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} \
         --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-arm64 \
         --amend ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID}-amd64
+
       OUT=$(docker manifest push ${dockerId}/${repoName}:frontend-${CI_PIPELINE_ID} 2>&1)
       echo "$OUT"
+
       DIGEST=$(echo "$OUT" | grep -o 'sha256:[a-f0-9]\{64\}' | head -1)
       echo "frontendArm64Digest=$DIGEST" > frontend.env
+
       TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
         -H "Content-Type: application/json" \
         -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_PASSWORD}\"}" \
         | jq -r '.token')
+
       if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
         for SUFFIX in arm64 amd64; do
           curl -s -o /dev/null -w "delete frontend-${CI_PIPELINE_ID}-$SUFFIX: %{http_code}\n" -X DELETE \
@@ -736,7 +783,7 @@ push-frontend:
 
 
 # ────────────────────────────────────────────────────────────────
-# ДОБАВЛЕНО: NEXUS PUSH
+# ДОБАВЛЕНО / ИЗМЕНЕНО: NEXUS PUSH — PATH BASED ROUTING
 # ────────────────────────────────────────────────────────────────
 push-nexus:
   stage: push-nexus
@@ -754,14 +801,15 @@ push-nexus:
 
       echo "=========================================="
       echo "NEXUS: ${NEXUS_URL}"
+      echo "Repository: ${NEXUS_REPOSITORY}"
       echo "Backend tag: backend-${CI_PIPELINE_ID}"
       echo "Frontend tag: frontend-${CI_PIPELINE_ID}"
       echo "=========================================="
 
       # Запускаем Skopeo в контейнере.
       # --network host нужен для доступа к Nexus в локальной сети.
-      # Исходные образы берутся из Docker Hub.
-      # --all переносит ВСЕ архитектуры и multi-arch manifest.
+      # --all переносит все архитектуры и multi-arch manifest.
+      # Path based routing требует префикс /docker-hosted в destination.
 
       docker run --rm \
         --network host \
@@ -769,6 +817,7 @@ push-nexus:
         -e DOCKERHUB_USERNAME \
         -e DOCKERHUB_PASSWORD \
         -e NEXUS_URL \
+        -e NEXUS_REPOSITORY \
         -e NEXUS_USER \
         -e NEXUS_PASSWORD \
         -e DOCKER_ID="$dockerId" \
@@ -779,6 +828,7 @@ push-nexus:
           set -eu
 
           AUTH_FILE=/tmp/skopeo-auth.json
+          trap "rm -f \"$AUTH_FILE\"" EXIT
 
           echo "Авторизация в Docker Hub..."
           skopeo login \
@@ -804,7 +854,7 @@ push-nexus:
             --authfile "$AUTH_FILE" \
             --dest-tls-verify=false \
             "docker://docker.io/${DOCKER_ID}/${REPO_NAME}:backend-${PIPELINE_ID}" \
-            "docker://${NEXUS_URL}/${DOCKER_ID}/${REPO_NAME}:backend-${PIPELINE_ID}"
+            "docker://${NEXUS_URL}/${NEXUS_REPOSITORY}/${DOCKER_ID}/${REPO_NAME}:backend-${PIPELINE_ID}"
 
           echo "=========================================="
           echo "Копирование FRONTEND в Nexus"
@@ -815,9 +865,7 @@ push-nexus:
             --authfile "$AUTH_FILE" \
             --dest-tls-verify=false \
             "docker://docker.io/${DOCKER_ID}/${REPO_NAME}:frontend-${PIPELINE_ID}" \
-            "docker://${NEXUS_URL}/${DOCKER_ID}/${REPO_NAME}:frontend-${PIPELINE_ID}"
-
-          rm -f "$AUTH_FILE"
+            "docker://${NEXUS_URL}/${NEXUS_REPOSITORY}/${DOCKER_ID}/${REPO_NAME}:frontend-${PIPELINE_ID}"
 
           echo "=========================================="
           echo "ОБА ОБРАЗА УСПЕШНО СКОПИРОВАНЫ В NEXUS"
@@ -839,22 +887,27 @@ update-frontend-manifests:
     - |
       set -e
       [ -f frontend.env ] && export $(cat frontend.env | xargs) || true
+
       mkdir -p .bin
       curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o .bin/yq
       chmod +x .bin/yq
       export PATH="$PWD/.bin:$PATH"
+
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
       git fetch origin $CI_COMMIT_BRANCH
       git reset --hard origin/$CI_COMMIT_BRANCH
+
       export BUILD_DATE=$(date -Iseconds)
+
       yq -i '.frontend.image.digest     = strenv(frontendArm64Digest)' kubernetes/librellis/values.yaml
       yq -i '.frontend.image.buildDate  = strenv(BUILD_DATE)'          kubernetes/librellis/values.yaml
       yq -i '.frontend.image.commitHash = strenv(CI_COMMIT_SHA)'       kubernetes/librellis/values.yaml
       yq -i '.frontend.image.branch     = strenv(CI_COMMIT_BRANCH)'    kubernetes/librellis/values.yaml
       yq -i '.frontend.tag              = strenv(CI_PIPELINE_ID)'      kubernetes/librellis/values.yaml
+
       git add kubernetes/librellis/values.yaml
       git commit -m "Update frontend values: $CI_COMMIT_BRANCH" || echo "No changes"
       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
@@ -873,22 +926,27 @@ update-backend-manifests:
     - |
       set -e
       [ -f backend.env ] && export $(cat backend.env | xargs) || true
+
       mkdir -p .bin
       curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o .bin/yq
       chmod +x .bin/yq
       export PATH="$PWD/.bin:$PATH"
+
       git config user.email "apofeoz638@gmail.com"
       git config user.name "Artem Malashevskyi"
       git checkout $CI_COMMIT_BRANCH || git checkout -b $CI_COMMIT_BRANCH
       git remote set-url origin https://oauth2:${GITHUB_TOKEN}@github.com/Metra638/FamilyClub.WebAPI1.git
       git fetch origin $CI_COMMIT_BRANCH
       git reset --hard origin/$CI_COMMIT_BRANCH
+
       export BUILD_DATE=$(date -Iseconds)
+
       yq -i '.backend.image.digest     = strenv(BackendArm64Digest)' kubernetes/librellis/values.yaml
       yq -i '.backend.image.buildDate  = strenv(BUILD_DATE)'         kubernetes/librellis/values.yaml
       yq -i '.backend.image.commitHash = strenv(CI_COMMIT_SHA)'      kubernetes/librellis/values.yaml
       yq -i '.backend.image.branch     = strenv(CI_COMMIT_BRANCH)'   kubernetes/librellis/values.yaml
       yq -i '.backend.tag              = strenv(CI_PIPELINE_ID)'     kubernetes/librellis/values.yaml
+
       git add kubernetes/librellis/values.yaml
       git commit -m "Update backend values: $CI_COMMIT_BRANCH" || echo "No changes"
       git push --force-with-lease origin HEAD:$CI_COMMIT_BRANCH
@@ -910,6 +968,7 @@ convert-sarif-to-codequality:
   script:
     - |
       SARIF_FILES=""
+
       for f in gitleaks.sarif hadolint-frontend.sarif hadolint-backend.sarif \
                npm-audit.sarif eslint-security.sarif \
                trivy-frontend.sarif trivy-backend.sarif \
@@ -919,6 +978,7 @@ convert-sarif-to-codequality:
           SARIF_FILES="$SARIF_FILES $f"
         fi
       done
+
       if [ -z "$SARIF_FILES" ]; then
         echo "[]" > gl-code-quality-report-sarif.json
       else
@@ -986,6 +1046,7 @@ convert-sarif-to-codequality:
       ls -lh gl-code-quality-report.json
       echo "Всего проблем: $(jq 'length' gl-code-quality-report.json 2>/dev/null || echo '?')"
       jq -r 'group_by(.severity) | map("\(.[0].severity): \(length)")[]' gl-code-quality-report.json 2>/dev/null || true
+
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
@@ -993,6 +1054,7 @@ convert-sarif-to-codequality:
       - gl-code-quality-report.json
     expire_in: 1 week
     when: always
+
   needs:
     - { job: gitleaks, artifacts: true, optional: true }
     - { job: hadolint, artifacts: true, optional: true }
@@ -1004,6 +1066,7 @@ convert-sarif-to-codequality:
     - { job: osv-scanner-backend, artifacts: true, optional: true }
     - { job: jscpd, artifacts: true, optional: true }
     - { job: code-metrics-backend, artifacts: true, optional: true }
+
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: always
