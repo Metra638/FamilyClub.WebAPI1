@@ -36,7 +36,8 @@ LABEL org.opencontainers.image.title="FamilyClub" \
     maintainer="apofeoz638@gmail.com" \
     environment="production"
 
-RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
+# ИСПРАВЛЕНИЕ ЗДЕСЬ: добавили krb5-libs перед очисткой кэша
+RUN apk update && apk upgrade && apk add --no-cache krb5-libs && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 COPY --link --from=build /app/publish .
